@@ -1,0 +1,514 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TENANT
+  HUNTER
+  ADMIN
+}
+
+enum PropertyStatus {
+  PENDING_APPROVAL
+  AVAILABLE
+  LOCKED
+  RENTED
+  REJECTED
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  ESCROW
+  RELEASED
+  REFUNDED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum ReviewType {
+  TENANT_TO_HUNTER
+  HUNTER_TO_TENANT
+}
+
+enum PackageTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum RescheduleStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+}
+
+enum MeetingPointType {
+  LANDMARK
+  PROPERTY
+}
+
+enum ConfirmationStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  password           String
+  name               String
+  phone              String?
+  role               Role     @default(TENANT)
+  isVerified         Boolean  @default(false)
+  verificationStatus String   @default("UNVERIFIED")
+  avatarUrl          String?
+  idFrontUrl         String?
+  idBackUrl          String?
+  selfieUrl          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  properties       Property[]
+  viewingRequests  ViewingRequest[]
+  bookings         Booking[]        @relation("TenantBookings")
+  hunterBookings   Booking[]        @relation("HunterBookings")
+  sentMessages     Message[]        @relation("SentMessages")
+  receivedMessages Message[]        @relation("ReceivedMessages")
+
+  tenantConversations Conversation[] @relation("TenantConversations")
+  hunterConversations Conversation[] @relation("HunterConversations")
+
+  searchRequests        SearchRequest[]  @relation("TenantSearchRequest")
+  haunterSearchRequests SearchRequest[]  @relation("HaunterSearchRequests")
+  bids                  Bid[]
+  reporterDisputes      Dispute[]        @relation("ReporterDisputes")
+  againstDisputes       Dispute[]        @relation("AgainstDisputes")
+  savedProperties       SavedProperty[]
+  paymentHistory        PaymentHistory[] @relation("UserPayments")
+  hunterEarnings        HunterEarnings[] @relation("HunterEarnings")
+}
+
+model Property {
+  id              String         @id @default(uuid())
+  title           String
+  description     String         @db.Text
+  rent            Float
+  location        Json // { lat, lng, address, generalArea }
+  amenities       Json // string[]
+  images          Json // string[]
+  videos          Json? // string[]
+  status          PropertyStatus @default(PENDING_APPROVAL)
+  isExactLocation Boolean        @default(false)
+  isLocked        Boolean        @default(false)
+  adminApprovedBy String?
+  adminApprovedAt DateTime?
+  rejectionReason String?        @db.Text
+  hunterId        String
+  hunter          User           @relation(fields: [hunterId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  packages                ViewingPackage[]
+  requests                ViewingRequest[]
+  bookings                Booking[]
+  searchRequestProperties SearchRequestProperty[]
+  disputes                Dispute[]
+  savedBy                 SavedProperty[]
+}
+
+model ViewingPackage {
+  id                 String      @id @default(uuid())
+  name               String
+  price              Float
+  description        String?
+  tier               PackageTier
+  propertiesIncluded Int
+  features           Json // string[]
+  propertyId         String
+  property           Property    @relation(fields: [propertyId], references: [id])
+}
+
+model ViewingRequest {
+  id            String        @id @default(uuid())
+  propertyId    String
+  property      Property      @relation(fields: [propertyId], references: [id])
+  tenantId      String
+  tenant        User          @relation(fields: [tenantId], references: [id])
+  proposedDates Json // { date: string, timeSlot: string }[]
+  message       String?       @db.Text
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  invoice Invoice?
+}
+
+model Invoice {
+  id        String         @id @default(uuid())
+  requestId String         @unique
+  request   ViewingRequest @relation(fields: [requestId], references: [id])
+  amount    Float
+  status    InvoiceStatus  @default(UNPAID)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  booking Booking?
+}
+
+model Booking {
+  id                       String        @id @default(uuid())
+  propertyId               String
+  property                 Property      @relation(fields: [propertyId], references: [id])
+  tenantId                 String
+  tenant                   User          @relation(fields: [tenantId], references: [id], name: "TenantBookings")
+  hunterId                 String
+  hunter                   User          @relation(fields: [hunterId], references: [id], name: "HunterBookings")
+  invoiceId                String        @unique
+  invoice                  Invoice       @relation(fields: [invoiceId], references: [id])
+  scheduledDate            String
+  scheduledTime            String
+  scheduledEndTime         String // 1-hour window end time
+  actualStartTime          DateTime?
+  actualEndTime            DateTime?
+  autoReleaseAt            DateTime? // When to auto-release payment
+  tenantConfirmed          Boolean       @default(false)
+  physicalMeetingConfirmed Boolean       @default(false)
+  status                   BookingStatus @default(CONFIRMED)
+  chatEnabled              Boolean       @default(true)
+  completedAt              DateTime?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  reviews            Review[]
+  messages           Message[]
+  disputes           Dispute[]
+  hunterEarnings     HunterEarnings[]
+  meetingPoint       MeetingPoint?
+  rescheduleRequests RescheduleRequest[]
+}
+
+model Review {
+  id        String     @id @default(uuid())
+  bookingId String
+  booking   Booking    @relation(fields: [bookingId], references: [id])
+  rating    Int
+  comment   String?    @db.Text
+  type      ReviewType
+  createdAt DateTime   @default(now())
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  VOICE_CALL
+  VIDEO_CALL
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  bookingId      String?
+  booking        Booking?      @relation(fields: [bookingId], references: [id])
+  senderId       String
+  sender         User          @relation(fields: [senderId], references: [id], name: "SentMessages")
+  receiverId     String
+  receiver       User          @relation(fields: [receiverId], references: [id], name: "ReceivedMessages")
+  propertyId     String? // Optional reference to property being discussed
+  content        String?       @db.Text
+  type           MessageType   @default(TEXT)
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
+  callDuration   Int?
+  isRead         Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([bookingId])
+  @@index([conversationId])
+}
+
+enum SearchRequestStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PENDING_BIDS
+  IN_PROGRESS
+  PENDING_REVIEW
+  COMPLETED
+  CANCELLED
+  FORFEITED
+}
+
+enum ServiceTier {
+  STANDARD
+  PREMIUM
+  URGENT
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model SearchRequest {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   User   @relation(fields: [tenantId], references: [id], name: "TenantSearchRequest")
+
+  // Location & Budget
+  preferredAreas Json // string[]
+  minRent        Float
+  maxRent        Float
+  moveInDate     DateTime?
+  leaseDuration  String // "monthly", "yearly", "flexible"
+
+  // Property Requirements
+  propertyType String // "bedsitter", "studio", etc.
+  bathrooms    Int
+  furnished    String // "yes", "no", "semi", "flexible"
+  petFriendly  Boolean
+
+  // Amenities
+  parkingRequired   Boolean
+  parkingSpaces     Int?
+  securityFeatures  Json // string[]
+  utilitiesIncluded Json // string[]
+  amenities         Json // string[]
+
+  // Additional
+  mustHaveFeatures   Json // string[]
+  niceToHaveFeatures Json // string[]
+  dealBreakers       Json // string[]
+  additionalNotes    String? @db.Text
+
+  // Service
+  serviceTier     ServiceTier
+  numberOfOptions Int
+  depositAmount   Float
+
+  // Status
+  status SearchRequestStatus @default(DRAFT)
+
+  // Bidding
+  bids          Bid[]
+  selectedBidId String?
+
+  // Assignment (if bid selected)
+  haunterId String?
+  haunter   User?   @relation(fields: [haunterId], references: [id], name: "HaunterSearchRequests")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  submittedProperties SearchRequestProperty[]
+}
+
+model Bid {
+  id              String        @id @default(uuid())
+  searchRequestId String
+  searchRequest   SearchRequest @relation(fields: [searchRequestId], references: [id])
+  haunterId       String
+  haunter         User          @relation(fields: [haunterId], references: [id])
+
+  amount    Float
+  message   String?   @db.Text
+  timeframe Int // hours
+  bonuses   Json // string[]
+  status    BidStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SearchRequestProperty {
+  id              String        @id @default(uuid())
+  searchRequestId String
+  searchRequest   SearchRequest @relation(fields: [searchRequestId], references: [id])
+  propertyId      String
+  property        Property      @relation(fields: [propertyId], references: [id])
+
+  matchScore Int?
+  status     String // "submitted", "accepted", "rejected"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model Dispute {
+  id          String        @id @default(uuid())
+  title       String
+  description String        @db.Text
+  category    String // "payment", "property", "viewing", "other"
+  status      DisputeStatus @default(OPEN)
+  priority    String        @default("medium") // "low", "medium", "high"
+
+  reporterId String
+  reporter   User   @relation("ReporterDisputes", fields: [reporterId], references: [id])
+
+  againstId String?
+  against   User?   @relation("AgainstDisputes", fields: [againstId], references: [id])
+
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id])
+
+  resolution          String?   @db.Text
+  evidenceUrls        Json? // Array of photo/video URLs
+  evidenceDescription String?   @db.Text
+  resolvedBy          String?
+  resolvedAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        User      @relation("TenantConversations", fields: [tenantId], references: [id])
+  hunterId      String
+  hunter        User      @relation("HunterConversations", fields: [hunterId], references: [id])
+  propertyId    String?
+  lastMessage   String?   @db.Text
+  lastMessageAt DateTime?
+  unreadCount   Int       @default(0)
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, hunterId, propertyId])
+}
+
+model SavedProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+enum PaymentType {
+  BOOKING_PAYMENT
+  WITHDRAWAL
+  REFUND
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum EarningsStatus {
+  PENDING
+  WITHDRAWN
+}
+
+model PaymentHistory {
+  id                 String        @id @default(uuid())
+  userId             String
+  user               User          @relation("UserPayments", fields: [userId], references: [id])
+  amount             Float
+  type               PaymentType
+  mpesaReceiptNumber String?
+  phoneNumber        String?
+  status             PaymentStatus
+  description        String?       @db.Text
+  metadata           Json? // Store booking/property details
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model HunterEarnings {
+  id        String         @id @default(uuid())
+  hunterId  String
+  hunter    User           @relation("HunterEarnings", fields: [hunterId], references: [id])
+  amount    Float
+  bookingId String
+  booking   Booking        @relation(fields: [bookingId], references: [id])
+  status    EarningsStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model MeetingPoint {
+  id             String           @id @default(uuid())
+  bookingId      String           @unique
+  booking        Booking          @relation(fields: [bookingId], references: [id])
+  type           MeetingPointType @default(LANDMARK)
+  location       Json // { lat, lng, description }
+  sharedBy       String // Hunter who shared it
+  sharedAt       DateTime         @default(now())
+  tenantViewed   Boolean          @default(false)
+  tenantViewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RescheduleRequest {
+  id              String           @id @default(uuid())
+  bookingId       String
+  booking         Booking          @relation(fields: [bookingId], references: [id])
+  requestedBy     String // Who requested the reschedule
+  proposedDate    String
+  proposedTime    String
+  proposedEndTime String
+  reason          String?          @db.Text
+  status          RescheduleStatus @default(PENDING)
+
+  // Counter offer fields
+  counterDate    String?
+  counterTime    String?
+  counterEndTime String?
+  counterReason  String? @db.Text
+
+  respondedBy String?
+  respondedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

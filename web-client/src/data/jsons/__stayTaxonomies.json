@@ -1,0 +1,82 @@
+[
+    {
+        "id": 1,
+        "name": "Bedsitter",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/1428348/pexels-photo-1428348.jpeg",
+        "count": 156,
+        "desc": "Single room with kitchenette and bathroom"
+    },
+    {
+        "id": 2,
+        "name": "Studio Apartment",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg",
+        "count": 98,
+        "desc": "Modern open-plan living with premium finishes"
+    },
+    {
+        "id": 3,
+        "name": "1 Bedroom",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg",
+        "count": 267,
+        "desc": "Separate bedroom, living area, and kitchen"
+    },
+    {
+        "id": 4,
+        "name": "2 Bedroom",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg",
+        "count": 189,
+        "desc": "Perfect for small families or roommates"
+    },
+    {
+        "id": 5,
+        "name": "3 Bedroom",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/1648776/pexels-photo-1648776.jpeg",
+        "count": 124,
+        "desc": "Spacious family apartments with multiple bathrooms"
+    },
+    {
+        "id": 6,
+        "name": "4+ Bedroom",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/1643389/pexels-photo-1643389.jpeg",
+        "count": 67,
+        "desc": "Large family homes and premium apartments"
+    },
+    {
+        "id": 7,
+        "name": "Maisonette",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/259588/pexels-photo-259588.jpeg",
+        "count": 45,
+        "desc": "Two-story apartments with internal stairs"
+    },
+    {
+        "id": 8,
+        "name": "Bungalow",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg",
+        "count": 34,
+        "desc": "Single-story standalone houses"
+    },
+    {
+        "id": 9,
+        "name": "Townhouse",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg",
+        "count": 52,
+        "desc": "Multi-story homes in gated communities"
+    },
+    {
+        "id": 10,
+        "name": "Servant Quarter",
+        "href": "/listing-stay",
+        "thumbnail": "https://images.pexels.com/photos/1438834/pexels-photo-1438834.jpeg",
+        "count": 78,
+        "desc": "Compact separate units, ideal for singles"
+    }
+]

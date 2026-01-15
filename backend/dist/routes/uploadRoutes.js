@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const uploadController_1 = require("../controllers/uploadController");
+const cloudinary_1 = require("../config/cloudinary");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.post('/single', authMiddleware_1.authMiddleware, cloudinary_1.upload.single('image'), uploadController_1.uploadImage);
+router.post('/multiple', authMiddleware_1.authMiddleware, cloudinary_1.upload.array('images', 10), uploadController_1.uploadImages);
+exports.default = router;

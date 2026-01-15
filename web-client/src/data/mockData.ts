@@ -1,0 +1,587 @@
+import { PropertyListing, HouseHaunter, ViewingPackage } from "./types";
+
+// Mock House Haunters (Agents)
+export const MOCK_HAUNTERS: HouseHaunter[] = [
+    {
+        id: "haunter-1",
+        name: "John Kamau",
+        phone: "+254 712 345 678",
+        profilePhoto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+        isVerified: true,
+        rating: 4.8,
+        reviewCount: 234,
+        successfulViewings: 234,
+        bio: "Experienced House Haunter specializing in Kasarani and Roysambu areas. I help tenants find quality, affordable housing with transparent pricing.",
+        areasOfOperation: ["Kasarani", "Roysambu", "Githurai"],
+        joinedDate: "2024-01-15",
+    },
+    {
+        id: "haunter-2",
+        name: "Mary Njeri",
+        phone: "+254 723 456 789",
+        profilePhoto: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
+        isVerified: true,
+        rating: 4.9,
+        reviewCount: 456,
+        successfulViewings: 456,
+        bio: "Expert in luxury and mid-range properties in Westlands and Kilimani. Over 3 years experience in the rental market.",
+        areasOfOperation: ["Westlands", "Kilimani", "Parklands"],
+        joinedDate: "2023-05-20",
+    },
+    {
+        id: "haunter-3",
+        name: "David Ochieng",
+        phone: "+254 734 567 890",
+        profilePhoto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
+        isVerified: true,
+        rating: 4.7,
+        reviewCount: 156,
+        successfulViewings: 156,
+        bio: "Focused on affordable housing in Embakasi and Umoja. I ensure every viewing is worth your time and money.",
+        areasOfOperation: ["Embakasi", "Umoja", "Donholm"],
+        joinedDate: "2024-03-10",
+    },
+];
+
+// Mock Viewing Packages
+export const MOCK_PACKAGES: ViewingPackage[] = [
+    {
+        id: "pkg-1",
+        name: "Bronze Package",
+        description: "View this specific house. Perfect if you already know what you want.",
+        price: 1000,
+        propertiesIncluded: 1,
+        duration: "1 hour",
+        tier: "bronze",
+        haunterId: "haunter-1",
+    },
+    {
+        id: "pkg-2",
+        name: "Gold Package",
+        description: "View this house plus up to 4 similar alternatives if you don't like it.",
+        price: 2500,
+        propertiesIncluded: 5,
+        duration: "3 hours",
+        tier: "gold",
+        haunterId: "haunter-1",
+    },
+    {
+        id: "pkg-3",
+        name: "Platinum Package",
+        description: "A personalized tour of up to 8 properties in the area. Perfect for relocating. Bring a friend!",
+        price: 4000,
+        propertiesIncluded: 8,
+        duration: "5 hours",
+        tier: "platinum",
+        haunterId: "haunter-1",
+    },
+];
+
+// Mock Property Listings
+export const MOCK_PROPERTIES: PropertyListing[] = [
+    {
+        id: "prop-1",
+        title: "Modern 2-Bedroom Apartment in Kasarani",
+        description: "Spacious 2-bedroom apartment with modern finishes, ample parking, and 24/7 security. Located in a serene neighborhood with easy access to major roads.",
+        rent: 25000,
+        deposit: 25000,
+        layout: "2-bedroom",
+        bathrooms: 2,
+        location: {
+            generalArea: "Kasarani, Nairobi",
+            county: "Nairobi",
+            directions: "500m from Kasarani Seasons, accessible via Matatu Route 17B. Near Quick Mart Supermarket.",
+            nearbyLandmarks: ["Kasarani Stadium", "Thika Road Mall", "Quick Mart"],
+        },
+        amenities: ["Parking", "Balcony", "Security", "Water Tank", "Spacious Kitchen"],
+        utilities: {
+            waterIncluded: true,
+            electricityType: "prepaid",
+            electricityCost: "Tokens - approximately KES 2,000/month",
+        },
+        images: [
+            "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+            "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
+            "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=800",
+            "https://images.unsplash.com/photo-1567767292278-a4f21aa2d36e?w=800",
+            "https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?w=800",
+            "https://images.unsplash.com/photo-1574643156929-51fa098b0394?w=800",
+            "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800",
+            "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+        ],
+        videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        houseHaunter: MOCK_HAUNTERS[0],
+        viewingPackages: MOCK_PACKAGES,
+        status: "approved",
+        createdAt: "2024-11-01",
+        updatedAt: "2024-11-01",
+        featured: true,
+        viewCount: 234,
+        bookingCount: 12,
+        // Phase 1: Enhanced Fields
+        petFriendly: false,
+        furnished: "semi",
+        securityFeatures: ["CCTV", "Security Guard", "Gate"],
+        parking: {
+            available: true,
+            spaces: 1,
+            cost: 1500,
+            type: "Covered"
+        },
+        availableFrom: "2025-01-01",
+        leaseDuration: ["monthly", "yearly"],
+        averageRating: 4.5,
+        reviewCount: 8,
+        map: { lat: -1.286389, lng: 36.817223 },
+    },
+    {
+        id: "prop-2",
+        title: "Cozy Bedsitter in Roysambu",
+        description: "Affordable bedsitter perfect for a single person or couple. Clean, secure, and close to public transport.",
+        rent: 12000,
+        deposit: 12000,
+        layout: "bedsitter",
+        bathrooms: 1,
+        location: {
+            generalArea: "Roysambu, Nairobi",
+            county: "Nairobi",
+            directions: "200m from Roysambu Matatu Stage. Walking distance to Garden City Mall.",
+            nearbyLandmarks: ["Garden City Mall", "Roysambu Stage"],
+        },
+        amenities: ["Security", "Water Tank", "Parking"],
+        utilities: {
+            waterIncluded: true,
+            electricityType: "prepaid",
+        },
+        images: [
+            "https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=800",
+            "https://images.unsplash.com/photo-1560449752-8b4b7647f677?w=800",
+            "https://images.unsplash.com/photo-1560449752-c91a3d8877da?w=800",
+            "https://images.unsplash.com/photo-1560449752-91128d0f6b2b?w=800",
+            "https://images.unsplash.com/photo-1560449752-9ca0cc1d6a3d?w=800",
+            "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800",
+            "https://images.unsplash.com/photo-1560185007-5f0bb1866cab?w=800",
+            "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800",
+        ],
+        videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        houseHaunter: MOCK_HAUNTERS[0],
+        viewingPackages: MOCK_PACKAGES,
+        status: "approved",
+        createdAt: "2024-11-05",
+        updatedAt: "2024-11-05",
+        viewCount: 156,
+        bookingCount: 8,
+        // Phase 1: Enhanced Fields
+        petFriendly: true,
+        furnished: "no",
+        securityFeatures: ["Security Guard Gate"],
+        parking: {
+            available: true,
+            spaces: 1,
+            cost: 0,
+            type: "Open"
+        },
+        availableFrom: "2024-12-20",
+        leaseDuration: ["monthly", "flexible"],
+        averageRating: 4.2,
+        reviewCount: 5,
+        map: { lat: -1.2234, lng: 36.8856 },
+    },
+    {
+        id: "prop-3",
+        title: "Spacious 3-Bedroom in Westlands",
+        description: "Premium 3-bedroom apartment in the heart of Westlands. Modern amenities, gym, and swimming pool.",
+        rent: 65000,
+        deposit: 65000,
+        layout: "3-bedroom",
+        bathrooms: 3,
+        location: {
+            generalArea: "Westlands, Nairobi",
+            county: "Nairobi",
+            directions: "Off Waiyaki Way, near Sarit Centre. Easy access to CBD and major highways.",
+            nearbyLandmarks: ["Sarit Centre", "Westlands Roundabout", "The Mall"],
+        },
+        amenities: [
+            "Parking",
+            "Balcony",
+            "Security",
+            "Swimming Pool",
+            "Gym",
+            "Backup Generator",
+            "Elevator",
+        ],
+        utilities: {
+            waterIncluded: false,
+            waterCost: "KES 800/month (average)",
+            electricityType: "postpaid",
+            electricityCost: "Billed monthly - approximately KES 4,000",
+        },
+        images: [
+            "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800",
+            "https://images.unsplash.com/photo-1600607687644-aac4c3eac7f4?w=800",
+            "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800",
+            "https://images.unsplash.com/photo-1600607688066-890987865673?w=800",
+            "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800",
+            "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800",
+            "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+            "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=800",
+        ],
+        videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        houseHaunter: MOCK_HAUNTERS[1],
+        viewingPackages: [
+            {
+                id: "pkg-4",
+                name: "Bronze Package",
+                description: "View this luxury apartment with full amenity access.",
+                price: 1500,
+                propertiesIncluded: 1,
+                duration: "1.5 hours",
+                tier: "bronze",
+                haunterId: "haunter-2",
+            },
+            {
+                id: "pkg-5",
+                name: "Gold Package",
+                description: "View up to 3 premium properties in Westlands area.",
+                price: 3000,
+                propertiesIncluded: 3,
+                duration: "3 hours",
+                tier: "gold",
+                haunterId: "haunter-2",
+            },
+        ],
+        status: "approved",
+        createdAt: "2024-11-03",
+        updatedAt: "2024-11-03",
+        featured: true,
+        viewCount: 312,
+        bookingCount: 15,
+        // Phase 1: Enhanced Fields
+        petFriendly: false,
+        furnished: "yes",
+        securityFeatures: ["CCTV", "Security Guard", "Gate", "Alarm System", "Intercom"],
+        parking: {
+            available: true,
+            spaces: 2,
+            cost: 3000,
+            type: "Underground"
+        },
+        availableFrom: "2025-02-01",
+        leaseDuration: ["yearly"],
+        averageRating: 4.8,
+        reviewCount: 12,
+        map: { lat: -1.2707, lng: 36.8025 },
+    },
+    {
+        id: "prop-4",
+        title: "1-Bedroom Apartment in Embakasi",
+        description: "Affordable 1-bedroom in a quiet neighborhood. Perfect for young professionals.",
+        rent: 18000,
+        deposit: 18000,
+        layout: "1-bedroom",
+        bathrooms: 1,
+        location: {
+            generalArea: "Embakasi, Nairobi",
+            county: "Nairobi",
+            directions: "Near Nyayo Estate, 5 minutes walk to Donholm Stage.",
+            nearbyLandmarks: ["Donholm Stage", "Nyayo Estate"],
+        },
+        amenities: ["Parking", "Security", "Water Tank"],
+        utilities: {
+            waterIncluded: true,
+            electricityType: "prepaid",
+        },
+        images: [
+            "https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=800",
+            "https://images.unsplash.com/photo-1560448204-444092ca45b8?w=800",
+            "https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=800",
+            "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
+            "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db?w=800",
+            "https://images.unsplash.com/photo-1560448205-5a9e6c1a1e3f?w=800",
+            "https://images.unsplash.com/photo-1560448205-6f5f1f1f91d9?w=800",
+            "https://images.unsplash.com/photo-1560448205-8c3f3c4b9d4e?w=800",
+        ],
+        videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        houseHaunter: MOCK_HAUNTERS[2],
+        viewingPackages: [
+            {
+                id: "pkg-6",
+                name: "Bronze Package",
+                description: "View this specific property.",
+                price: 1000,
+                propertiesIncluded: 1,
+                duration: "1 hour",
+                tier: "bronze",
+                haunterId: "haunter-3",
+            },
+            {
+                id: "pkg-7",
+                name: "Gold Package",
+                description: "View up to 5 properties in Embakasi area.",
+                price: 2500,
+                propertiesIncluded: 5,
+                duration: "3 hours",
+                tier: "gold",
+                haunterId: "haunter-3",
+            },
+        ],
+        status: "approved",
+        createdAt: "2024-11-07",
+        updatedAt: "2024-11-07",
+        viewCount: 98,
+        bookingCount: 5,
+        // Phase 1: Enhanced Fields
+        petFriendly: true,
+        furnished: "no",
+        securityFeatures: ["Security Guard", "Gate"],
+        parking: {
+            available: true,
+            spaces: 1,
+            cost: 1000,
+            type: "Open"
+        },
+        availableFrom: "2024-12-25",
+        leaseDuration: ["monthly", "yearly", "flexible"],
+        averageRating: 4.0,
+        reviewCount: 3,
+        map: { lat: -1.3133, lng: 36.8979 },
+    },
+];
+
+// Export utility function to get property by ID
+export const getPropertyById = (id: string | number): PropertyListing | undefined => {
+    return MOCK_PROPERTIES.find((prop) => prop.id === id);
+};
+
+// Export utility function to get haunter by ID
+export const getHaunterById = (id: string | number): HouseHaunter | undefined => {
+    return MOCK_HAUNTERS.find((haunter) => haunter.id === id);
+};
+
+// Mock Reviews Data (Phase 1)
+export const MOCK_REVIEWS = [
+    {
+        id: "review-1",
+        bookingId: "book-1",
+        propertyId: "prop-1",
+        tenantId: "tenant-1",
+        tenantName: "Sarah Wanjiku",
+        tenantAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
+        isVerifiedTenant: true,
+        haunterId: "haunter-1",
+        rating: 5,
+        professionalismRating: 5,
+        accuracyRating: 5,
+        overallRating: 5,
+        comment: "Excellent property! John was very professional and showed me exactly what was advertised. The apartment is spacious, clean, and in a great location. The neighborhood is quiet and secure. Highly recommend!",
+        createdAt: "2024-11-15",
+        haunterResponse: "Thank you Sarah! It was a pleasure showing you around. Welcome to the neighborhood!",
+        haunterResponseDate: "2024-11-16",
+        helpfulCount: 12,
+    },
+    {
+        id: "review-2",
+        bookingId: "book-2",
+        propertyId: "prop-1",
+        tenantName: "Michael Otieno",
+        tenantAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100",
+        isVerifiedTenant: true,
+        haunterId: "haunter-1",
+        rating: 4,
+        professionalismRating: 5,
+        accuracyRating: 4,
+        overallRating: 4,
+        comment: "Good property overall. The house haunter was punctual and knowledgeable. The only issue was that parking is a bit tight, but everything else matches the description.",
+        createdAt: "2024-10-20",
+        helpfulCount: 8,
+    },
+    {
+        id: "review-3",
+        bookingId: "book-3",
+        propertyId: "prop-2",
+        tenantId: "tenant-3",
+        tenantName: "Grace Akinyi",
+        tenantAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100",
+        isVerifiedTenant: false,
+        haunterId: "haunter-1",
+        rating: 4,
+        professionalismRating: 4,
+        accuracyRating: 4,
+        overallRating: 4,
+        comment: "Nice bedsitter for the price. Water is reliable and the area is accessible via public transport. Would have given 5 stars if it was furnished.",
+        createdAt: "2024-11-10",
+        helpfulCount: 5,
+    },
+    {
+        id: "review-4",
+        bookingId: "book-4",
+        propertyId: "prop-3",
+        tenantId: "tenant-4",
+        tenantName: "David Kimani",
+        tenantAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
+        isVerifiedTenant: true,
+        haunterId: "haunter-2",
+        rating: 5,
+        professionalismRating: 5,
+        accuracyRating: 5,
+        overallRating: 5,
+        comment: "Luxury living at its finest! Mary was amazing - very professional and gave us a detailed tour of all amenities. The gym and pool are well-maintained. Worth every shilling!",
+        photos: ["https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=400"],
+        createdAt: "2024-11-01",
+        haunterResponse: "Thank you David! Enjoy your new home!",
+        haunterResponseDate: "2024-11-02",
+        helpfulCount: 20,
+    },
+    {
+        id: "review-5",
+        bookingId: "book-5",
+        propertyId: "prop-4",
+        tenantId: "tenant-5",
+        tenantName: "Ann Muthoni",
+        isVerifiedTenant: true,
+        haunterId: "haunter-3",
+        rating: 3,
+        professionalismRating: 4,
+        accuracyRating: 3,
+        overallRating: 3,
+        comment: "Property is okay but smaller than expected from the photos. The agent was helpful though. Good for singles on a budget.",
+        createdAt: "2024-11-05",
+        helpfulCount: 3,
+    },
+];
+
+// Export utility function to get reviews by property ID
+export const getReviewsByPropertyId = (propertyId: string | number) => {
+    return MOCK_REVIEWS.filter((review) => review.propertyId === propertyId);
+};
+
+// Export utility function to get reviews by haunter ID
+export const getReviewsByHaunterId = (haunterId: string | number) => {
+    return MOCK_REVIEWS.filter((review) => review.haunterId === haunterId);
+};
+
+// Mock Search Requests Data
+export const MOCK_SEARCH_REQUESTS = [
+    {
+        id: "search-1",
+        tenantId: "tenant-1",
+        tenantName: "Jane Doe",
+        tenantPhone: "+254 712 345 678",
+        status: "pending_assignment" as const,
+
+        // Location & Budget
+        preferredAreas: ["Westlands", "Kilimani", "Parklands"],
+        minRent: 40000,
+        maxRent: 60000,
+        moveInDate: "2025-02-01",
+        leaseDuration: "yearly",
+
+        // Property Requirements
+        propertyType: "2-bedroom" as const,
+        bathrooms: 2,
+        furnished: "yes" as const,
+        petFriendly: false,
+
+        // Amenities
+        parkingRequired: true,
+        parkingSpaces: 1,
+        securityFeatures: ["CCTV", "Security Guard", "Gate"],
+        utilitiesIncluded: ["Water"],
+        amenities: ["Gym", "Swimming Pool", "Backup Generator"],
+
+        // Additional
+        mustHaveFeatures: ["Modern kitchen", "Balcony", "Natural lighting"],
+        niceToHaveFeatures: ["City view", "Elevator"],
+        dealBreakers: ["Ground floor", "Noisy area"],
+        additionalNotes: "Looking for a modern apartment with good security and amenities. Prefer buildings less than 5 years old.",
+
+        // Service
+        serviceTier: "premium",
+        numberOfOptions: 3,
+        depositAmount: 10000,
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        depositPaid: true,
+        depositPaidAt: "2024-12-18",
+        paymentReleased: false,
+
+        // Bidding
+        bidsOpen: true,
+        bidsCloseAt: "2024-12-25",
+        bids: [],
+        timeframeExtensions: [],
+        uploadedEvidence: [],
+        viewingConfirmed: false,
+        refundRequested: false,
+
+        // Timestamps
+        createdAt: "2024-12-18",
+        updatedAt: "2024-12-18",
+        submittedProperties: [],
+    },
+    {
+        id: "search-2",
+        tenantId: "tenant-2",
+        tenantName: "Michael Ochieng",
+        tenantPhone: "+254 723 456 789",
+        status: "in_progress" as const,
+
+        preferredAreas: ["Kasarani", "Roysambu"],
+        minRent: 15000,
+        maxRent: 25000,
+        leaseDuration: "monthly",
+
+        propertyType: "1-bedroom" as const,
+        bathrooms: 1,
+        furnished: "no" as const,
+        petFriendly: true,
+
+        parkingRequired: false,
+        securityFeatures: ["Gate", "Security Guard"],
+        utilitiesIncluded: ["Water"],
+        amenities: ["Parking"],
+
+        mustHaveFeatures: ["Good water pressure", "Reliable internet"],
+        niceToHaveFeatures: ["Shopping mall nearby"],
+        dealBreakers: ["Far from main road"],
+
+        serviceTier: "standard" as const,
+        depositAmount: 5000,
+        deadline: "2024-12-27",
+
+        haunterId: "haunter-1",
+        haunterName: "John Kamau",
+        claimedAt: "2024-12-19",
+
+        depositPaid: true,
+        depositPaidAt: "2024-12-19",
+        paymentReleased: false,
+
+        // Bidding
+        bidsOpen: false,
+        bidsCloseAt: "2024-12-20",
+        bids: [],
+        timeframeExtensions: [],
+        uploadedEvidence: [],
+        viewingConfirmed: false,
+        refundRequested: false,
+
+        createdAt: "2024-12-19",
+        updatedAt: "2024-12-20",
+        submittedProperties: ["prop-1", "prop-2"],
+    },
+];
+
+// Export utility function to get search requests by tenant ID
+export const getSearchRequestsByTenantId = (tenantId: string | number) => {
+    return MOCK_SEARCH_REQUESTS.filter((request) => request.tenantId === tenantId);
+};
+
+// Export utility function to get search requests by haunter ID
+export const getSearchRequestsByHaunterId = (haunterId: string | number) => {
+    return MOCK_SEARCH_REQUESTS.filter((request) => request.haunterId === haunterId);
+};
+
+// Export utility function to get available search requests
+export const getAvailableSearchRequests = () => {
+    return MOCK_SEARCH_REQUESTS.filter((request) => request.status === "pending_assignment" && request.depositPaid);
+};

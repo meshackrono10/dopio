@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "House Haunters",
+    "slug": "house-haunters",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.househaunters.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "House Haunters needs access to your camera to take photos of properties for evidence.",
+        "NSPhotoLibraryUsageDescription": "House Haunters needs access to your photos to upload property evidence.",
+        "NSLocationWhenInUseUsageDescription": "House Haunters uses your location to show nearby properties and help you navigate to viewings."
+      }
+    },
+    "android": {
+      "package": "com.househaunters.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
