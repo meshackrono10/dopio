@@ -5,21 +5,19 @@ import { Invoice, ViewingRequest } from '../data/types';
 import api from '../services/api';
 
 interface InvoiceContextType {
-    invoices: Invoice[];
     viewingRequests: ViewingRequest[];
     createViewingRequest: (request: any) => Promise<ViewingRequest>;
     updateViewingRequest: (id: string, updates: Partial<ViewingRequest>) => Promise<void>;
     getViewingRequestById: (id: string) => ViewingRequest | undefined;
     getViewingRequestsForProperty: (propertyId: string) => ViewingRequest[];
     getViewingRequestsForUser: (userId: string, role: 'tenant' | 'haunter') => ViewingRequest[];
-    payInvoice: (invoiceId: string, phone: string) => Promise<any>;
+    payViewingRequest: (requestId: string, phone: string) => Promise<any>;
 }
 
 const InvoiceContext = createContext<InvoiceContextType | undefined>(undefined);
 
 export function InvoiceProvider({ children }: { children: ReactNode }) {
     const [viewingRequests, setViewingRequests] = useState<ViewingRequest[]>([]);
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
 
     const mapBackendToViewingRequest = (vr: any): ViewingRequest => ({
         id: vr.id,
@@ -30,8 +28,15 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         tenantPhone: vr.tenant?.phone || '',
         haunterId: vr.property?.hunterId || '',
         haunterName: vr.property?.hunter?.name || 'Unknown Hunter',
-        proposedDates: vr.proposedDates || [],
-        status: vr.status?.toLowerCase() as any || 'pending',
+        proposedDates: typeof vr.proposedDates === 'string' ? JSON.parse(vr.proposedDates) : (vr.proposedDates || []),
+        proposedLocation: vr.proposedLocation,
+        status: vr.status || 'PENDING',
+        amount: vr.amount || 0,
+        paymentStatus: vr.paymentStatus || 'UNPAID',
+        counterDate: vr.counterDate,
+        counterTime: vr.counterTime,
+        counterLocation: vr.counterLocation,
+        counteredBy: vr.counteredBy,
         createdAt: vr.createdAt,
         updatedAt: vr.updatedAt,
     });
@@ -78,9 +83,9 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
     const getViewingRequestsForUser = (userId: string, role: 'tenant' | 'haunter') =>
         viewingRequests.filter(vr => role === 'tenant' ? vr.tenantId === userId : vr.haunterId === userId);
 
-    const payInvoice = async (invoiceId: string, phone: string): Promise<any> => {
+    const payViewingRequest = async (requestId: string, phone: string): Promise<any> => {
         try {
-            const response = await api.post('/payments/stk-push', { invoiceId, phone });
+            const response = await api.post('/payments/stk-push', { requestId, phone });
             return response.data;
         } catch (err: any) {
             throw new Error(err.response?.data?.message || 'Failed to initiate payment');
@@ -89,14 +94,13 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
 
     return (
         <InvoiceContext.Provider value={{
-            invoices,
             viewingRequests,
             createViewingRequest,
             updateViewingRequest,
             getViewingRequestById,
             getViewingRequestsForProperty,
             getViewingRequestsForUser,
-            payInvoice,
+            payViewingRequest,
         }}>
             {children}
         </InvoiceContext.Provider>

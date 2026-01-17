@@ -18,6 +18,7 @@ import { getSearchRequests } from "@/services/searchRequest";
 import Skeleton from "@/shared/Skeleton";
 import { useToast } from "@/components/Toast";
 import VerificationBanner from "@/components/VerificationBanner";
+import HunterViewingRequestsTab from "@/components/HunterViewingRequestsTab";
 
 interface Booking {
     id: string;
@@ -33,7 +34,7 @@ interface Booking {
     bookingDate: string;
 }
 
-type TabType = "bookings" | "listings" | "earnings" | "reviews" | "messages" | "search-requests" | "wallet" | "notifications";
+type TabType = "bookings" | "listings" | "viewing-requests" | "earnings" | "reviews" | "messages" | "search-requests" | "wallet" | "notifications";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useBookings } from "@/contexts/BookingContext";
@@ -42,7 +43,7 @@ import { useProperties } from "@/contexts/PropertyContext";
 export default function HaunterDashboard() {
     const { user } = useAuth();
     const { bookings: allBookings, loading: bookingsLoading } = useBookings();
-    const { properties: allProperties } = useProperties();
+    const { properties: allProperties, deleteProperty } = useProperties();
 
     const haunterProperties = allProperties.filter((p) => p.houseHaunter.id === user?.id);
     const [activeTab, setActiveTab] = useState<TabType>("bookings");
@@ -196,13 +197,21 @@ export default function HaunterDashboard() {
                                             )}
 
                                             {booking.status === "confirmed" && (
-                                                <Link
-                                                    href={"/chat" as Route}
-                                                    className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium text-center"
-                                                >
-                                                    <i className="las la-comment mr-1"></i>
-                                                    Chat with Tenant
-                                                </Link>
+                                                <>
+                                                    <Link
+                                                        href={`/booking-detail/${booking.id}` as Route}
+                                                        className="mt-4 px-4 py-2 border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-sm font-medium text-center block"
+                                                    >
+                                                        View Details
+                                                    </Link>
+                                                    <Link
+                                                        href={"/chat" as Route}
+                                                        className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium text-center block"
+                                                    >
+                                                        <i className="las la-comment mr-1"></i>
+                                                        Chat with Tenant
+                                                    </Link>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -254,13 +263,34 @@ export default function HaunterDashboard() {
                                     </div>
                                     <div className="flex gap-2 mt-4">
                                         <Link
-                                            href={`/property/${property.id}` as Route}
+                                            href={`/listing-stay-detail/${property.id}` as Route}
                                             className="flex-1 px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg hover:border-primary-500 transition-colors text-sm font-medium text-center"
                                         >
                                             View
                                         </Link>
-                                        <button className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium">
+                                        <Link
+                                            href={`/edit-listing/${property.id}` as Route}
+                                            className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium text-center"
+                                        >
                                             Edit
+                                        </Link>
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm("Are you sure you want to delete this listing? This action cannot be undone.")) {
+                                                    try {
+                                                        console.log('[Dashboard] Deleting property:', property.id);
+                                                        await deleteProperty(property.id);
+                                                        showToast("success", "Listing deleted successfully");
+                                                    } catch (err: any) {
+                                                        console.error('[Dashboard] Delete error:', err);
+                                                        showToast("error", err.message || "Failed to delete listing. Please try again.");
+                                                    }
+                                                }
+                                            }}
+                                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                            title="Delete Listing"
+                                        >
+                                            <i className="las la-trash-alt text-xl"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -277,6 +307,9 @@ export default function HaunterDashboard() {
                         </div>
                     </div>
                 );
+
+            case "viewing-requests":
+                return <HunterViewingRequestsTab />;
 
             case "earnings":
                 return (
@@ -812,6 +845,16 @@ export default function HaunterDashboard() {
                             >
                                 <i className="las la-home mr-1"></i>
                                 My Listings ({haunterProperties.length})
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("viewing-requests")}
+                                className={`border-b-2 py-4 px-1 text-sm font-medium transition-colors ${activeTab === "viewing-requests"
+                                    ? "border-primary-600 text-primary-600"
+                                    : "border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                                    }`}
+                            >
+                                <i className="las la-clipboard-list mr-1"></i>
+                                Viewing Requests
                             </button>
                             <button
                                 onClick={() => setActiveTab("earnings")}

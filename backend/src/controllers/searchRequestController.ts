@@ -34,15 +34,17 @@ export const createSearchRequest = async (req: any, res: Response) => {
         const searchRequest = await prisma.searchRequest.create({
             data: {
                 ...validatedData,
+                preferredAreas: JSON.stringify(validatedData.preferredAreas),
+                amenities: JSON.stringify(validatedData.amenities),
                 tenantId: userId,
                 status: 'DRAFT',
                 // Default required fields not in form
                 leaseDuration: 'monthly',
-                securityFeatures: [],
-                utilitiesIncluded: [],
-                mustHaveFeatures: [],
-                niceToHaveFeatures: [],
-                dealBreakers: [],
+                securityFeatures: JSON.stringify([]),
+                utilitiesIncluded: JSON.stringify([]),
+                mustHaveFeatures: JSON.stringify([]),
+                niceToHaveFeatures: JSON.stringify([]),
+                dealBreakers: JSON.stringify([]),
             } as any,
         });
 
@@ -110,9 +112,11 @@ export const submitBid = async (req: any, res: Response) => {
         const bid = await prisma.bid.create({
             data: {
                 searchRequestId,
-                haunterId: userId,
-                ...validatedData,
-                bonuses: validatedData.bonuses || [],
+                haunterId: req.user.userId,
+                amount: validatedData.amount,
+                message: validatedData.message,
+                timeframe: validatedData.timeframe,
+                bonuses: JSON.stringify(validatedData.bonuses || []),
             },
             include: {
                 haunter: {

@@ -87,3 +87,42 @@ export const updateDispute = async (req: any, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+// Hunter responds to a dispute
+export const respondToDispute = async (req: any, res: Response) => {
+    try {
+        const { disputeId } = req.params;
+        const { response, evidenceUrl } = req.body;
+        const { userId, role } = req.user;
+
+        if (role !== 'HUNTER') {
+            return res.status(403).json({ message: 'Only hunters can respond to disputes' });
+        }
+
+        const dispute = await prisma.dispute.findUnique({
+            where: { id: disputeId },
+        });
+
+        if (!dispute) {
+            return res.status(404).json({ message: 'Dispute not found' });
+        }
+
+        if (dispute.againstId !== userId) {
+            return res.status(403).json({ message: 'Not authorized to respond to this dispute' });
+        }
+
+        const updatedDispute = await prisma.dispute.update({
+            where: { id: disputeId },
+            data: {
+                hunterResponse: response,
+                hunterEvidenceUrl: evidenceUrl ? JSON.stringify(evidenceUrl) : undefined,
+                status: 'IN_PROGRESS',
+                updatedAt: new Date(),
+            },
+        });
+
+        res.json(updatedDispute);
+    } catch (error: any) {
+        console.error('Respond to dispute error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};

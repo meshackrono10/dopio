@@ -9,7 +9,7 @@ import { usePropertyForm } from "@/contexts/PropertyFormContext";
 export interface PageAddListing3Props { }
 
 const PageAddListing3: FC<PageAddListing3Props> = () => {
-  const { formData, propertyType, shouldSkipSizeDetails, getBedroomCount, getBathroomCount } = usePropertyForm();
+  const { formData, updateFormData, propertyType, shouldSkipSizeDetails, getBedroomCount, getBathroomCount } = usePropertyForm();
   const isSharedAccommodation = formData.rentalArrangement === 'Shared accommodation';
 
   // Simplified form for Single Room/Bedsitter/Studio
@@ -70,7 +70,10 @@ const PageAddListing3: FC<PageAddListing3Props> = () => {
           )}
 
           <FormItem label="Floor Level">
-            <Select>
+            <Select
+              value={formData.floorLevel}
+              onChange={(e) => updateFormData('floorLevel', e.target.value)}
+            >
               <option value="">Select floor level</option>
               <option value="ground">Ground Floor</option>
               <option value="1">1st Floor</option>
@@ -82,7 +85,10 @@ const PageAddListing3: FC<PageAddListing3Props> = () => {
           </FormItem>
 
           <FormItem label="Does the property have a balcony/terrace?">
-            <Select>
+            <Select
+              value={formData.hasBalcony ? 'yes' : 'no'}
+              onChange={(e) => updateFormData('hasBalcony', e.target.value === 'yes')}
+            >
               <option value="no">No</option>
               <option value="yes">Yes</option>
             </Select>
@@ -101,7 +107,10 @@ const PageAddListing3: FC<PageAddListing3Props> = () => {
       <div className="space-y-8">
         {/* ITEM */}
         <FormItem label="Number of Bedrooms">
-          <Select>
+          <Select
+            value={formData.bedrooms}
+            onChange={(e) => updateFormData('bedrooms', Number(e.target.value))}
+          >
             <option value="1">1 Bedroom</option>
             <option value="2">2 Bedrooms</option>
             <option value="3">3 Bedrooms</option>
@@ -111,7 +120,10 @@ const PageAddListing3: FC<PageAddListing3Props> = () => {
         </FormItem>
 
         <FormItem label="Number of Bathrooms">
-          <Select>
+          <Select
+            value={formData.bathrooms}
+            onChange={(e) => updateFormData('bathrooms', Number(e.target.value))}
+          >
             <option value="1">1 Bathroom</option>
             <option value="2">2 Bathrooms</option>
             <option value="3">3 Bathrooms</option>
@@ -120,18 +132,28 @@ const PageAddListing3: FC<PageAddListing3Props> = () => {
         </FormItem>
 
         <FormItem label="Ensuite Master Bedroom?">
-          <Select>
+          <Select
+            value={formData.ensuite ? 'yes' : 'no'}
+            onChange={(e) => updateFormData('ensuite', e.target.value === 'yes')}
+          >
             <option value="yes">Yes - Master has private bathroom</option>
             <option value="no">No - Shared bathrooms only</option>
           </Select>
         </FormItem>
 
         {!isSharedAccommodation && (
-          <NcInputNumber label="Maximum Occupants" defaultValue={4} />
+          <NcInputNumber
+            label="Maximum Occupants"
+            defaultValue={formData.maxOccupants}
+            onChange={(val) => updateFormData('maxOccupants', val)}
+          />
         )}
 
         <FormItem label="Floor Level (for apartments)">
-          <Select>
+          <Select
+            value={formData.floorLevel}
+            onChange={(e) => updateFormData('floorLevel', e.target.value)}
+          >
             <option value="">Select floor level</option>
             <option value="ground">Ground Floor</option>
             <option value="1">1st Floor</option>
@@ -143,7 +165,10 @@ const PageAddListing3: FC<PageAddListing3Props> = () => {
         </FormItem>
 
         <FormItem label="Does the property have a balcony/terrace?">
-          <Select>
+          <Select
+            value={formData.hasBalcony ? 'yes' : 'no'}
+            onChange={(e) => updateFormData('hasBalcony', e.target.value === 'yes')}
+          >
             <option value="no">No</option>
             <option value="yes">Yes</option>
           </Select>

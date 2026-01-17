@@ -22,25 +22,21 @@ const getMpesaToken = async () => {
 // SIMULATED PAYMENT - Follows the blueprint: Payment goes to ESCROW, awaiting Hunter acceptance
 export const initiateStkPush = async (req: any, res: Response) => {
     try {
-        const { invoiceId, phone } = req.body;
-        const invoice = await prisma.invoice.findUnique({
-            where: { id: invoiceId },
+        const { requestId, phone } = req.body;
+        const request = await prisma.viewingRequest.findUnique({
+            where: { id: requestId },
             include: {
-                request: {
+                property: {
                     include: {
-                        property: {
-                            include: {
-                                hunter: true
-                            }
-                        },
-                        tenant: true
+                        hunter: true
                     }
-                }
-            },
+                },
+                tenant: true
+            }
         });
 
-        if (!invoice) {
-            return res.status(404).json({ message: 'Invoice not found' });
+        if (!request) {
+            return res.status(404).json({ message: 'Viewing request not found' });
         }
 
         // SIMULATE PAYMENT SUCCESS IMMEDIATELY
@@ -48,27 +44,26 @@ export const initiateStkPush = async (req: any, res: Response) => {
 
         console.log('[Payment] Payment successful, moving funds to ESCROW');
 
-        // Update invoice status to ESCROW (funds held until hunter accepts)
-        await prisma.invoice.update({
-            where: { id: invoiceId },
-            data: { status: 'ESCROW' }
+        // Update request status to ESCROW (funds held until hunter accepts)
+        await prisma.viewingRequest.update({
+            where: { id: requestId },
+            data: { paymentStatus: 'ESCROW' }
         });
 
         // Create payment record
         await prisma.paymentHistory.create({
             data: {
-                userId: invoice.request.tenantId,
-                amount: invoice.amount,
+                userId: request.tenantId,
+                amount: request.amount || 0,
                 type: 'BOOKING_PAYMENT',
                 mpesaReceiptNumber: mpesaReceiptNumber,
                 phoneNumber: phone,
                 status: 'COMPLETED',
-                description: `Viewing fee for ${invoice.request.property.title}`,
-                metadata: {
-                    invoiceId: invoice.id,
-                    propertyId: invoice.request.propertyId,
-                    viewingRequestId: invoice.requestId,
-                },
+                description: `Viewing fee for ${request.property.title}`,
+                metadata: JSON.stringify({
+                    propertyId: request.propertyId,
+                    viewingRequestId: request.id,
+                }),
             }
         });
 
@@ -82,12 +77,11 @@ export const initiateStkPush = async (req: any, res: Response) => {
             success: true,
             message: 'Payment successful! Viewing request sent to House Hunter.',
             mpesaReceiptNumber,
-            invoiceId: invoice.id,
-            viewingRequestId: invoice.requestId,
-            amount: invoice.amount,
+            viewingRequestId: request.id,
+            amount: request.amount,
             status: 'ESCROW',
             MerchantRequestID: `SIMULATED-${Date.now()}`,
-            CheckoutRequestID: `SIMULATED-${invoiceId}`,
+            CheckoutRequestID: `SIMULATED-${requestId}`,
             ResponseCode: '0',
             ResponseDescription: 'Success. Payment simulated.',
             CustomerMessage: 'Payment successful! Awaiting House Hunter confirmation.'
@@ -102,14 +96,13 @@ export const initiateStkPush = async (req: any, res: Response) => {
 // Real M-Pesa implementation (commented out for future use)
 export const initiateStkPushReal = async (req: any, res: Response) => {
     try {
-        const { invoiceId, phone } = req.body;
-        const invoice = await prisma.invoice.findUnique({
-            where: { id: invoiceId },
-            include: { request: true },
+        const { requestId, phone } = req.body;
+        const request = await prisma.viewingRequest.findUnique({
+            where: { id: requestId },
         });
 
-        if (!invoice) {
-            return res.status(404).json({ message: 'Invoice not found' });
+        if (!request) {
+            return res.status(404).json({ message: 'Viewing request not found' });
         }
 
         const token = await getMpesaToken();
@@ -125,12 +118,12 @@ export const initiateStkPushReal = async (req: any, res: Response) => {
                 Password: password,
                 Timestamp: timestamp,
                 TransactionType: 'CustomerPayBillOnline',
-                Amount: Math.round(invoice.amount),
+                Amount: Math.round(request.amount || 0),
                 PartyA: phone,
                 PartyB: process.env.MPESA_SHORTCODE,
                 PhoneNumber: phone,
                 CallBackURL: process.env.MPESA_CALLBACK_URL,
-                AccountReference: `INV-${invoice.id.slice(0, 8)}`,
+                AccountReference: `REQ-${request.id.slice(0, 8)}`,
                 TransactionDesc: 'Viewing Fee Payment',
             },
             {

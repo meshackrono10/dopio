@@ -37,9 +37,16 @@ const express_1 = require("express");
 const viewingRequestController = __importStar(require("../controllers/viewingRequestController"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
-router.use(authMiddleware_1.authMiddleware);
-router.post('/', viewingRequestController.createRequest);
-router.get('/', viewingRequestController.getRequests);
-router.get('/:id', viewingRequestController.getRequestById);
-router.patch('/:id/status', viewingRequestController.updateRequestStatus);
+// Create new viewing request
+router.post('/', authMiddleware_1.authMiddleware, viewingRequestController.createRequest);
+// Get all viewing requests (filtered by user role)
+router.get('/', authMiddleware_1.authMiddleware, viewingRequestController.getRequests);
+// Get specific viewing request by ID
+router.get('/:id', authMiddleware_1.authMiddleware, viewingRequestController.getRequestById);
+// Hunter actions on viewing requests
+router.post('/:id/accept', authMiddleware_1.authMiddleware, viewingRequestController.acceptViewingRequest);
+router.post('/:id/reject', authMiddleware_1.authMiddleware, viewingRequestController.rejectViewingRequest);
+router.post('/:id/counter', authMiddleware_1.authMiddleware, viewingRequestController.counterViewingRequest);
+// Legacy status update endpoint (backward compatibility)
+router.patch('/:id/status', authMiddleware_1.authMiddleware, viewingRequestController.updateRequestStatus);
 exports.default = router;

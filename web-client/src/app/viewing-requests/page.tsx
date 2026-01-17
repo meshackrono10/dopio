@@ -8,6 +8,7 @@ import api from "@/services/api";
 import ViewingRequestCard from "@/components/ViewingRequestCard";
 import Skeleton from "@/shared/Skeleton";
 import ButtonPrimary from "@/shared/ButtonPrimary";
+import { Route } from "@/routers/types";
 
 export default function ViewingRequestsPage() {
     const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -115,7 +116,7 @@ export default function ViewingRequestsPage() {
                         </p>
                     </div>
                     {userRole === "TENANT" && (
-                        <ButtonPrimary href="/listing" className="hidden sm:block">
+                        <ButtonPrimary href={"/listing-stay" as Route} className="hidden sm:block">
                             + Book a Viewing
                         </ButtonPrimary>
                     )}
@@ -158,8 +159,8 @@ export default function ViewingRequestsPage() {
                         key={tab.key}
                         onClick={() => setFilter(tab.key)}
                         className={`px-4 py-2 font-medium transition-colors relative ${filter === tab.key
-                                ? "text-primary-600 dark:text-primary-400"
-                                : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+                            ? "text-primary-600 dark:text-primary-400"
+                            : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
                             }`}
                     >
                         {tab.label}
@@ -207,7 +208,7 @@ export default function ViewingRequestsPage() {
                                     : "You haven't received any viewing requests yet"}
                     </p>
                     {userRole === "TENANT" && filter !== "completed" && (
-                        <ButtonPrimary href="/listing">Find Properties</ButtonPrimary>
+                        <ButtonPrimary href={"/listing-stay" as Route}>Find Properties</ButtonPrimary>
                     )}
                 </div>
             )}
@@ -236,7 +237,7 @@ export default function ViewingRequestsPage() {
                     <div className="bg-yellow-100 dark:bg-yellow-900/20 rounded-xl p-4">
                         <p className="text-sm text-yellow-700 dark:text-yellow-300">Pending</p>
                         <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
-                            {userRequests.filter((r) => r.status === "PENDING").length}
+                            {userRequests.filter((r) => r.status === "PENDING" || r.status === "COUNTERED").length}
                         </p>
                     </div>
                     <div className="bg-green-100 dark:bg-green-900/20 rounded-xl p-4">

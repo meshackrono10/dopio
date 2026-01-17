@@ -7,5 +7,6 @@ const router = Router();
 
 router.get('/', authMiddleware, adminMiddleware, disputeController.getDisputes);
 router.patch('/:disputeId', authMiddleware, adminMiddleware, disputeController.updateDispute);
+router.post('/:disputeId/respond', authMiddleware, disputeController.respondToDispute);
 
 export default router;

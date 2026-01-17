@@ -22,12 +22,9 @@ export class TimeControlService {
                     autoReleaseAt: {
                         lte: now,
                     },
-                    invoice: {
-                        status: 'ESCROW',
-                    },
+                    paymentStatus: 'ESCROW',
                 },
                 include: {
-                    invoice: true,
                     property: true,
                 },
             });
@@ -47,29 +44,24 @@ export class TimeControlService {
 
         try {
             await prisma.$transaction(async (tx) => {
-                // 1. Update Invoice status
-                await tx.invoice.update({
-                    where: { id: booking.invoiceId },
-                    data: { status: 'PAID' },
-                });
-
-                // 2. Update Booking status
+                // 1. Update Booking status and payment status
                 await tx.booking.update({
                     where: { id: booking.id },
                     data: {
                         status: 'COMPLETED',
                         actualEndTime: new Date(),
+                        paymentStatus: 'RELEASED',
                     },
                 });
 
-                // 3. Unlock Property
+                // 2. Unlock Property
                 await tx.property.update({
                     where: { id: booking.propertyId },
                     data: { isLocked: false },
                 });
 
-                // 4. Create Hunter Earnings (85% split)
-                const amount = booking.invoice.amount;
+                // 3. Create Hunter Earnings (85% split)
+                const amount = booking.amount;
                 const hunterEarnings = amount * 0.85;
 
                 await tx.hunterEarnings.create({

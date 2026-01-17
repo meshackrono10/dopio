@@ -172,11 +172,7 @@ export const resolveDisputeWithEvidence = async (req: any, res: Response) => {
         const dispute = await prisma.dispute.findUnique({
             where: { id: disputeId },
             include: {
-                booking: {
-                    include: {
-                        invoice: true,
-                    },
-                },
+                booking: true,
             },
         });
 
@@ -195,11 +191,11 @@ export const resolveDisputeWithEvidence = async (req: any, res: Response) => {
             },
         });
 
-        // If refund approved, update invoice
+        // If refund approved, update booking
         if (refundAmount && dispute.booking) {
-            await prisma.invoice.update({
-                where: { id: dispute.booking.invoiceId },
-                data: { status: 'REFUNDED' },
+            await prisma.booking.update({
+                where: { id: dispute.booking.id },
+                data: { paymentStatus: 'REFUNDED' },
             });
         }
 

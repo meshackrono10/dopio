@@ -42,10 +42,36 @@ interface PropertyFormData {
 
     // Page 5: Utilities
     hasTokenMeter: boolean;
+    waterBilling: 'included' | 'separate';
+    waterBillingAmount?: string; // Amount if separate
+    garbageBilling: 'included' | 'separate';
+    garbageBillingAmount?: string; // Amount if separate
+    electricityBilling: 'prepaid' | 'postpaid' | 'included' | 'shared';
+    electricityBillingAmount?: string; // Amount if included/shared
+    securityBilling: 'included' | 'separate';
+    securityBillingAmount?: string; // Amount if separate
 
     // Page 9: Terms
+    furnishingStatus: string;
+    advanceRent: string;
+    agentFee: string;
+    petsPolicy: string;
+    sublettingPolicy: string;
+    genderPreference: string;
+    maintenanceLandlord: boolean;
+    maintenanceTenant: boolean;
+    hasCaretaker: boolean;
+    viewingArrangement: string;
+    availabilityDate: string;
+    writtenAgreement: boolean;
+    proofOwnership: boolean;
+    requireProofIncome: boolean;
+    requireValidId: boolean;
+    requireReferences: boolean;
+    requireGoodConduct: boolean;
     noiseLevel: string;
     socialAmenities: string[];
+    additionalRules: string;
 
     // Page 8: Price & Description
     monthlyRent: string;
@@ -55,6 +81,7 @@ interface PropertyFormData {
     description: string;
 
     // Additional data
+    propertyId?: string;
     amenities: string[];
     photos: string[];
     videos: string[];
@@ -70,6 +97,7 @@ interface PropertyFormData {
 interface PropertyFormContextType {
     formData: PropertyFormData;
     updateFormData: (key: keyof PropertyFormData, value: any) => void;
+    setFormData: (data: PropertyFormData) => void;
     clearFormData: () => void;
     propertyType: PropertyType;
     setPropertyType: (type: PropertyType) => void;
@@ -97,8 +125,34 @@ const initialFormData: PropertyFormData = {
     floorLevel: '',
     hasBalcony: false,
     hasTokenMeter: true,
+    waterBilling: 'included',
+    waterBillingAmount: '',
+    garbageBilling: 'included',
+    garbageBillingAmount: '',
+    electricityBilling: 'prepaid',
+    electricityBillingAmount: '',
+    securityBilling: 'included',
+    securityBillingAmount: '',
+    furnishingStatus: 'unfurnished',
+    advanceRent: '1',
+    agentFee: 'no_agent',
+    petsPolicy: 'no_pets',
+    sublettingPolicy: 'no_sublet',
+    genderPreference: 'any',
+    maintenanceLandlord: true,
+    maintenanceTenant: false,
+    hasCaretaker: false,
+    viewingArrangement: 'by_appointment',
+    availabilityDate: 'immediate',
+    writtenAgreement: true,
+    proofOwnership: true,
+    requireProofIncome: false,
+    requireValidId: true,
+    requireReferences: false,
+    requireGoodConduct: false,
     noiseLevel: 'Moderate',
     socialAmenities: [],
+    additionalRules: '',
     monthlyRent: '',
     deposit: '',
     leasePeriod: '6',
@@ -150,6 +204,10 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
     const clearFormData = () => {
         setFormData(initialFormData);
         localStorage.removeItem('propertyFormData');
+    };
+
+    const setFormDataDirect = (data: PropertyFormData) => {
+        setFormData(data);
     };
 
     const setPropertyType = (type: PropertyType) => {
@@ -221,6 +279,7 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
         <PropertyFormContext.Provider value={{
             formData,
             updateFormData,
+            setFormData: setFormDataDirect,
             clearFormData,
             propertyType,
             setPropertyType,

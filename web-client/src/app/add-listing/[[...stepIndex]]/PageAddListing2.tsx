@@ -56,7 +56,10 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
 
         {/* ITEM */}
         <FormItem label="County">
-          <Select>
+          <Select
+            value={formData.county}
+            onChange={handleCountyChange}
+          >
             <option value="Nairobi">Nairobi County</option>
             <option value="Kiambu">Kiambu County</option>
             <option value="Machakos">Machakos County</option>
@@ -72,40 +75,6 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
             onLocationSelect={handleLocationSelect}
             defaultValue={formData.areaName}
           />
-        </FormItem>
-
-        <FormItem label="Building/Court/Estate Name (Optional)">
-          <Input
-            placeholder="e.g., Seasons Apartments, Garden Heights"
-            value={formData.buildingName}
-            onChange={handleBuildingNameChange}
-          />
-        </FormItem>
-
-        <FormItem label="House/Unit Number">
-          <Input
-            placeholder="e.g., A4, B12, House 5"
-            value={formData.unitNumber}
-            onChange={handleUnitNumberChange}
-          />
-        </FormItem>
-
-        <FormItem
-          label="Proximity to Public Transport"
-          desc="How many minutes walk to the nearest stage/bus stop?"
-        >
-          <div className="relative">
-            <Input
-              type="number"
-              placeholder="e.g., 5"
-              className="!pr-16"
-              value={formData.transportProximity}
-              onChange={(e) => updateFormData('transportProximity', e.target.value)}
-            />
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <span className="text-gray-500">minutes</span>
-            </div>
-          </div>
         </FormItem>
 
         <div>

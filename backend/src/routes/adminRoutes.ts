@@ -33,6 +33,7 @@ router.post('/properties/:propertyId/approve', authMiddleware, adminMiddleware, 
 router.post('/properties/:propertyId/reject', authMiddleware, adminMiddleware, adminApprovalController.rejectProperty);
 
 // Dispute Resolution
-router.post('/disputes/:disputeId/resolve', authMiddleware, adminMiddleware, adminApprovalController.resolveDisputeWithEvidence);
+router.get('/disputes', authMiddleware, adminMiddleware, adminController.getDisputes);
+router.post('/disputes/:disputeId/resolve', authMiddleware, adminMiddleware, adminController.resolveDispute);
 
 export default router;

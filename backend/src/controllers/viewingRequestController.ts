@@ -11,12 +11,13 @@ const viewingRequestSchema = z.object({
     })),
     message: z.string().optional(),
     packageId: z.string(),
+    proposedLocation: z.string().optional(),
 });
 
 export const createRequest = async (req: any, res: Response) => {
     try {
         const validatedData = viewingRequestSchema.parse(req.body);
-        const { propertyId, proposedDates, message, packageId } = validatedData;
+        const { propertyId, proposedDates, message, packageId, proposedLocation } = validatedData;
 
         const property = await prisma.property.findUnique({
             where: { id: propertyId },
@@ -38,11 +39,10 @@ export const createRequest = async (req: any, res: Response) => {
                 propertyId,
                 tenantId: req.user.userId,
                 status: { in: ['PENDING', 'COUNTERED'] }
-            },
-            include: { invoice: true }
+            }
         });
 
-        if (existingRequest && existingRequest.invoice && existingRequest.invoice.status !== 'PAID') {
+        if (existingRequest && existingRequest.paymentStatus !== 'PAID' && existingRequest.paymentStatus !== 'ESCROW') {
             return res.status(400).json({
                 message: 'You already have a pending viewing request for this property.',
                 existingRequest
@@ -53,23 +53,19 @@ export const createRequest = async (req: any, res: Response) => {
             data: {
                 propertyId,
                 tenantId: req.user.userId,
-                proposedDates,
+                proposedDates: JSON.stringify(proposedDates),
+                proposedLocation,
                 message,
-                invoice: {
-                    create: {
-                        amount: selectedPackage.price,
-                        status: 'UNPAID',
-                    },
-                },
+                amount: selectedPackage.price,
+                packageId,
+                paymentStatus: 'UNPAID', // Will be updated by payment controller
             },
             include: {
                 property: {
                     include: {
                         hunter: true,
-                        packages: true
                     }
                 },
-                invoice: true, // CRITICAL: Must include invoice
                 tenant: {
                     select: {
                         id: true,
@@ -82,7 +78,7 @@ export const createRequest = async (req: any, res: Response) => {
             },
         });
 
-        console.log('[ViewingRequest] Created:', viewingRequest.id, 'with Invoice:', viewingRequest.invoice?.id);
+        console.log('[ViewingRequest] Created:', viewingRequest.id, 'Amount:', viewingRequest.amount);
 
         // Notify hunter
         await NotificationService.sendNotification(
@@ -131,7 +127,6 @@ export const getRequests = async (req: any, res: Response) => {
                         phone: true,
                     },
                 },
-                invoice: true,
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -166,7 +161,6 @@ export const getRequestById = async (req: any, res: Response) => {
                         avatarUrl: true,
                     },
                 },
-                invoice: true,
             },
         });
 
@@ -184,18 +178,17 @@ export const getRequestById = async (req: any, res: Response) => {
     }
 };
 
-// HUNTER ACCEPTS VIEWING REQUEST - Creates the booking
+// HUNTER OR TENANT ACCEPTS VIEWING REQUEST - Creates the booking
 export const acceptViewingRequest = async (req: any, res: Response) => {
     try {
         const { userId } = req.user;
         const requestId = req.params.id;
-        const { scheduledDate, scheduledTime } = req.body;
+        const { scheduledDate, scheduledTime, location } = req.body;
 
         const viewingRequest = await prisma.viewingRequest.findUnique({
             where: { id: requestId },
             include: {
                 property: true,
-                invoice: true,
             },
         });
 
@@ -203,18 +196,26 @@ export const acceptViewingRequest = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Request not found' });
         }
 
-        if (viewingRequest.property.hunterId !== userId) {
-            return res.status(403).json({ message: 'Only the assigned hunter can accept this request' });
+        // Only the person who DID NOT counter can accept
+        if (viewingRequest.counteredBy === userId) {
+            return res.status(403).json({ message: 'You cannot accept your own counter-offer' });
         }
 
-        if (!viewingRequest.invoice || viewingRequest.invoice.status !== 'ESCROW') {
-            return res.status(400).json({ message: 'Payment must be completed  before acceptance' });
+        if (viewingRequest.paymentStatus !== 'ESCROW') {
+            return res.status(400).json({ message: 'Payment must be in escrow before acceptance' });
         }
 
-        const proposedDates = viewingRequest.proposedDates as any[];
-        const firstDate = proposedDates[0] || {};
-        const finalDate = scheduledDate || firstDate.date || new Date().toISOString();
-        const finalTime = scheduledTime || firstDate.timeSlot || '10:00';
+        const proposedDatesArr = typeof viewingRequest.proposedDates === 'string'
+            ? JSON.parse(viewingRequest.proposedDates)
+            : viewingRequest.proposedDates;
+
+        const finalDate = scheduledDate || viewingRequest.counterDate || proposedDatesArr[0]?.date;
+        const finalTime = scheduledTime || viewingRequest.counterTime || proposedDatesArr[0]?.timeSlot;
+        const finalLocation = location || viewingRequest.counterLocation;
+
+        if (!finalDate || !finalTime) {
+            return res.status(400).json({ message: 'Scheduled date and time are required' });
+        }
 
         // Calculate end time (1 hour viewing window)
         const [hours, minutes] = finalTime.split(':').map(Number);
@@ -225,24 +226,44 @@ export const acceptViewingRequest = async (req: any, res: Response) => {
         const autoReleaseDate = new Date(finalDate);
         autoReleaseDate.setHours(hours + 1, minutes + 10, 0, 0);
 
-        // Lock the property (cannot be edited during active booking)
+        // Lock the property
         await prisma.property.update({
             where: { id: viewingRequest.propertyId },
             data: { isLocked: true },
         });
+
+        // Parse location if it's a JSON string
+        let locationData: any = null;
+        if (finalLocation) {
+            try {
+                locationData = typeof finalLocation === 'string'
+                    ? JSON.parse(finalLocation)
+                    : finalLocation;
+            } catch (error) {
+                console.error('Error parsing location:', error);
+            }
+        }
 
         const booking = await prisma.booking.create({
             data: {
                 propertyId: viewingRequest.propertyId,
                 tenantId: viewingRequest.tenantId,
                 hunterId: viewingRequest.property.hunterId,
-                invoiceId: viewingRequest.invoice!.id,
+                amount: viewingRequest.amount || 0,
+                paymentStatus: 'ESCROW',
                 scheduledDate: finalDate,
                 scheduledTime: finalTime,
                 scheduledEndTime,
                 autoReleaseAt: autoReleaseDate,
                 status: 'CONFIRMED',
                 chatEnabled: true,
+                meetingPoint: locationData ? {
+                    create: {
+                        type: locationData.type || 'LANDMARK',
+                        location: JSON.stringify(locationData.location || locationData),
+                        sharedBy: viewingRequest.property.hunterId,
+                    }
+                } : undefined,
             },
             include: {
                 property: true,
@@ -256,24 +277,19 @@ export const acceptViewingRequest = async (req: any, res: Response) => {
             data: { status: 'ACCEPTED' }
         });
 
-        // NOTE: Hunter earnings are NOT created here!
-        // They are created only when tenant confirms viewing completion
-        // This ensures hunters are paid after service delivery
-
-        // Notify tenant
+        // Notify both parties
         await NotificationService.sendNotification(
             viewingRequest.tenantId,
-            'Viewing Request Accepted!',
-            `Your request for ${viewingRequest.property.title} has been accepted for ${finalDate} at ${finalTime}.`,
-            'VIEWING_REQUEST_ACCEPTED',
+            'Viewing Confirmed!',
+            `Your viewing for ${viewingRequest.property.title} is confirmed for ${finalDate} at ${finalTime}.`,
+            'VIEWING_CONFIRMED',
             { bookingId: booking.id }
         );
 
         res.json({
             success: true,
-            message: 'Viewing request accepted! Booking created.',
+            message: 'Viewing confirmed! Booking created.',
             booking,
-            viewingRequest: { ...viewingRequest, status: 'ACCEPTED' }
         });
     } catch (error: any) {
         console.error('Accept viewing request error:', error);
@@ -291,7 +307,6 @@ export const rejectViewingRequest = async (req: any, res: Response) => {
             where: { id: requestId },
             include: {
                 property: true,
-                invoice: true,
             },
         });
 
@@ -299,35 +314,39 @@ export const rejectViewingRequest = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Request not found' });
         }
 
-        if (viewingRequest.property.hunterId !== userId) {
-            return res.status(403).json({ message: 'Only the assigned hunter can reject this request' });
+        if (viewingRequest.property.hunterId !== userId && viewingRequest.tenantId !== userId) {
+            return res.status(403).json({ message: 'Not authorized' });
         }
 
         await prisma.viewingRequest.update({
             where: { id: requestId },
             data: {
                 status: 'REJECTED',
-                message: reason || 'Request rejected by hunter'
+                message: reason || 'Request rejected'
             }
         });
 
-        await prisma.invoice.update({
-            where: { id: viewingRequest.invoice?.id || '' },
-            data: { status: 'REFUNDED' }
-        });
+        // If payment was made, mark for refund
+        if (viewingRequest.paymentStatus === 'ESCROW' || viewingRequest.paymentStatus === 'PAID') {
+            await prisma.viewingRequest.update({
+                where: { id: requestId },
+                data: { paymentStatus: 'REFUNDED' }
+            });
+        }
 
-        // Notify tenant
+        // Notify other party
+        const recipientId = userId === viewingRequest.tenantId ? viewingRequest.property.hunterId : viewingRequest.tenantId;
         await NotificationService.sendNotification(
-            viewingRequest.tenantId,
+            recipientId,
             'Viewing Request Rejected',
-            `Your request for ${viewingRequest.property.title} was rejected. Reason: ${reason || 'None provided'}`,
+            `The request for ${viewingRequest.property.title} was rejected.`,
             'VIEWING_REQUEST_REJECTED',
             { requestId: viewingRequest.id }
         );
 
         res.json({
             success: true,
-            message: 'Viewing request rejected. Tenant will be refunded.',
+            message: 'Viewing request rejected.',
         });
     } catch (error: any) {
         console.error('Reject viewing request error:', error);
@@ -339,7 +358,7 @@ export const counterViewingRequest = async (req: any, res: Response) => {
     try {
         const { userId } = req.user;
         const requestId = req.params.id;
-        const { proposedDates, message } = req.body;
+        const { date, time, location, message } = req.body;
 
         const viewingRequest = await prisma.viewingRequest.findUnique({
             where: { id: requestId },
@@ -350,27 +369,39 @@ export const counterViewingRequest = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Request not found' });
         }
 
-        if (viewingRequest.property.hunterId !== userId) {
-            return res.status(403).json({ message: 'Only the assigned hunter can counter this request' });
+        if (viewingRequest.property.hunterId !== userId && viewingRequest.tenantId !== userId) {
+            return res.status(403).json({ message: 'Not authorized' });
         }
 
         const updated = await prisma.viewingRequest.update({
             where: { id: requestId },
             data: {
                 status: 'COUNTERED',
-                proposedDates,
-                message: message || 'Hunter proposed alternative date/time'
+                counterDate: date,
+                counterTime: time,
+                counterLocation: location,
+                counteredBy: userId,
+                message: message || 'Alternative proposed'
             },
             include: {
                 property: true,
                 tenant: true,
-                invoice: true,
             }
         });
 
+        // Notify other party
+        const recipientId = userId === viewingRequest.tenantId ? viewingRequest.property.hunterId : viewingRequest.tenantId;
+        await NotificationService.sendNotification(
+            recipientId,
+            'New Counter-Offer',
+            `A counter-offer has been proposed for ${viewingRequest.property.title}.`,
+            'VIEWING_REQUEST_COUNTERED',
+            { requestId: updated.id }
+        );
+
         res.json({
             success: true,
-            message: 'Counter-proposal sent to tenant',
+            message: 'Counter-proposal sent',
             viewingRequest: updated
         });
     } catch (error: any) {
@@ -404,7 +435,6 @@ export const updateRequestStatus = async (req: any, res: Response) => {
         const updatedRequest = await prisma.viewingRequest.update({
             where: { id: req.params.id },
             data: { status },
-            include: { invoice: true },
         });
 
         res.json(updatedRequest);

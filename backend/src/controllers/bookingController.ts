@@ -46,9 +46,15 @@ export const getBookingById = async (req: any, res: Response) => {
                         avatarUrl: true,
                     },
                 },
-                invoice: true,
                 meetingPoint: true,
                 rescheduleRequests: {
+                    orderBy: { createdAt: 'desc' },
+                },
+                alternativeOffers: {
+                    include: { property: true },
+                    orderBy: { createdAt: 'desc' },
+                },
+                disputes: {
                     orderBy: { createdAt: 'desc' },
                 },
             },
@@ -104,7 +110,6 @@ export const getAllBookings = async (req: any, res: Response) => {
                         avatarUrl: true,
                     },
                 },
-                invoice: true,
                 meetingPoint: true,
             },
             orderBy: { createdAt: 'desc' },
@@ -140,20 +145,32 @@ export const shareMeetingPoint = async (req: any, res: Response) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        // Create or update meeting point
+        // Create or update meeting point - now sets status to PENDING
         const meetingPoint = await prisma.meetingPoint.upsert({
             where: { bookingId },
             create: {
                 bookingId,
                 type,
-                location,
+                location: JSON.stringify(location),
                 sharedBy: userId,
+                status: 'PENDING',
             },
             update: {
                 type,
-                location,
+                location: JSON.stringify(location),
+                status: 'PENDING',
+                tenantViewed: false,
             },
         });
+
+        // Notify tenant
+        await NotificationService.sendNotification(
+            booking.tenantId,
+            'Meeting Point Updated',
+            `The hunter has proposed a ${type === 'PROPERTY' ? 'property location' : 'landmark'} as the meeting point. Please accept or reject it.`,
+            'MEETING_POINT_UPDATED',
+            { bookingId }
+        );
 
         res.json({
             success: true,
@@ -166,10 +183,10 @@ export const shareMeetingPoint = async (req: any, res: Response) => {
     }
 };
 
-// Confirm physical meeting occurred
+// Confirm physical meeting occurred (both parties must confirm)
 export const confirmPhysicalMeeting = async (req: any, res: Response) => {
     try {
-        const { userId } = req.user;
+        const { userId, role } = req.user;
         const bookingId = req.params.id;
 
         const booking = await prisma.booking.findUnique({
@@ -180,24 +197,159 @@ export const confirmPhysicalMeeting = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Booking not found' });
         }
 
-        if (booking.hunterId !== userId) {
-            return res.status(403).json({ message: 'Only the hunter can confirm physical meeting' });
+        if (booking.status !== 'CONFIRMED') {
+            return res.status(400).json({ message: 'Can only confirm meeting for confirmed bookings' });
         }
 
-        await prisma.booking.update({
+        const updateData: any = {};
+        if (role === 'HUNTER' && booking.hunterId === userId) {
+            updateData.hunterMetConfirmed = true;
+        } else if (role === 'TENANT' && booking.tenantId === userId) {
+            updateData.tenantMetConfirmed = true;
+        } else {
+            return res.status(403).json({ message: 'Not authorized to confirm meeting' });
+        }
+
+        // If this confirmation makes both true, set physicalMeetingConfirmed to true
+        const isBothConfirmed = (updateData.hunterMetConfirmed || booking.hunterMetConfirmed) &&
+            (updateData.tenantMetConfirmed || booking.tenantMetConfirmed);
+
+        if (isBothConfirmed) {
+            updateData.physicalMeetingConfirmed = true;
+            updateData.actualStartTime = new Date();
+        }
+
+        const updatedBooking = await prisma.booking.update({
             where: { id: bookingId },
-            data: {
-                physicalMeetingConfirmed: true,
-                actualStartTime: new Date(),
-            },
+            data: updateData,
         });
+
+        // Notify other party
+        const recipientId = role === 'HUNTER' ? booking.tenantId : booking.hunterId;
+        await NotificationService.sendNotification(
+            recipientId,
+            'Meeting Confirmed',
+            `${role === 'HUNTER' ? 'The hunter' : 'The tenant'} has confirmed that you have met.`,
+            'MEETING_CONFIRMED',
+            { bookingId }
+        );
 
         res.json({
             success: true,
-            message: 'Physical meeting confirmed',
+            message: isBothConfirmed ? 'Both parties confirmed meeting!' : 'Meeting confirmation recorded.',
+            booking: updatedBooking,
         });
     } catch (error: any) {
         console.error('Confirm meeting error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Tenant submits the outcome of the viewing
+export const submitViewingOutcome = async (req: any, res: Response) => {
+    try {
+        const { userId, role } = req.user;
+        const bookingId = req.params.id;
+        const { outcome, feedback, evidenceUrls, evidenceDescription } = req.body;
+
+        if (role !== 'TENANT') {
+            return res.status(403).json({ message: 'Only tenants can submit viewing outcomes' });
+        }
+
+        const booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: { property: true }
+        });
+
+        if (!booking || booking.tenantId !== userId) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        if (!booking.physicalMeetingConfirmed) {
+            return res.status(400).json({ message: 'Meeting must be confirmed by both parties before submitting outcome' });
+        }
+
+        if (booking.status !== 'CONFIRMED') {
+            return res.status(400).json({ message: 'Outcome already submitted or booking cancelled' });
+        }
+
+        if (outcome === 'COMPLETED_SATISFIED') {
+            // Mark as completed and release payment
+            await prisma.booking.update({
+                where: { id: bookingId },
+                data: {
+                    status: 'COMPLETED',
+                    tenantConfirmed: true,
+                    viewingOutcome: 'COMPLETED_SATISFIED',
+                    outcomeSubmittedAt: new Date(),
+                    completedAt: new Date(),
+                    paymentStatus: 'RELEASED',
+                    tenantFeedback: feedback,
+                },
+            });
+
+            // Create hunter earnings
+            const hunterAmount = booking.amount * 0.85;
+            await prisma.hunterEarnings.create({
+                data: {
+                    hunterId: booking.hunterId,
+                    amount: hunterAmount,
+                    bookingId: booking.id,
+                    status: 'PENDING',
+                },
+            });
+
+            // Unlock property
+            await prisma.property.update({
+                where: { id: booking.propertyId },
+                data: { isLocked: false },
+            });
+
+            await NotificationService.notifyPaymentReleased(booking.hunterId, hunterAmount);
+
+            return res.json({ success: true, message: 'Viewing marked as completed. Payment released.' });
+        } else if (outcome === 'ISSUE_REPORTED') {
+            // Create a dispute
+            const dispute = await prisma.dispute.create({
+                data: {
+                    title: `Issue reported for viewing: ${booking.property.title}`,
+                    description: feedback || 'No description provided',
+                    category: 'VIEWING_ISSUE',
+                    reporterId: userId,
+                    againstId: booking.hunterId,
+                    bookingId: booking.id,
+                    propertyId: booking.propertyId,
+                    evidenceUrls: evidenceUrls ? JSON.stringify(evidenceUrls) : undefined,
+                    evidenceDescription,
+                    status: 'OPEN',
+                }
+            });
+
+            await prisma.booking.update({
+                where: { id: bookingId },
+                data: {
+                    viewingOutcome: 'ISSUE_REPORTED',
+                    outcomeSubmittedAt: new Date(),
+                    tenantFeedback: feedback,
+                    issueEvidence: evidenceUrls ? JSON.stringify(evidenceUrls) : undefined,
+                }
+            });
+
+            // Notify hunter and admin
+            await NotificationService.sendNotification(
+                booking.hunterId,
+                'Issue Reported',
+                `The tenant has reported an issue with the viewing for ${booking.property.title}.`,
+                'VIEWING_ISSUE_REPORTED',
+                { bookingId, disputeId: dispute.id }
+            );
+
+            return res.json({ success: true, message: 'Issue reported. A dispute has been opened.', dispute });
+        }
+
+        res.status(400).json({ message: 'Invalid outcome' });
+    } catch (error: any) {
+        console.error('Submit outcome error:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -215,7 +367,6 @@ export const confirmViewingCompleted = async (req: any, res: Response) => {
         const booking = await prisma.booking.findUnique({
             where: { id: bookingId },
             include: {
-                invoice: true,
                 property: true,
             },
         });
@@ -240,17 +391,12 @@ export const confirmViewingCompleted = async (req: any, res: Response) => {
                 actualEndTime: new Date(),
                 status: 'COMPLETED',
                 completedAt: new Date(),
+                paymentStatus: 'RELEASED',
             },
         });
 
-        // Release payment from ESCROW
-        await prisma.invoice.update({
-            where: { id: booking.invoiceId },
-            data: { status: 'RELEASED' },
-        });
-
         // Create hunter earnings (85% to hunter, 15% platform fee)
-        const hunterAmount = booking.invoice!.amount * 0.85;
+        const hunterAmount = booking.amount * 0.85;
         await prisma.hunterEarnings.create({
             data: {
                 hunterId: booking.hunterId,
@@ -490,7 +636,6 @@ export const getActiveBookings = async (req: any, res: Response) => {
                         avatarUrl: true,
                     },
                 },
-                invoice: true,
                 meetingPoint: true,
             },
         });
@@ -498,6 +643,115 @@ export const getActiveBookings = async (req: any, res: Response) => {
         res.json(bookings);
     } catch (error: any) {
         console.error('Get active bookings error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const cancelBooking = async (req: any, res: Response) => {
+    try {
+        const { userId, role } = req.user;
+        const bookingId = req.params.id;
+        const { reason } = req.body;
+
+        const booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: { property: true },
+        });
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        if (booking.tenantId !== userId && booking.hunterId !== userId && role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        if (booking.status !== 'CONFIRMED') {
+            return res.status(400).json({ message: 'Only confirmed bookings can be cancelled' });
+        }
+
+        // Update booking status
+        await prisma.booking.update({
+            where: { id: bookingId },
+            data: {
+                status: 'CANCELLED',
+            },
+        });
+
+        // Unlock property
+        await prisma.property.update({
+            where: { id: booking.propertyId },
+            data: { isLocked: false },
+        });
+
+        // Handle refund logic here (simplified)
+        // In a real app, you'd trigger a refund via the payment gateway
+
+        // Notify other party
+        const recipientId = userId === booking.tenantId ? booking.hunterId : booking.tenantId;
+        await NotificationService.sendNotification(
+            recipientId,
+            'Booking Cancelled',
+            `The booking for ${booking.property.title} has been cancelled. Reason: ${reason || 'No reason provided'}`,
+            'BOOKING_CANCELLED',
+            { bookingId }
+        );
+
+        res.json({
+            success: true,
+            message: 'Booking cancelled successfully',
+        });
+    } catch (error: any) {
+        console.error('Cancel booking error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const respondToMeetingPoint = async (req: any, res: Response) => {
+    try {
+        const { userId } = req.user;
+        const bookingId = req.params.id;
+        const { action } = req.body; // 'accept' or 'reject'
+
+        const meetingPoint = await prisma.meetingPoint.findUnique({
+            where: { bookingId },
+            include: { booking: true },
+        });
+
+        if (!meetingPoint) {
+            return res.status(404).json({ message: 'Meeting point not found' });
+        }
+
+        if (meetingPoint.booking.tenantId !== userId) {
+            return res.status(403).json({ message: 'Only the tenant can respond to the meeting point' });
+        }
+
+        const status = action === 'accept' ? 'ACCEPTED' : 'REJECTED';
+
+        await prisma.meetingPoint.update({
+            where: { bookingId },
+            data: {
+                status,
+                tenantViewed: true,
+                tenantViewedAt: new Date(),
+            },
+        });
+
+        // Notify hunter
+        await NotificationService.sendNotification(
+            meetingPoint.booking.hunterId,
+            `Meeting Point ${status}`,
+            `The tenant has ${status.toLowerCase()} the proposed meeting point.`,
+            'MEETING_POINT_RESPONSE',
+            { bookingId }
+        );
+
+        res.json({
+            success: true,
+            message: `Meeting point ${status.toLowerCase()}ed`,
+        });
+    } catch (error: any) {
+        console.error('Respond to meeting point error:', error);
         res.status(500).json({ message: error.message });
     }
 };

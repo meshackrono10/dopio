@@ -23,16 +23,12 @@ async function clearBookingsData() {
         const deletedBookings = await prisma.booking.deleteMany({});
         console.log(`✅ Deleted ${deletedBookings.count} bookings`);
 
-        // 4. Delete Invoices
-        const deletedInvoices = await prisma.invoice.deleteMany({});
-        console.log(`✅ Deleted ${deletedInvoices.count} invoices`);
-
-        // 5. Delete Viewing Requests
+        // 4. Delete Viewing Requests
         const deletedRequests = await prisma.viewingRequest.deleteMany({});
         console.log(`✅ Deleted ${deletedRequests.count} viewing requests`);
 
         console.log('\n✨ Database cleanup completed successfully!\n');
-        console.log('All bookings, viewing requests, invoices, payments, and earnings have been cleared.');
+        console.log('All bookings, viewing requests, payments, and earnings have been cleared.');
         console.log('Users and properties remain intact.\n');
 
     } catch (error) {

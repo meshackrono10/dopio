@@ -15,11 +15,15 @@ const propertySchema = zod_1.z.object({
     }),
     amenities: zod_1.z.array(zod_1.z.string()),
     images: zod_1.z.array(zod_1.z.string()),
+    videos: zod_1.z.array(zod_1.z.string()).optional(),
     packages: zod_1.z.array(zod_1.z.object({
+        tier: zod_1.z.enum(['BRONZE', 'SILVER', 'GOLD', 'PLATINUM']),
         name: zod_1.z.string(),
         price: zod_1.z.number().positive(),
+        propertiesIncluded: zod_1.z.number().positive(),
+        features: zod_1.z.array(zod_1.z.string()),
         description: zod_1.z.string().optional(),
-    })).optional(),
+    })).min(1, "At least one viewing package is required"),
 });
 const getAllProperties = async (req, res) => {
     try {
@@ -70,14 +74,20 @@ exports.getAllProperties = getAllProperties;
 const getPropertyById = async (req, res) => {
     try {
         const userId = req.user?.userId;
+        const propertyId = req.params.id;
         const property = await index_1.prisma.property.findUnique({
-            where: { id: req.params.id },
+            where: { id: propertyId },
             include: {
                 hunter: {
                     select: {
                         id: true,
                         name: true,
+                        email: true,
+                        phone: true,
                         avatarUrl: true,
+                        isVerified: true,
+                        verificationStatus: true,
+                        createdAt: true,
                     },
                 },
                 packages: true,
@@ -89,17 +99,37 @@ const getPropertyById = async (req, res) => {
         if (!property) {
             return res.status(404).json({ message: 'Property not found' });
         }
+        // Calculate average rating and review count for the HUNTER
+        const reviews = await index_1.prisma.review.findMany({
+            where: {
+                booking: {
+                    hunterId: property.hunterId,
+                },
+            },
+            select: {
+                rating: true,
+            },
+        });
+        const reviewCount = reviews.length;
+        const averageRating = reviewCount > 0
+            ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviewCount
+            : 0;
         const location = property.location;
         const isOwner = userId && property.hunterId === userId;
         const hasPaid = userId && property.bookings?.length > 0;
+        const responseData = {
+            ...property,
+            rating: parseFloat(averageRating.toFixed(1)),
+            reviewCount,
+        };
         if (isOwner || hasPaid || property.isExactLocation) {
-            return res.json(property);
+            return res.json(responseData);
         }
         // Fuzz location
         const fuzzLat = (Math.random() - 0.5) * 0.01;
         const fuzzLng = (Math.random() - 0.5) * 0.01;
         res.json({
-            ...property,
+            ...responseData,
             location: {
                 ...location,
                 lat: location.lat + fuzzLat,
@@ -116,19 +146,40 @@ const getPropertyById = async (req, res) => {
 exports.getPropertyById = getPropertyById;
 const createProperty = async (req, res) => {
     try {
+        console.log('[PropertyController] User from token:', req.user);
+        // Validate user exists and is a HUNTER
+        const user = await index_1.prisma.user.findUnique({
+            where: { id: req.user.userId },
+        });
+        if (!user) {
+            return res.status(404).json({
+                message: 'User not found. Please log in again.'
+            });
+        }
+        if (user.role !== 'HUNTER') {
+            return res.status(403).json({
+                message: 'Only hunters can create property listings.'
+            });
+        }
+        console.log('[PropertyController] Creating property for hunter:', user.name);
         const validatedData = propertySchema.parse(req.body);
-        const { title, description, rent, location, amenities, images, packages } = validatedData;
+        const { title, description, rent, location, amenities, images, videos, packages } = validatedData;
         const property = await index_1.prisma.property.create({
             data: {
                 title,
                 description,
                 rent,
-                location,
-                amenities,
-                images,
+                location: JSON.stringify(location),
+                amenities: JSON.stringify(amenities),
+                images: JSON.stringify(images),
+                videos: videos ? JSON.stringify(videos) : null,
                 hunterId: req.user.userId,
+                status: 'PENDING_APPROVAL', // Requires admin approval
                 packages: {
-                    create: packages || [],
+                    create: (packages || []).map(pkg => ({
+                        ...pkg,
+                        features: JSON.stringify(pkg.features)
+                    })),
                 },
             },
             include: {
@@ -138,6 +189,7 @@ const createProperty = async (req, res) => {
         res.status(201).json(property);
     }
     catch (error) {
+        console.error('[PropertyController] Create error:', error.message);
         if (error instanceof zod_1.z.ZodError) {
             return res.status(400).json({ errors: error.issues });
         }
@@ -156,12 +208,46 @@ const updateProperty = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this property' });
         }
         const validatedData = propertySchema.partial().parse(req.body);
-        const updatedProperty = await index_1.prisma.property.update({
-            where: { id: propertyId },
-            data: validatedData, // Simplified for now
-            include: {
-                packages: true,
-            },
+        const { packages, location, amenities, images, videos, ...otherData } = validatedData;
+        const updateData = { ...otherData };
+        if (location)
+            updateData.location = JSON.stringify(location);
+        if (amenities)
+            updateData.amenities = JSON.stringify(amenities);
+        if (images)
+            updateData.images = JSON.stringify(images);
+        if (videos)
+            updateData.videos = JSON.stringify(videos);
+        const updatedProperty = await index_1.prisma.$transaction(async (tx) => {
+            // Update basic property data
+            const updated = await tx.property.update({
+                where: { id: propertyId },
+                data: updateData,
+                include: { packages: true },
+            });
+            // If packages are provided, update them
+            if (packages) {
+                // Delete existing packages
+                await tx.viewingPackage.deleteMany({
+                    where: { propertyId },
+                });
+                // Create new packages
+                await tx.property.update({
+                    where: { id: propertyId },
+                    data: {
+                        packages: {
+                            create: packages.map(pkg => ({
+                                ...pkg,
+                                features: JSON.stringify(pkg.features)
+                            })),
+                        },
+                    },
+                });
+            }
+            return tx.property.findUnique({
+                where: { id: propertyId },
+                include: { packages: true },
+            });
         });
         res.json(updatedProperty);
     }

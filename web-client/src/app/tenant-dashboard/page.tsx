@@ -23,8 +23,9 @@ import { getSearchRequests } from "@/services/searchRequest";
 import Skeleton from "@/shared/Skeleton";
 import { useToast } from "@/components/Toast";
 import api from "@/services/api";
+import ViewingRequestsTab from "@/components/ViewingRequestsTab";
 
-type TabType = "saved" | "bookings" | "comparison" | "reviews" | "messages" | "search-requests" | "wallet" | "notifications";
+type TabType = "saved" | "bookings" | "viewing-requests" | "comparison" | "reviews" | "messages" | "search-requests" | "wallet" | "notifications";
 
 interface SavedProperty {
     id: string;
@@ -291,6 +292,12 @@ export default function TenantDashboard() {
                                                     {booking.status === "upcoming" && (
                                                         <>
                                                             <Link
+                                                                href={`/booking-detail/${booking.id}` as Route}
+                                                                className="px-4 py-2 border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-sm font-medium text-center"
+                                                            >
+                                                                View Details
+                                                            </Link>
+                                                            <Link
                                                                 href={"/chat" as Route}
                                                                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium text-center"
                                                             >
@@ -420,6 +427,9 @@ export default function TenantDashboard() {
                         </div>
                     </div>
                 );
+
+            case "viewing-requests":
+                return <ViewingRequestsTab />;
 
             case "comparison":
                 return (
@@ -852,6 +862,16 @@ export default function TenantDashboard() {
                             >
                                 <i className="las la-calendar-check mr-1"></i>
                                 My Bookings ({bookings.length})
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("viewing-requests")}
+                                className={`border-b-2 py-4 px-1 text-sm font-medium transition-colors ${activeTab === "viewing-requests"
+                                    ? "border-primary-600 text-primary-600"
+                                    : "border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                                    }`}
+                            >
+                                <i className="las la-clipboard-list mr-1"></i>
+                                Viewing Requests
                             </button>
                             <button
                                 onClick={() => setActiveTab("comparison")}

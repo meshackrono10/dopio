@@ -145,14 +145,80 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
     description,
     rent,
     location,
-    amenities,
-    images,
-    videos,
+    amenities: rawAmenities,
+    images: rawImages,
+    videos: rawVideos,
     hunter,
   } = property;
 
-  // Handle both possible field names for packages
-  const packages = property.packages || property.viewingPackages || [];
+  // Ensure images, videos, and amenities are arrays with error handling
+  let images: string[] = [];
+  let videos: string[] = [];
+  let amenities: string[] = [];
+
+  try {
+    if (Array.isArray(rawImages)) {
+      images = rawImages;
+    } else if (typeof rawImages === 'string') {
+      images = JSON.parse(rawImages);
+    }
+  } catch (error) {
+    console.error('[ListingDetail] Error parsing images:', error, rawImages);
+    images = [];
+  }
+
+  try {
+    if (Array.isArray(rawVideos)) {
+      videos = rawVideos;
+    } else if (typeof rawVideos === 'string') {
+      videos = JSON.parse(rawVideos);
+    }
+  } catch (error) {
+    console.error('[ListingDetail] Error parsing videos:', error, rawVideos);
+    videos = [];
+  }
+
+  try {
+    if (Array.isArray(rawAmenities)) {
+      amenities = rawAmenities;
+    } else if (typeof rawAmenities === 'string') {
+      amenities = JSON.parse(rawAmenities);
+    }
+  } catch (error) {
+    console.error('[ListingDetail] Error parsing amenities:', error, rawAmenities);
+    amenities = [];
+  }
+
+  console.log('[ListingDetail] Parsed data:', {
+    imagesType: typeof rawImages,
+    imagesLength: images?.length,
+    videosType: typeof rawVideos,
+    videosLength: videos?.length,
+    amenitiesType: typeof rawAmenities,
+    amenitiesLength: amenities?.length
+  });
+
+  // Handle both possible field names for packages and parse features
+  const rawPackages = property.packages || property.viewingPackages || [];
+  const packages = rawPackages.map((pkg: any) => {
+    let features: string[] = [];
+
+    try {
+      if (Array.isArray(pkg.features)) {
+        features = pkg.features;
+      } else if (typeof pkg.features === 'string') {
+        features = JSON.parse(pkg.features);
+      }
+    } catch (error) {
+      console.error('[ListingDetail] Error parsing package features:', error, pkg.features);
+      features = [];
+    }
+
+    return {
+      ...pkg,
+      features
+    };
+  });
 
   const handleOpenModalImageGallery = () => {
     router.push(`${thisPathname}/?modal=PHOTO_TOUR_SCROLLABLE` as Route);

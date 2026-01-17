@@ -6,7 +6,6 @@ import api from '../services/api';
 
 export interface Booking {
     id: string;
-    invoiceId: string;
     propertyId: string;
     propertyTitle: string;
     propertyImage: string;
@@ -52,21 +51,20 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     const mapBackendToBooking = (b: any): Booking => {
         let status: BookingStatus = 'pending'; // Default to pending
 
-        if (b.invoice?.status === 'PAID') {
+        if (b.paymentStatus === 'ESCROW' || b.paymentStatus === 'PAID') {
             status = 'confirmed';
         } else if (b.status === 'ACCEPTED') {
-            status = 'pending_payment';
+            status = 'confirmed';
         } else if (b.status === 'REJECTED' || b.status === 'CANCELLED') {
             status = 'cancelled';
         } else if (b.status === 'COMPLETED') {
             status = 'completed';
-        } else if (b.status === 'PENDING') {
+        } else if (b.status === 'PENDING' || b.status === 'COUNTERED') {
             status = 'pending';
         }
 
         return {
             id: b.id,
-            invoiceId: b.invoice?.id || '',
             propertyId: b.propertyId,
             propertyTitle: b.property?.title || 'Unknown Property',
             propertyImage: b.property?.images?.[0] || '',
@@ -74,16 +72,16 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             tenantName: b.tenant?.name || 'Unknown Tenant',
             haunterId: b.property?.hunterId || '',
             haunterName: b.property?.hunter?.name || 'Unknown Hunter',
-            scheduledDate: b.proposedDates?.[0]?.date || b.createdAt,
-            scheduledTime: b.proposedDates?.[0]?.timeSlot || 'TBD',
-            meetupLocation: b.property?.location ? {
-                address: b.property.location.address || '',
+            scheduledDate: b.counterDate || b.proposedDates?.[0]?.date || b.createdAt,
+            scheduledTime: b.counterTime || b.proposedDates?.[0]?.timeSlot || 'TBD',
+            meetupLocation: b.counterLocation || b.property?.location ? {
+                address: b.counterLocation?.location || b.property.location.address || '',
                 lat: b.property.location.lat || 0,
                 lng: b.property.location.lng || 0,
                 directions: b.property.location.directions || '',
             } : undefined,
             packageName: 'Standard Package', // TODO: Fetch real package name
-            price: b.invoice?.amount || 0,
+            price: b.amount || 0,
             status: status,
             isPropertyLocked: true,
             createdAt: b.createdAt,
@@ -99,8 +97,10 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             const mapped = response.data
                 .filter((vr: any) =>
                     vr.status === 'PENDING' ||
+                    vr.status === 'COUNTERED' ||
                     vr.status === 'ACCEPTED' ||
-                    vr.invoice?.status === 'PAID' ||
+                    vr.paymentStatus === 'ESCROW' ||
+                    vr.paymentStatus === 'PAID' ||
                     vr.status === 'COMPLETED'
                 )
                 .map(mapBackendToBooking);

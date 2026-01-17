@@ -63,6 +63,7 @@ export interface ViewingPackage {
   duration: string; // e.g., "1 hour", "3 hours", "5 hours"
   tier: PackageTier;
   haunterId: string | number;
+  features?: string[];
 }
 
 // Property Location Type
@@ -165,8 +166,15 @@ export interface ViewingRequest {
   tenantPhone: string;
   haunterId: string | number;
   haunterName: string;
-  proposedDates: string[];
-  status: 'pending' | 'accepted' | 'rejected' | 'countered' | 'paid' | 'scheduled' | 'completed' | 'cancelled';
+  proposedDates: any[];
+  proposedLocation?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'PAID' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  amount: number;
+  paymentStatus: 'UNPAID' | 'ESCROW' | 'PAID' | 'REFUNDED';
+  counterDate?: string;
+  counterTime?: string;
+  counterLocation?: string;
+  counteredBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -203,6 +211,11 @@ export interface Booking {
   mpesaReceiptNumber?: string;
   scheduledDate?: string;
   scheduledTime?: string;
+  tenantMetConfirmed: boolean;
+  hunterMetConfirmed: boolean;
+  physicalMeetingConfirmed: boolean;
+  viewingOutcome?: string;
+  tenantFeedback?: string;
   chatEnabled: boolean;
   completedAt?: string;
   createdAt: string;
@@ -301,6 +314,8 @@ export interface Issue {
   adminNotes?: string;
   resolution?: string;
   markedDoneBy?: Array<"tenant" | "haunter" | "admin">;
+  hunterResponse?: string;
+  hunterEvidenceUrl?: string;
 }
 
 // Saved Search Type (Phase 3)

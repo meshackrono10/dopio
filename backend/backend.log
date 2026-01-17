@@ -1,0 +1,32 @@
+
+> backend@1.0.0 dev
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 00:29:29 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[Scheduler] Initializing automated tasks...
+[Scheduler] All tasks scheduled.
+[32minfo[39m: Server is running on port 5000 and listening on 0.0.0.0 {"service":"house-haunters-backend","timestamp":"2026-01-16T21:29:30.161Z"}
+[Scheduler] Running auto-release task...
+[TimeControlService] Checking for auto-releases...
+[TimeControlService] Found 0 bookings for auto-release.
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:22 +0000] "GET /api/properties HTTP/1.1" 200 19189 "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:22.161Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:22 +0000] "GET /api/viewing-requests HTTP/1.1" 200 7875 "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:22.163Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:22 +0000] "GET /api/viewing-requests HTTP/1.1" 304 - "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:22.174Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:22 +0000] "GET /api/search-requests HTTP/1.1" 304 - "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:22.175Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:26 +0000] "GET /api/bookings/9afb59a3-25fa-4ec1-8485-c75ff393e9a4 HTTP/1.1" 404 31 "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:26.134Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:30 +0000] "GET /api/search-requests HTTP/1.1" 304 - "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:30.537Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:30:32 +0000] "GET /api/viewing-requests HTTP/1.1" 304 - "http://localhost:3000/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:30:32.409Z"}
+
+  #  Node.js[8000]: void node::ResetStdio() at ../src/node.cc:751
+  #  Assertion failed: !(err != 0) || (err == -1 && (*__errno_location ()) == 1)
+
+----- Native stack trace -----
+
+
+  #  Node.js[7993]: void node::ResetStdio() at ../src/node.cc:751
+  #  Assertion failed: !(err != 0) || (err == -1 && (*__errno_location ()) == 1)
+
+----- Native stack trace -----
+

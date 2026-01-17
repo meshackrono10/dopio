@@ -22,7 +22,7 @@ const propertySchema = z.object({
         propertiesIncluded: z.number().positive(),
         features: z.array(z.string()),
         description: z.string().optional(),
-    })).optional(),
+    })).min(1, "At least one viewing package is required"),
 });
 
 export const getAllProperties = async (req: any, res: Response) => {
@@ -186,14 +186,17 @@ export const createProperty = async (req: any, res: Response) => {
                 title,
                 description,
                 rent,
-                location,
-                amenities,
-                images,
-                videos: videos || [],
+                location: JSON.stringify(location),
+                amenities: JSON.stringify(amenities),
+                images: JSON.stringify(images),
+                videos: videos ? JSON.stringify(videos) : null,
                 hunterId: req.user.userId,
                 status: 'PENDING_APPROVAL', // Requires admin approval
                 packages: {
-                    create: (packages || []) as any,
+                    create: (packages || []).map(pkg => ({
+                        ...pkg,
+                        features: JSON.stringify(pkg.features)
+                    })) as any,
                 },
             },
             include: {
@@ -225,13 +228,47 @@ export const updateProperty = async (req: any, res: Response) => {
         }
 
         const validatedData = propertySchema.partial().parse(req.body);
+        const { packages, location, amenities, images, videos, ...otherData } = validatedData;
 
-        const updatedProperty = await prisma.property.update({
-            where: { id: propertyId },
-            data: validatedData as any, // Simplified for now
-            include: {
-                packages: true,
-            },
+        const updateData: any = { ...otherData };
+        if (location) updateData.location = JSON.stringify(location);
+        if (amenities) updateData.amenities = JSON.stringify(amenities);
+        if (images) updateData.images = JSON.stringify(images);
+        if (videos) updateData.videos = JSON.stringify(videos);
+
+        const updatedProperty = await prisma.$transaction(async (tx) => {
+            // Update basic property data
+            const updated = await tx.property.update({
+                where: { id: propertyId },
+                data: updateData,
+                include: { packages: true },
+            });
+
+            // If packages are provided, update them
+            if (packages) {
+                // Delete existing packages
+                await tx.viewingPackage.deleteMany({
+                    where: { propertyId },
+                });
+
+                // Create new packages
+                await tx.property.update({
+                    where: { id: propertyId },
+                    data: {
+                        packages: {
+                            create: packages.map(pkg => ({
+                                ...pkg,
+                                features: JSON.stringify(pkg.features)
+                            })) as any,
+                        },
+                    },
+                });
+            }
+
+            return tx.property.findUnique({
+                where: { id: propertyId },
+                include: { packages: true },
+            });
         });
 
         res.json(updatedProperty);

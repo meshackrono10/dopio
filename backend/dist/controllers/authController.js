@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.login = exports.register = void 0;
+exports.changePassword = exports.deleteAccount = exports.login = exports.register = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const index_1 = require("../index");
@@ -35,6 +35,7 @@ const register = async (req, res) => {
                 name,
                 phone,
                 role: role || 'TENANT',
+                verificationStatus: role === 'HUNTER' ? 'UNVERIFIED' : 'PENDING',
             },
         });
         const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
@@ -46,6 +47,9 @@ const register = async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
+                verificationStatus: user.verificationStatus,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
             },
         });
     }
@@ -78,6 +82,9 @@ const login = async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
+                verificationStatus: user.verificationStatus,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
             },
         });
     }
@@ -89,3 +96,56 @@ const login = async (req, res) => {
     }
 };
 exports.login = login;
+// Delete account
+const deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        // Delete all related data first
+        await index_1.prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } });
+        await index_1.prisma.review.deleteMany({ where: { booking: { OR: [{ tenantId: userId }, { hunterId: userId }] } } });
+        await index_1.prisma.viewingRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { property: { hunterId: userId } }] } });
+        await index_1.prisma.booking.deleteMany({ where: { OR: [{ tenantId: userId }, { hunterId: userId }] } });
+        await index_1.prisma.property.deleteMany({ where: { hunterId: userId } });
+        await index_1.prisma.searchRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { haunterId: userId }] } });
+        // Finally delete the user
+        await index_1.prisma.user.delete({ where: { id: userId } });
+        res.json({ message: 'Account deleted successfully' });
+    }
+    catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({ message: 'Failed to delete account', error: error.message });
+    }
+};
+exports.deleteAccount = deleteAccount;
+// Change password
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.userId;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Please provide both current and new passwords' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+        }
+        const user = await index_1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const isMatch = await bcryptjs_1.default.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Incorrect current password' });
+        }
+        const hashedPassword = await bcryptjs_1.default.hash(newPassword, 10);
+        await index_1.prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword },
+        });
+        res.json({ message: 'Password updated successfully' });
+    }
+    catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ message: 'Failed to update password', error: error.message });
+    }
+};
+exports.changePassword = changePassword;

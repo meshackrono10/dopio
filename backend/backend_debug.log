@@ -1,0 +1,32 @@
+
+> backend@1.0.0 dev
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 00:20:40 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[Scheduler] Initializing automated tasks...
+[Scheduler] All tasks scheduled.
+[32minfo[39m: Server is running on port 5000 and listening on 0.0.0.0 {"service":"house-haunters-backend","timestamp":"2026-01-16T21:20:41.077Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:25:02 +0000] "POST /api/auth/login HTTP/1.1" 400 33 "-" "axios/1.13.2" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:25:02.788Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:26:38 +0000] "POST /api/auth/login HTTP/1.1" 200 489 "-" "axios/1.13.2" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:26:38.572Z"}
+[AcceptViewing] User 258b3c5a-e5e4-4b0a-9270-f85c46365dfe accepting request 9afb59a3-25fa-4ec1-8485-c75ff393e9a4
+[AcceptViewing] Body: {
+  scheduledDate: '2026-02-01T00:00:00.000Z',
+  scheduledTime: '14:00',
+  location: '{"name":"Test Location","location":"Test Location"}'
+}
+[AcceptViewing] Request found. Status: COUNTERED, CounteredBy: f06c99be-a57e-4ea8-9953-ff4042f4d3af
+[AcceptViewing] Final details: Date=2026-02-01T00:00:00.000Z, Time=14:00, Location={"name":"Test Location","location":"Test Location"}
+[AcceptViewing] Creating booking...
+[AcceptViewing] Booking created: e7cf9358-da00-482b-8b28-b1accd918252
+[AcceptViewing] Request status updated to ACCEPTED: ACCEPTED
+[NotificationService] Sending VIEWING_CONFIRMED to user f06c99be-a57e-4ea8-9953-ff4042f4d3af: Viewing Confirmed! - Your viewing for 'Modern 2BR in Kasaran is confirmed for 2026-02-01T00:00:00.000Z at 14:00.
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:26:38 +0000] "POST /api/viewing-requests/9afb59a3-25fa-4ec1-8485-c75ff393e9a4/accept HTTP/1.1" 200 4755 "-" "axios/1.13.2" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:26:38.598Z"}
+[32minfo[39m: 127.0.0.1 - - [16/Jan/2026:21:26:38 +0000] "GET /api/viewing-requests/9afb59a3-25fa-4ec1-8485-c75ff393e9a4 HTTP/1.1" 200 3898 "-" "axios/1.13.2" {"service":"house-haunters-backend","timestamp":"2026-01-16T21:26:38.607Z"}
+[INFO] 00:28:25 Restarting: /home/aroniez/Desktop/projects/dapio/backend/src/controllers/viewingRequestController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+[Scheduler] Initializing automated tasks...
+[Scheduler] All tasks scheduled.
+[32minfo[39m: Server is running on port 5000 and listening on 0.0.0.0 {"service":"house-haunters-backend","timestamp":"2026-01-16T21:28:25.744Z"}

@@ -48,7 +48,8 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 id="water_included"
                 name="water_billing"
                 value="included"
-                defaultChecked
+                checked={formData.waterBilling === 'included'}
+                onChange={() => updateFormData('waterBilling', 'included')}
                 className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="water_included" className="ml-3 flex-1">
@@ -65,6 +66,8 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 id="water_separate"
                 name="water_billing"
                 value="separate"
+                checked={formData.waterBilling === 'separate'}
+                onChange={() => updateFormData('waterBilling', 'separate')}
                 className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="water_separate" className="ml-3 flex-1">
@@ -75,9 +78,83 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
               </label>
             </div>
 
-            <FormItem label="If charged separately, how?" desc="Optional">
-              <Input placeholder="e.g., KSh 500 per month, Metered usage, etc." />
-            </FormItem>
+            {formData.waterBilling === 'separate' && (
+              <FormItem label="Water billing amount" desc="How much per month?">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500">KSh</span>
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="e.g., 500"
+                    className="!pl-12"
+                    value={formData.waterBillingAmount}
+                    onChange={(e) => updateFormData('waterBillingAmount', e.target.value)}
+                  />
+                </div>
+              </FormItem>
+            )}
+          </div>
+        </div>
+
+        {/* GARBAGE COLLECTION */}
+        <div>
+          <label className="text-lg font-semibold">
+            Garbage Collection
+          </label>
+          <div className="mt-6 space-y-4">
+            <div className="flex items-start">
+              <input
+                type="radio"
+                id="garbage_included"
+                name="garbage_billing"
+                value="included"
+                checked={formData.garbageBilling === 'included'}
+                onChange={() => updateFormData('garbageBilling', 'included')}
+                className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="garbage_included" className="ml-3 flex-1">
+                <span className="block font-medium">Garbage collection included in rent</span>
+                <span className="block text-sm text-neutral-500 dark:text-neutral-400">
+                  No separate charge for waste disposal
+                </span>
+              </label>
+            </div>
+
+            <div className="flex items-start">
+              <input
+                type="radio"
+                id="garbage_separate"
+                name="garbage_billing"
+                value="separate"
+                checked={formData.garbageBilling === 'separate'}
+                onChange={() => updateFormData('garbageBilling', 'separate')}
+                className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="garbage_separate" className="ml-3 flex-1">
+                <span className="block font-medium">Garbage collection charged separately</span>
+                <span className="block text-sm text-neutral-500 dark:text-neutral-400">
+                  Tenant pays for waste management service
+                </span>
+              </label>
+            </div>
+
+            {formData.garbageBilling === 'separate' && (
+              <FormItem label="Garbage collection amount" desc="How much per month?">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500">KSh</span>
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="e.g., 300"
+                    className="!pl-12"
+                    value={formData.garbageBillingAmount}
+                    onChange={(e) => updateFormData('garbageBillingAmount', e.target.value)}
+                  />
+                </div>
+              </FormItem>
+            )}
 
             <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
               <label className="text-base font-medium mb-4 block">Water Features</label>
@@ -117,7 +194,8 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 id="garbage_included"
                 name="garbage_billing"
                 value="included"
-                defaultChecked
+                checked={formData.garbageBilling === 'included'}
+                onChange={() => updateFormData('garbageBilling', 'included')}
                 className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="garbage_included" className="ml-3 flex-1">
@@ -134,6 +212,8 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 id="garbage_separate"
                 name="garbage_billing"
                 value="separate"
+                checked={formData.garbageBilling === 'separate'}
+                onChange={() => updateFormData('garbageBilling', 'separate')}
                 className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="garbage_separate" className="ml-3 flex-1">
@@ -157,7 +237,10 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
           </label>
           <div className="mt-6 space-y-5">
             <FormItem label="Electricity billing method" desc="Required">
-              <Select>
+              <Select
+                value={formData.electricityBilling}
+                onChange={(e) => updateFormData('electricityBilling', e.target.value)}
+              >
                 <option value="prepaid">Prepaid Meter (Tenant buys tokens)</option>
                 <option value="postpaid">Postpaid Meter (Monthly bill)</option>
                 <option value="included">Included in rent (Flat rate)</option>
@@ -180,7 +263,7 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 label="Individual KPLC Token Meter"
                 name="hasTokenMeter"
                 subLabel="Tenant has direct control over their electricity tokens"
-                defaultChecked={formData.hasTokenMeter}
+                checked={formData.hasTokenMeter}
                 onChange={(checked) => updateFormData('hasTokenMeter', checked)}
               />
               <Checkbox
@@ -206,7 +289,8 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 id="security_included"
                 name="security_billing"
                 value="included"
-                defaultChecked
+                checked={formData.securityBilling === 'included'}
+                onChange={() => updateFormData('securityBilling', 'included')}
                 className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="security_included" className="ml-3 flex-1">
@@ -223,6 +307,8 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
                 id="security_separate"
                 name="security_billing"
                 value="separate"
+                checked={formData.securityBilling === 'separate'}
+                onChange={() => updateFormData('securityBilling', 'separate')}
                 className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="security_separate" className="ml-3 flex-1">
@@ -233,9 +319,22 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
               </label>
             </div>
 
-            <FormItem label="If charged separately, how much?" desc="Optional">
-              <Input placeholder="e.g., KSh 1,000 per month" />
-            </FormItem>
+            {formData.securityBilling === 'separate' && (
+              <FormItem label="Security fee amount" desc="How much per month?">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500">KSh</span>
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="e.g., 1000"
+                    className="!pl-12"
+                    value={formData.securityBillingAmount}
+                    onChange={(e) => updateFormData('securityBillingAmount', e.target.value)}
+                  />
+                </div>
+              </FormItem>
+            )}
           </div>
         </div>
 

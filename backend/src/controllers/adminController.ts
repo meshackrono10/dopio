@@ -25,11 +25,11 @@ export const getDashboardStats = async (req: any, res: Response) => {
             where: { status: 'AVAILABLE' }
         });
 
-        // Revenue calculation (sum of paid invoices)
-        const paidInvoices = await prisma.invoice.findMany({
-            where: { status: 'PAID' }
+        // Revenue calculation (sum of paid bookings)
+        const paidBookings = await prisma.booking.findMany({
+            where: { paymentStatus: 'RELEASED' }
         });
-        const totalRevenue = paidInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+        const totalRevenue = paidBookings.reduce((sum, booking) => sum + booking.amount, 0);
 
         // Recent activity
         const recentBookings = await prisma.booking.count({
@@ -273,6 +273,102 @@ export const getAllProperties = async (req: any, res: Response) => {
         });
 
         res.json(properties);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Get all disputes
+export const getDisputes = async (req: any, res: Response) => {
+    try {
+        const { status, category } = req.query;
+
+        const where: any = {};
+        if (status) where.status = status;
+        if (category) where.category = category;
+
+        const disputes = await prisma.dispute.findMany({
+            where,
+            include: {
+                reporter: {
+                    select: { id: true, name: true, email: true, avatarUrl: true }
+                },
+                against: {
+                    select: { id: true, name: true, email: true, avatarUrl: true }
+                },
+                booking: {
+                    include: { property: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(disputes);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Resolve dispute
+export const resolveDispute = async (req: any, res: Response) => {
+    try {
+        const { disputeId } = req.params;
+        const { resolution, action } = req.body; // action: 'REFUND' or 'RELEASE_PAYMENT' or 'NONE'
+        const adminId = req.user.userId;
+
+        const dispute = await prisma.dispute.findUnique({
+            where: { id: disputeId },
+            include: { booking: true }
+        });
+
+        if (!dispute) {
+            return res.status(404).json({ message: 'Dispute not found' });
+        }
+
+        const updateData: any = {
+            status: 'RESOLVED',
+            resolution,
+            resolvedBy: adminId,
+            resolvedAt: new Date(),
+        };
+
+        // Handle financial actions if linked to a booking
+        if (dispute.bookingId && dispute.booking && action !== 'NONE') {
+            if (action === 'REFUND') {
+                await prisma.booking.update({
+                    where: { id: dispute.bookingId },
+                    data: { paymentStatus: 'REFUNDED', status: 'CANCELLED' }
+                });
+                // In a real app, trigger actual refund via payment gateway
+            } else if (action === 'RELEASE_PAYMENT') {
+                await prisma.booking.update({
+                    where: { id: dispute.bookingId },
+                    data: { paymentStatus: 'RELEASED', status: 'COMPLETED' }
+                });
+
+                // Create hunter earnings
+                const hunterAmount = dispute.booking.amount * 0.85;
+                await prisma.hunterEarnings.create({
+                    data: {
+                        hunterId: dispute.booking.hunterId,
+                        amount: hunterAmount,
+                        bookingId: dispute.booking.id,
+                        status: 'PENDING',
+                    },
+                });
+            }
+        }
+
+        const updatedDispute = await prisma.dispute.update({
+            where: { id: disputeId },
+            data: updateData
+        });
+
+        res.json({
+            success: true,
+            message: 'Dispute resolved successfully',
+            dispute: updatedDispute
+        });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

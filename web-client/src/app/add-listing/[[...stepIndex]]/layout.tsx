@@ -22,7 +22,7 @@ export interface CommonLayoutProps {
 const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
   const index = Number(params.stepIndex) || 1;
   const router = useRouter();
-  const { addProperty } = useProperties();
+  const { addProperty, updateProperty } = useProperties();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const { formData, clearFormData } = usePropertyForm();
   const [loading, setLoading] = React.useState(false);
@@ -77,8 +77,18 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
   const nextBtnText = index === 6 ? "Publish listing" : "Continue";
 
   const handlePublish = async () => {
+    // Packages are now optional - no validation needed
+
     setLoading(true);
     try {
+      const isEditing = !!formData.propertyId;
+
+      console.log('[Layout] handlePublish called:', {
+        isEditing,
+        propertyId: formData.propertyId,
+        formDataKeys: Object.keys(formData)
+      });
+
       // Map formData to backend format
       const propertyData = {
         title: formData.propertyName,
@@ -91,24 +101,33 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
           address: formData.buildingName,
           generalArea: formData.areaName,
           county: formData.county,
-          lat: formData.coordinates?.[0] || 0,
-          lng: formData.coordinates?.[1] || 0,
+          lat: formData.coordinates?.[1] || 0,  // Correct: lat is second element
+          lng: formData.coordinates?.[0] || 0,  // Correct: lng is first element
         },
         amenities: formData.amenities,
         images: formData.photos,
         videos: formData.videos,
         packages: formData.viewingPackages || [],
         utilities: {
-          waterIncluded: true,
-          electricityType: formData.hasTokenMeter ? 'Prepaid' : 'Postpaid',
+          waterIncluded: formData.waterBilling === 'included',
+          electricityType: formData.electricityBilling || 'prepaid',
         }
       };
 
-      await addProperty(propertyData as any);
-      toast.success("Property published successfully!");
+      if (isEditing && formData.propertyId) {
+        console.log('[Layout] Updating property:', formData.propertyId, propertyData);
+        await updateProperty(formData.propertyId, propertyData);
+        toast.success("Property updated successfully!");
+      } else {
+        console.log('[Layout] Creating new property:', propertyData);
+        await addProperty(propertyData as any);
+        toast.success("Property published successfully!");
+      }
+
       clearFormData();
       router.push("/add-listing/7" as Route);
     } catch (err: any) {
+      console.error('[Layout] Publish error:', err);
       toast.error(err.message || "Failed to publish property");
     } finally {
       setLoading(false);
@@ -172,15 +191,37 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
+                // Step 3: Utilities - validate billing amounts
+                if (index === 3) {
+                  if (formData.waterBilling === 'separate' && (!formData.waterBillingAmount || Number(formData.waterBillingAmount) <= 0)) {
+                    toast.warning("Please enter the water billing amount.");
+                    return;
+                  }
+                  if (formData.garbageBilling === 'separate' && (!formData.garbageBillingAmount || Number(formData.garbageBillingAmount) <= 0)) {
+                    toast.warning("Please enter the garbage collection amount.");
+                    return;
+                  }
+                  if (formData.securityBilling === 'separate' && (!formData.securityBillingAmount || Number(formData.securityBillingAmount) <= 0)) {
+                    toast.warning("Please enter the security fee amount.");
+                    return;
+                  }
+                }
+
 
                 // Step 4: Photos & Videos
                 if (index === 4) {
-                  if (formData.photos.length < 4) {
+                  const isEditing = !!formData.propertyId;
+                  if (!isEditing && formData.photos.length < 4) {
                     toast.warning("Please upload at least 4 photos of the property to continue.");
                     return;
                   }
-                  if (formData.videos.length < 1) {
+                  if (!isEditing && formData.videos.length < 1) {
                     toast.warning("Please upload at least 1 video of the property to continue.");
+                    return;
+                  }
+                  // For editing, just ensure there is at least one photo if they were already there
+                  if (isEditing && formData.photos.length === 0) {
+                    toast.warning("Property must have at least one photo.");
                     return;
                   }
                 }
@@ -197,13 +238,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 6: Viewing Packages - validate before publishing
-                if (index === 6) {
-                  if (!formData.viewingPackages || formData.viewingPackages.length === 0) {
-                    toast.warning("Please configure at least one viewing package before publishing.");
-                    return;
-                  }
-                }
+                // Step 6: Viewing Packages - now optional, no validation needed
 
                 router.push(nextHref);
               }}

@@ -40,55 +40,65 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const clearError = () => setError(null);
 
-    const mapBackendToFrontend = (p: any): PropertyListing => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        rent: p.rent,
-        deposit: p.rent, // Default to 1 month rent
-        layout: '1-bedroom' as PropertyLayout, // Default
-        bathrooms: 1,
-        location: {
-            generalArea: p.location?.generalArea || 'Unknown Area',
-            county: p.location?.county || 'Nairobi',
-            directions: p.location?.address || '',
-        },
-        amenities: p.amenities || [],
-        utilities: {
-            waterIncluded: true,
-            electricityType: 'prepaid',
-        },
-        images: p.images || [],
-        videoUrl: '',
-        houseHaunter: {
-            id: p.hunter?.id || '',
-            name: p.hunter?.name || 'Unknown Hunter',
-            phone: '',
-            profilePhoto: p.hunter?.avatarUrl || '',
-            isVerified: true,
-            rating: 4.5,
-            reviewCount: 10,
-            successfulViewings: 5,
-            bio: '',
-            areasOfOperation: [],
-            joinedDate: new Date().toISOString(),
-        },
-        viewingPackages: (p.packages || []).map((pkg: any) => ({
-            id: pkg.id,
-            name: pkg.name,
-            description: pkg.description || '',
-            price: pkg.price,
-            propertiesIncluded: 1,
-            duration: '1 hour',
-            tier: 'gold',
-            haunterId: p.hunter?.id || '',
-        })),
-        status: 'approved',
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-        viewCount: 0,
-        bookingCount: 0,
-    });
+    const mapBackendToFrontend = (p: any): PropertyListing => {
+        const location = typeof p.location === 'string' ? JSON.parse(p.location) : p.location;
+        const amenities = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities;
+        const images = typeof p.images === 'string' ? JSON.parse(p.images) : p.images;
+
+        return {
+            id: p.id,
+            title: p.title,
+            description: p.description,
+            rent: p.rent,
+            deposit: p.rent, // Default to 1 month rent
+            layout: p.layout || '1-bedroom',
+            bathrooms: p.bathrooms,
+            location: {
+                generalArea: location?.generalArea || 'Unknown Area',
+                county: location?.county || 'Nairobi',
+                directions: location?.address || '',
+            },
+            amenities: amenities || [],
+            utilities: {
+                waterIncluded: true,
+                electricityType: 'prepaid',
+            },
+            images: images || [],
+            videoUrl: p.videos ? (typeof p.videos === 'string' ? JSON.parse(p.videos)[0] : p.videos[0]) : '',
+            houseHaunter: {
+                id: p.hunter?.id || '',
+                name: p.hunter?.name || 'Unknown Hunter',
+                phone: '',
+                profilePhoto: p.hunter?.avatarUrl || '',
+                isVerified: true,
+                rating: 4.5,
+                reviewCount: 10,
+                successfulViewings: 5,
+                bio: '',
+                areasOfOperation: [],
+                joinedDate: new Date().toISOString(),
+            },
+            viewingPackages: (p.packages || []).map((pkg: any) => {
+                const features = typeof pkg.features === 'string' ? JSON.parse(pkg.features) : (pkg.features || []);
+                return {
+                    id: pkg.id,
+                    name: pkg.name,
+                    description: features[0] || pkg.description || '',
+                    price: pkg.price,
+                    propertiesIncluded: pkg.propertiesIncluded,
+                    duration: '1 hour',
+                    tier: pkg.tier.toLowerCase(),
+                    haunterId: p.hunter?.id || '',
+                    features: features,
+                };
+            }),
+            status: 'approved',
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+            viewCount: 0,
+            bookingCount: 0,
+        };
+    };
 
     const fetchProperties = useCallback(async () => {
         try {

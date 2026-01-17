@@ -1,5 +1,10 @@
 # Quick Test Guide
 
+🔐 **Test Credentials**:
+- **Admin**: `admin@househaunters.com` / `admin123`
+- **Tenant**: `tenant@househaunters.com` / `tenant123`
+- **Hunter**: `hunter@househaunters.com` / `hunter123`
+
 ## Test the Complete Flow:
 
 ### Step 1: Fresh Start

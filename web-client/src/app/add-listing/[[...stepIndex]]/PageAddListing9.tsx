@@ -10,6 +10,17 @@ export interface PageAddListing9Props { }
 
 const PageAddListing9: FC<PageAddListing9Props> = () => {
   const { formData, updateFormData } = usePropertyForm();
+
+  const handleSocialAmenityToggle = (amenity: string) => {
+    const currentAmenities = formData.socialAmenities || [];
+    const newAmenities = currentAmenities.includes(amenity)
+      ? currentAmenities.filter((a) => a !== amenity)
+      : [...currentAmenities, amenity];
+    updateFormData("socialAmenities", newAmenities);
+  };
+
+  const isSocialChecked = (amenity: string) => (formData.socialAmenities || []).includes(amenity);
+
   return (
     <>
       <div>
@@ -28,7 +39,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           label="Furnishing Status"
           desc="What is included with the property?"
         >
-          <Select>
+          <Select
+            value={formData.furnishingStatus}
+            onChange={(e) => updateFormData('furnishingStatus', e.target.value)}
+          >
             <option value="unfurnished">Unfurnished (Empty property)</option>
             <option value="semi_furnished">Semi-Furnished (Kitchen cabinets, wardrobes)</option>
             <option value="fully_furnished">Fully Furnished (Ready to move in with furniture)</option>
@@ -40,7 +54,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           label="Advance Rent Required"
           desc="How many months' rent required upfront?"
         >
-          <Select>
+          <Select
+            value={formData.advanceRent}
+            onChange={(e) => updateFormData('advanceRent', e.target.value)}
+          >
             <option value="1">1 month advance</option>
             <option value="2">2 months advance</option>
             <option value="3">3 months advance</option>
@@ -54,7 +71,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           label="Agent/Finder's Fee"
           desc="If using an agent, who pays?"
         >
-          <Select>
+          <Select
+            value={formData.agentFee}
+            onChange={(e) => updateFormData('agentFee', e.target.value)}
+          >
             <option value="no_agent">No agent fee (Direct from landlord)</option>
             <option value="tenant">Tenant pays agent fee</option>
             <option value="landlord">Landlord pays agent fee</option>
@@ -64,7 +84,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
 
         {/* PETS POLICY */}
         <FormItem label="Pets Policy">
-          <Select>
+          <Select
+            value={formData.petsPolicy}
+            onChange={(e) => updateFormData('petsPolicy', e.target.value)}
+          >
             <option value="no_pets">No pets allowed</option>
             <option value="pets_allowed">Pets allowed</option>
             <option value="pets_negotiable">Pets negotiable (case by case)</option>
@@ -73,7 +96,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
 
         {/* SUBLETTING */}
         <FormItem label="Subletting Policy">
-          <Select>
+          <Select
+            value={formData.sublettingPolicy}
+            onChange={(e) => updateFormData('sublettingPolicy', e.target.value)}
+          >
             <option value="no_sublet">Subletting not allowed</option>
             <option value="with_permission">Allowed with landlord permission</option>
             <option value="allowed">Subletting allowed</option>
@@ -82,7 +108,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
 
         {/* GENDER PREFERENCE */}
         <FormItem label="Tenant Gender Preference" desc="Optional - for shared accommodation">
-          <Select>
+          <Select
+            value={formData.genderPreference}
+            onChange={(e) => updateFormData('genderPreference', e.target.value)}
+          >
             <option value="any">No preference</option>
             <option value="female">Female tenants only</option>
             <option value="male">Male tenants only</option>
@@ -101,17 +130,22 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
               label="Landlord handles all major repairs"
               name="landlord_repairs"
               subLabel="Plumbing, electrical, structural issues"
-              defaultChecked
+              checked={formData.maintenanceLandlord}
+              onChange={(checked) => updateFormData('maintenanceLandlord', checked)}
             />
             <Checkbox
               label="Tenant responsible for minor repairs"
               name="tenant_minor_repairs"
               subLabel="Light bulbs, drain cleaning, etc."
+              checked={formData.maintenanceTenant}
+              onChange={(checked) => updateFormData('maintenanceTenant', checked)}
             />
             <Checkbox
               label="Property has on-site caretaker/manager"
               name="has_caretaker"
               subLabel="For quick maintenance support"
+              checked={formData.hasCaretaker}
+              onChange={(checked) => updateFormData('hasCaretaker', checked)}
             />
           </div>
         </div>
@@ -121,7 +155,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           label="Property Viewing Arrangement"
           desc="How can interested tenants view the property?"
         >
-          <Select>
+          <Select
+            value={formData.viewingArrangement}
+            onChange={(e) => updateFormData('viewingArrangement', e.target.value)}
+          >
             <option value="by_appointment">By appointment only</option>
             <option value="open_viewing">Regular open viewing times</option>
             <option value="anytime">Available anytime (call first)</option>
@@ -134,7 +171,10 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           label="Availability/Move-in Date"
           desc="When can tenant move in?"
         >
-          <Select>
+          <Select
+            value={formData.availabilityDate}
+            onChange={(e) => updateFormData('availabilityDate', e.target.value)}
+          >
             <option value="immediate">Immediately available</option>
             <option value="1_week">Available in 1 week</option>
             <option value="2_weeks">Available in 2 weeks</option>
@@ -153,13 +193,15 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
               label="Written tenancy agreement provided"
               name="written_agreement"
               subLabel="Legally binding rental contract"
-              defaultChecked
+              checked={formData.writtenAgreement}
+              onChange={(checked) => updateFormData('writtenAgreement', checked)}
             />
             <Checkbox
               label="Landlord has proof of ownership"
               name="proof_ownership"
               subLabel="Title deed available for verification"
-              defaultChecked
+              checked={formData.proofOwnership}
+              onChange={(checked) => updateFormData('proofOwnership', checked)}
             />
           </div>
         </div>
@@ -175,22 +217,29 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
               label="Proof of income/employment"
               name="proof_income"
               subLabel="Payslip or employment letter"
+              checked={formData.requireProofIncome}
+              onChange={(checked) => updateFormData('requireProofIncome', checked)}
             />
             <Checkbox
               label="Valid ID (National ID or Passport)"
               name="valid_id"
               subLabel="For verification purposes"
-              defaultChecked
+              checked={formData.requireValidId}
+              onChange={(checked) => updateFormData('requireValidId', checked)}
             />
             <Checkbox
               label="References from previous landlord"
               name="references"
               subLabel="Character or rental references"
+              checked={formData.requireReferences}
+              onChange={(checked) => updateFormData('requireReferences', checked)}
             />
             <Checkbox
               label="Good conduct certificate"
               name="good_conduct"
               subLabel="Police clearance certificate"
+              checked={formData.requireGoodConduct}
+              onChange={(checked) => updateFormData('requireGoodConduct', checked)}
             />
           </div>
         </div>
@@ -217,12 +266,12 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           </label>
           <p className="text-sm text-neutral-500 mt-2 mb-6">What is nearby? (Within 10-15 mins walk/drive)</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Checkbox label="Schools/Kindergartens" name="amenity_schools" />
-            <Checkbox label="Hospitals/Clinics" name="amenity_hospitals" />
-            <Checkbox label="Shopping Malls/Supermarkets" name="amenity_malls" />
-            <Checkbox label="Religious Centers (Church/Mosque)" name="amenity_religious" />
-            <Checkbox label="Police Station/Post" name="amenity_police" />
-            <Checkbox label="Parks/Recreational Areas" name="amenity_parks" />
+            <Checkbox label="Schools/Kindergartens" name="amenity_schools" checked={isSocialChecked("Schools/Kindergartens")} onChange={() => handleSocialAmenityToggle("Schools/Kindergartens")} />
+            <Checkbox label="Hospitals/Clinics" name="amenity_hospitals" checked={isSocialChecked("Hospitals/Clinics")} onChange={() => handleSocialAmenityToggle("Hospitals/Clinics")} />
+            <Checkbox label="Shopping Malls/Supermarkets" name="amenity_malls" checked={isSocialChecked("Shopping Malls/Supermarkets")} onChange={() => handleSocialAmenityToggle("Shopping Malls/Supermarkets")} />
+            <Checkbox label="Religious Centers (Church/Mosque)" name="amenity_religious" checked={isSocialChecked("Religious Centers (Church/Mosque)")} onChange={() => handleSocialAmenityToggle("Religious Centers (Church/Mosque)")} />
+            <Checkbox label="Police Station/Post" name="amenity_police" checked={isSocialChecked("Police Station/Post")} onChange={() => handleSocialAmenityToggle("Police Station/Post")} />
+            <Checkbox label="Parks/Recreational Areas" name="amenity_parks" checked={isSocialChecked("Parks/Recreational Areas")} onChange={() => handleSocialAmenityToggle("Parks/Recreational Areas")} />
           </div>
         </div>
 
@@ -231,7 +280,11 @@ const PageAddListing9: FC<PageAddListing9Props> = () => {
           label="Additional House Rules"
           desc="Any other rules tenants should know? (Optional)"
         >
-          <Input placeholder="e.g., Quiet hours after 10pm, No smoking in bedrooms, etc." />
+          <Input
+            placeholder="e.g., Quiet hours after 10pm, No smoking in bedrooms, etc."
+            value={formData.additionalRules}
+            onChange={(e) => updateFormData('additionalRules', e.target.value)}
+          />
         </FormItem>
 
       </div>

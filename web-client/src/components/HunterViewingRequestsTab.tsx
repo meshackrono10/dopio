@@ -60,10 +60,10 @@ export default function HunterViewingRequestsTab() {
     }
 
     const pendingRequests = requests.filter(r =>
-        r.status === 'PENDING' && r.invoice?.status === 'ESCROW'
+        (r.status === 'PENDING' || r.status === 'COUNTERED') && r.paymentStatus === 'ESCROW'
     );
     const reviewedRequests = requests.filter(r =>
-        r.status !== 'PENDING' || r.invoice?.status !== 'ESCROW'
+        !((r.status === 'PENDING' || r.status === 'COUNTERED') && r.paymentStatus === 'ESCROW')
     );
 
     return (

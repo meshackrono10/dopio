@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE `Booking` ADD COLUMN `hunterConfirmed` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `issueEvidence` LONGTEXT NULL,
+    ADD COLUMN `outcomeSubmittedAt` DATETIME(3) NULL,
+    ADD COLUMN `tenantFeedback` TEXT NULL,
+    ADD COLUMN `viewingOutcome` ENUM('COMPLETED_SATISFIED', 'ISSUE_REPORTED', 'ALTERNATIVE_REQUESTED') NULL;

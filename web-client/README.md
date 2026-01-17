@@ -59,6 +59,11 @@ npm run dev
 
 5. Open [http://localhost:3000](http://localhost:3000)
 
+### 🔐 Test Credentials
+- **Admin**: `admin@househaunters.com` / `admin123`
+- **Tenant**: `tenant@househaunters.com` / `tenant123`
+- **Hunter**: `hunter@househaunters.com` / `hunter123`
+
 ## 📁 Project Structure
 
 ```
