@@ -9,6 +9,8 @@ import PageAddListing8 from "./PageAddListing8";
 import PageAddListing10 from "./PageAddListing10";
 import PageAddListingPackages from "./PageAddListingPackages";
 import PageAddListingPackageSelect from "./PageAddListingPackageSelect";
+import PageAddListingManageProperties from "./PageAddListingManageProperties";
+
 
 const Page = ({
   params,
@@ -43,8 +45,12 @@ const Page = ({
       ContentComponent = PageAddListingPackages;
       break;
     case 8:
+      ContentComponent = PageAddListingManageProperties;
+      break;
+    case 9:
       ContentComponent = PageAddListing10;
       break;
+
 
     default:
       ContentComponent = PageAddListingPackageSelect;

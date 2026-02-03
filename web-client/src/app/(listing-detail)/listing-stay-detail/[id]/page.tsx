@@ -620,7 +620,8 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         updatedAt: new Date().toISOString(),
         viewCount: 0,
         bookingCount: 0,
-        href: prop.id ? `/listing-stay-detail/${prop.id}` as Route : undefined, // Link if real ID exists
+        href: (prop.id ? `/listing-stay-detail/${prop.id}` : `/listing-stay-detail/${property.id}`) as Route,
+
         averageRating: 0, // No ratings yet
         reviewCount: 0
       } as StayDataType;

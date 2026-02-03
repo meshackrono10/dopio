@@ -12,6 +12,7 @@ const propertySchema = zod_1.z.object({
         lng: zod_1.z.number(),
         address: zod_1.z.string(),
         generalArea: zod_1.z.string(),
+        county: zod_1.z.string().optional(),
     }),
     amenities: zod_1.z.array(zod_1.z.string()),
     images: zod_1.z.array(zod_1.z.string()),
@@ -37,6 +38,21 @@ const propertySchema = zod_1.z.object({
     }).optional(),
     packageProperties: zod_1.z.array(zod_1.z.any()).optional(),
     listingPackage: zod_1.z.enum(['BRONZE', 'SILVER', 'GOLD']).optional(),
+}).refine((data) => {
+    if (data.packageProperties && data.packageProperties.length > 0 && data.location) {
+        const { generalArea, county } = data.location;
+        return data.packageProperties.every((prop) => {
+            const propArea = prop.areaName || prop.location?.generalArea || prop.generalArea;
+            const propCounty = prop.county || prop.location?.county;
+            const areaMatch = !propArea || propArea === generalArea;
+            const countyMatch = !propCounty || !county || propCounty === county;
+            return areaMatch && countyMatch;
+        });
+    }
+    return true;
+}, {
+    message: "All properties in a package must be in the same location (area and county).",
+    path: ["packageProperties"]
 });
 const getAllProperties = async (req, res) => {
     try {
@@ -65,6 +81,7 @@ const getAllProperties = async (req, res) => {
             const images = typeof prop.images === 'string' ? JSON.parse(prop.images) : prop.images;
             const videos = typeof prop.videos === 'string' ? JSON.parse(prop.videos) : prop.videos;
             const utilities = typeof prop.utilities === 'string' ? JSON.parse(prop.utilities) : prop.utilities;
+            const packageProperties = typeof prop.packageProperties === 'string' ? JSON.parse(prop.packageProperties) : prop.packageProperties;
             const isOwner = userId && prop.hunterId === userId;
             const hasPaid = userId && prop.bookings?.length > 0;
             const responseData = {
@@ -73,7 +90,8 @@ const getAllProperties = async (req, res) => {
                 amenities,
                 images,
                 videos,
-                utilities
+                utilities,
+                packageProperties
             };
             if (isOwner || hasPaid || prop.isExactLocation) {
                 return responseData;
@@ -147,6 +165,7 @@ const getPropertyById = async (req, res) => {
         const images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
         const videos = typeof property.videos === 'string' ? JSON.parse(property.videos) : property.videos;
         const utilities = typeof property.utilities === 'string' ? JSON.parse(property.utilities) : property.utilities;
+        const packageProperties = typeof property.packageProperties === 'string' ? JSON.parse(property.packageProperties) : property.packageProperties;
         const isOwner = userId && property.hunterId === userId;
         const hasPaid = userId && property.bookings?.length > 0;
         const responseData = {
@@ -156,6 +175,7 @@ const getPropertyById = async (req, res) => {
             images,
             videos,
             utilities,
+            packageProperties,
             rating: parseFloat(averageRating.toFixed(1)),
             reviewCount,
         };

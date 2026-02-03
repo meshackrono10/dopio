@@ -83,7 +83,12 @@ const StayCard: FC<StayCardProps> = ({
 
   const address = location?.generalArea || "Unknown Location";
   const bedrooms = layout === "bedsitter" || layout === "studio" ? 0 : parseInt(layout?.split("-")[0] || "0");
-  const href = `/listing-stay-detail/${id}` as Route;
+
+  // Clean ID for fallback navigation (remove _sub_ index if present)
+  const cleanId = id?.toString().split('_sub_')[0];
+  const href = data.href || (`/listing-stay-detail/${cleanId}` as Route);
+
+
   const saleOff = null;
   const isAds = false;
   const listingCategory = { name: layout || "Apartment" };
@@ -171,7 +176,15 @@ const StayCard: FC<StayCardProps> = ({
       data-nc-id="StayCard"
     >
       {renderSliderGallery()}
-      <Link href={href}>{renderContent()}</Link>
+      <Link
+        href={href}
+        onClick={() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      >
+        {renderContent()}
+      </Link>
+
     </div>
   );
 };

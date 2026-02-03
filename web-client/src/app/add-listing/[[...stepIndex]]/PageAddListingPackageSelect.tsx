@@ -30,10 +30,10 @@ const PACKAGES: PackageOption[] = [
     {
         tier: "SILVER",
         name: "Silver",
-        propertyCount: 3,
+        propertyCount: 2,
         description: "Great value for small portfolios.",
         features: [
-            "List 3 Properties",
+            "List 2 Properties",
             "Enhanced Visibility",
             "Priority Support",
             "Packaged Listing Display"
@@ -44,10 +44,10 @@ const PACKAGES: PackageOption[] = [
     {
         tier: "GOLD",
         name: "Gold",
-        propertyCount: 4,
+        propertyCount: 3,
         description: "Maximum exposure for serious haunters.",
         features: [
-            "List 4 Properties",
+            "List 3 Properties",
             "Premium Visibility",
             "Dedicated Agent Support",
             "Featured Listing Status",
@@ -56,6 +56,7 @@ const PACKAGES: PackageOption[] = [
         color: "from-yellow-400 to-yellow-600",
         icon: "la-city"
     }
+
 ];
 
 const PageAddListingPackageSelect = () => {
@@ -81,8 +82,8 @@ const PageAddListingPackageSelect = () => {
                             key={pkg.tier}
                             onClick={() => selectPackage(pkg.tier)}
                             className={`relative flex flex-col p-6 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-xl ${isSelected
-                                    ? "border-primary-600 bg-primary-50 dark:bg-primary-900/10 dark:border-primary-500"
-                                    : "border-neutral-200 dark:border-neutral-700 hover:border-primary-200 dark:hover:border-primary-800"
+                                ? "border-primary-600 bg-primary-50 dark:bg-primary-900/10 dark:border-primary-500"
+                                : "border-neutral-200 dark:border-neutral-700 hover:border-primary-200 dark:hover:border-primary-800"
                                 }`}
                         >
                             {isSelected && (
@@ -119,8 +120,8 @@ const PageAddListingPackageSelect = () => {
                             </div>
 
                             <div className={`mt-8 w-full py-3 rounded-xl font-semibold text-sm text-center transition-colors ${isSelected
-                                    ? "bg-primary-600 text-white"
-                                    : "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 group-hover:bg-primary-50"
+                                ? "bg-primary-600 text-white"
+                                : "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 group-hover:bg-primary-50"
                                 }`}>
                                 {isSelected ? "Selected" : "Select Plan"}
                             </div>

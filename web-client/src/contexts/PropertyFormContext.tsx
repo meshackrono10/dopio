@@ -298,19 +298,37 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
     const addPropertyToPackage = () => {
         const currentProperties = formData.packageProperties || [];
         const currentData = { ...formData };
+
+        // Remove recursion/package fields from the item being added
         delete currentData.packageProperties;
         delete currentData.selectedPackage;
         delete currentData.currentPropertyIndex;
 
+        // Validation: Ensure same location as the first property
+        if (currentProperties.length > 0) {
+            const firstProp = currentProperties[0];
+            if (currentData.areaName !== firstProp.areaName || currentData.county !== firstProp.county) {
+                throw new Error(`All properties in a package must be in the same location (${firstProp.areaName}, ${firstProp.county}).`);
+            }
+        }
+
         currentProperties.push(currentData);
         updateFormData('packageProperties', currentProperties);
+
 
         // Reset form for next property
         const newFormData = { ...initialFormData };
         newFormData.selectedPackage = formData.selectedPackage;
         newFormData.packageProperties = currentProperties;
         newFormData.currentPropertyIndex = currentProperties.length;
+
+        // Preserve location for the next property in the package
+        newFormData.county = formData.county;
+        newFormData.areaName = formData.areaName;
+        newFormData.coordinates = formData.coordinates;
+
         setFormData(newFormData);
+
     };
 
     const editPackageProperty = (index: number) => {
@@ -338,14 +356,17 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
 
         if (!tier) return false;
 
-        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 3 : 4;
+        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 2 : 3;
         return (properties.length + 1) >= requiredCount;
+
     };
 
     const getPackageProgress = () => {
         const tier = formData.selectedPackage;
         const properties = formData.packageProperties || [];
-        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 3 : tier === 'GOLD' ? 4 : 0;
+        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 2 : tier === 'GOLD' ? 3 : 0;
+
+
 
         return {
             current: properties.length,

@@ -11,6 +11,7 @@ const propertySchema = z.object({
         lng: z.number(),
         address: z.string(),
         generalArea: z.string(),
+        county: z.string().optional(),
     }),
     amenities: z.array(z.string()),
     images: z.array(z.string()),
@@ -36,7 +37,26 @@ const propertySchema = z.object({
     }).optional(),
     packageProperties: z.array(z.any()).optional(),
     listingPackage: z.enum(['BRONZE', 'SILVER', 'GOLD']).optional(),
+}).refine((data) => {
+    if (data.packageProperties && data.packageProperties.length > 0 && data.location) {
+        const { generalArea, county } = data.location;
+        return data.packageProperties.every((prop: any) => {
+            const propArea = prop.areaName || prop.location?.generalArea || prop.generalArea;
+            const propCounty = prop.county || prop.location?.county;
+
+            const areaMatch = !propArea || propArea === generalArea;
+            const countyMatch = !propCounty || !county || propCounty === county;
+
+            return areaMatch && countyMatch;
+        });
+    }
+    return true;
+}, {
+    message: "All properties in a package must be in the same location (area and county).",
+    path: ["packageProperties"]
 });
+
+
 
 export const getAllProperties = async (req: any, res: Response) => {
     try {

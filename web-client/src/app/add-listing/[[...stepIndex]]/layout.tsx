@@ -68,18 +68,20 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
   }
 
   const nextHref = (
-    index < 8 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
+    index < 9 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
   ) as Route;
   const backtHref = (
     index > 1 ? `/add-listing/${index - 1}` : `/add-listing/${1}`
   ) as Route;
 
+
   // Determine button text based on package state
   let nextBtnText = "Continue";
   // const { getPackageProgress, canPublishPackage, addPropertyToPackage } = usePropertyForm(); // Moved up
   const progress = getPackageProgress();
-  const isLastStep = index === 7;
+  const isLastStep = index === 8;
   const isPackageComplete = canPublishPackage();
+
 
   if (isLastStep) {
     if (isPackageComplete) {
@@ -94,12 +96,17 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
     try {
       // If package is not complete, add property and redirect to start
       if (!isPackageComplete) {
-        addPropertyToPackage();
-        toast.success(`Property added to package! Please add property ${progress.current + 2} of ${progress.required}.`);
-        router.push("/add-listing/2" as Route); // Go back to Step 2 (Property Details) for next property
+        try {
+          addPropertyToPackage();
+          toast.success(`Property added to package! Please add property ${progress.current + 2} of ${progress.required}.`);
+          router.push("/add-listing/2" as Route); // Go back to Step 2 (Property Details) for next property
+        } catch (err: any) {
+          toast.error(err.message || "Failed to add property to package.");
+        }
         setLoading(false);
         return;
       }
+
 
       // If package IS complete, publish everything
       const isEditing = !!formData.propertyId;
@@ -154,7 +161,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
 
       await refreshProperties();
       clearFormData();
-      router.push("/add-listing/8" as Route);
+      router.push("/add-listing/9" as Route);
+
     } catch (err: any) {
       console.error('[Layout] Publish error:', err);
       toast.error(err.message || "Failed to publish property");
@@ -173,6 +181,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
           <span className="text-lg text-neutral-500 dark:text-neutral-400">
             / 8
           </span>
+
           {progress.required > 1 && (
             <div className="block mt-2 px-3 py-1 bg-primary-50 dark:bg-primary-900/10 text-primary-600 dark:text-primary-400 text-sm font-medium rounded-full border border-primary-100 dark:border-primary-800 w-fit">
               {isPackageComplete ? "Package Complete" : `Property ${progress.current + 1} of ${progress.required}`}
@@ -186,15 +195,16 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         {/* --------------------- */}
         <div className="flex justify-end space-x-5">
           <ButtonSecondary href={backtHref}>Go back</ButtonSecondary>
-          {index === 7 ? (
+          {index === 8 ? (
             <ButtonPrimary onClick={handlePublish} loading={loading}>
               {nextBtnText}
             </ButtonPrimary>
-          ) : index === 8 ? (
+          ) : index === 9 ? (
             <ButtonPrimary href={"/haunter-dashboard?tab=listings" as Route}>
               Go to Dashboard
             </ButtonPrimary>
           ) : (
+
             <ButtonPrimary
               onClick={() => {
                 // Step 1: Package Selection

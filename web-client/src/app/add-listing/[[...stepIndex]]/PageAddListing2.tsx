@@ -51,22 +51,41 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
     updateFormData('unitNumber', e.target.value);
   };
 
+  const isLocked = formData.packageProperties && formData.packageProperties.length > 0;
+
   return (
     <>
       <h2 className="text-2xl font-semibold">Property Location</h2>
       <div className="w-14 border-b border-neutral-200 dark:border-neutral-700"></div>
+
+      {isLocked && (
+        <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-xl border border-primary-100 dark:border-primary-900/30 flex items-start space-x-3">
+          <div className="text-primary-600 mt-0.5 text-xl">
+            <i className="las la-info-circle"></i>
+          </div>
+          <div className="text-sm text-primary-800 dark:text-primary-200">
+            <p className="font-semibold mb-1">Fixed Location</p>
+            <p>This property is part of a {formData.selectedPackage} package. All properties in this package must be located in <strong>{formData.areaName}, {formData.county}</strong>.</p>
+          </div>
+        </div>
+      )}
+
       {/* FORM */}
       <div className="space-y-8">
-        <ButtonSecondary>
-          <MapPinIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
-          <span className="ml-3">Use current location</span>
-        </ButtonSecondary>
+        {!isLocked && (
+          <ButtonSecondary>
+            <MapPinIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
+            <span className="ml-3">Use current location</span>
+          </ButtonSecondary>
+        )}
 
         {/* ITEM */}
         <FormItem label="County">
           <Select
             value={formData.county}
             onChange={handleCountyChange}
+            disabled={isLocked}
+            className={isLocked ? "bg-neutral-100 dark:bg-neutral-800 opacity-70 cursor-not-allowed" : ""}
           >
             <option value="Nairobi">Nairobi County</option>
             <option value="Kiambu">Kiambu County</option>
@@ -77,12 +96,14 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
 
         <FormItem
           label="Area/Neighborhood"
-          desc="Type to search for your specific area (e.g., Gate A Juja, Mathare North, Area 4)"
+          desc={isLocked ? "Area is locked for package consistency" : "Type to search for your specific area (e.g., Gate A Juja, Mathare North, Area 4)"}
         >
-          <LocationAutocomplete
-            onLocationSelect={handleLocationSelect}
-            defaultValue={formData.areaName}
-          />
+          <div className={isLocked ? "pointer-events-none opacity-70" : ""}>
+            <LocationAutocomplete
+              onLocationSelect={handleLocationSelect}
+              defaultValue={formData.areaName}
+            />
+          </div>
         </FormItem>
 
         <div>
@@ -94,7 +115,7 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
             }
           </span>
           <div className="mt-4">
-            <div className="aspect-w-5 aspect-h-5 sm:aspect-h-3">
+            <div className={`aspect-w-5 aspect-h-5 sm:aspect-h-3 ${isLocked ? "grayscale-[50%] opacity-80" : ""}`}>
               <div className="rounded-xl overflow-hidden">
                 <GoogleMapReact
                   bootstrapURLKeys={{
@@ -103,6 +124,12 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
                   yesIWantToUseGoogleMapApiInternals
                   defaultZoom={13}
                   center={mapCenter}
+                  options={{
+                    draggable: !isLocked,
+                    zoomControl: !isLocked,
+                    scrollwheel: !isLocked,
+                    disableDefaultUI: isLocked,
+                  }}
                 >
                   <LocationMarker lat={mapCenter.lat} lng={mapCenter.lng} />
                 </GoogleMapReact>
@@ -113,6 +140,7 @@ const PageAddListing2: FC<PageAddListing2Props> = () => {
       </div>
     </>
   );
+
 };
 
 export default PageAddListing2;
