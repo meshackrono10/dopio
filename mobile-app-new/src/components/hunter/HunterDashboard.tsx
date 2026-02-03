@@ -3,26 +3,30 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useBookings } from '../../contexts/BookingContext';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import DashboardTabs from '../common/DashboardTabs';
 import WalletCard from '../common/WalletCard';
 
 interface HunterDashboardProps {
-    onNavigateToRequests: () => void;
     onNavigateToBookings: () => void;
     onNavigateToChat: (id: string) => void;
 }
 
-const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToRequests, onNavigateToBookings, onNavigateToChat }) => {
+const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToBookings, onNavigateToChat }) => {
     const { isDark } = useTheme();
+    const { user } = useAuth();
+    const { getBookingsForUser, confirmMeetup, markDone, respondToIssue } = useBookings();
     const [activeTab, setActiveTab] = React.useState('overview');
+
+    const myBookings = getBookingsForUser(user?.id || '', 'hunter');
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: 'grid' },
         { id: 'earnings', label: 'Earnings', icon: 'wallet' },
         { id: 'reviews', label: 'Reviews', icon: 'star' },
-        { id: 'requests', label: 'Requests', icon: 'search' },
     ];
 
     const StatCard = ({ label, value, icon, color }: any) => (
@@ -40,7 +44,7 @@ const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToRequests,
     const renderOverview = () => (
         <>
             <View style={styles.statsGrid}>
-                <StatCard label="Active Requests" value="12" icon="search" color={colors.primary[600]} />
+                <StatCard label="Active Listings" value="8" icon="home" color={colors.primary[600]} />
                 <StatCard label="Confirmed" value="5" icon="calendar" color={colors.success} />
                 <StatCard label="Total Earned" value="KES 45k" icon="wallet" color={colors.secondary[500]} />
                 <StatCard label="Avg. Rating" value="4.9" icon="star" color="#F59E0B" />
@@ -49,11 +53,8 @@ const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToRequests,
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                        Active Search Requests
+                        Recently Listed
                     </Text>
-                    <TouchableOpacity onPress={onNavigateToRequests}>
-                        <Text style={[styles.seeAll, { color: colors.primary[600] }]}>See All</Text>
-                    </TouchableOpacity>
                 </View>
 
                 <Card style={[styles.requestCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
@@ -63,17 +64,13 @@ const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToRequests,
                                 2BR Apartment in Westlands
                             </Text>
                             <Text style={[styles.requestBudget, { color: colors.primary[600] }]}>
-                                Budget: KES 45,000 - 60,000
+                                KES 45,000 / mo
                             </Text>
-                        </View>
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>Urgent</Text>
                         </View>
                     </View>
                     <Text style={[styles.requestDesc, { color: isDark ? colors.neutral[400] : colors.neutral[600] }]}>
-                        Looking for a modern apartment with a balcony and high-speed internet. Must be near the main road.
+                        Modern apartment with a balcony and high-speed internet. Located in a secure neighborhood.
                     </Text>
-                    <Button size="sm" onPress={() => onNavigateToRequests()}>Submit Bid</Button>
                 </Card>
             </View>
 
@@ -87,23 +84,72 @@ const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToRequests,
                     </TouchableOpacity>
                 </View>
 
-                <Card style={[styles.viewingCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
-                    <View style={styles.viewingTime}>
-                        <Text style={styles.viewingDay}>15</Text>
-                        <Text style={styles.viewingMonth}>JAN</Text>
+                {myBookings.map((booking) => {
+                    const today = new Date();
+                    const bDate = new Date(booking.scheduledDate);
+
+                    const isToday = today.getFullYear() === bDate.getFullYear() &&
+                        today.getMonth() === bDate.getMonth() &&
+                        today.getDate() === bDate.getDate();
+
+                    const canMeetup = isToday && !booking.hunterMetConfirmed && !booking.physicalMeetingConfirmed;
+                    const canMarkDone = booking.physicalMeetingConfirmed && !booking.hunterDone;
+                    const canRespondIssue = booking.issueCreated;
+
+                    const day = bDate.getDate();
+                    const month = bDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+
+                    return (
+                        <Card key={booking.id} style={[styles.viewingCard, { backgroundColor: isDark ? colors.neutral[800] : 'white', marginBottom: spacing.md }]}>
+                            <View style={styles.viewingHeader}>
+                                <View style={styles.viewingTime}>
+                                    <Text style={styles.viewingDay}>{day}</Text>
+                                    <Text style={styles.viewingMonth}>{month}</Text>
+                                </View>
+                                <View style={styles.viewingInfo}>
+                                    <Text style={[styles.viewingTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
+                                        {booking.propertyTitle}
+                                    </Text>
+                                    <Text style={[styles.viewingDetail, { color: colors.neutral[500] }]}>
+                                        {booking.scheduledTime} • Client: {booking.tenantName}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity style={styles.viewingAction} onPress={() => onNavigateToChat(booking.tenantId)}>
+                                    <Ionicons name="chatbubble-outline" size={20} color={colors.primary[600]} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.viewingControls}>
+                                {canMeetup && (
+                                    <Button size="sm" style={styles.controlBtn} onPress={() => confirmMeetup(booking.id)}>
+                                        Confirm Meetup
+                                    </Button>
+                                )}
+                                {canMarkDone && (
+                                    <Button size="sm" style={styles.controlBtn} onPress={() => markDone(booking.id)}>
+                                        Done
+                                    </Button>
+                                )}
+                                {canRespondIssue && (
+                                    <View style={styles.row}>
+                                        <Button size="sm" style={[styles.controlBtn, { flex: 1, marginRight: spacing.xs }]} onPress={() => respondToIssue(booking.id, 'accept')}>
+                                            Accept Issue
+                                        </Button>
+                                        <Button size="sm" variant="outline" style={[styles.controlBtn, { flex: 1 }]} onPress={() => respondToIssue(booking.id, 'deny')}>
+                                            Deny
+                                        </Button>
+                                    </View>
+                                )}
+                            </View>
+                        </Card>
+                    );
+                })}
+                {myBookings.length === 0 && (
+                    <View style={styles.emptyState}>
+                        <Ionicons name="calendar-outline" size={48} color={colors.neutral[300]} />
+                        <Text style={[styles.emptyText, { color: colors.neutral[500] }]}>No upcoming viewings</Text>
                     </View>
-                    <View style={styles.viewingInfo}>
-                        <Text style={[styles.viewingTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                            Modern 2BR Kasarani
-                        </Text>
-                        <Text style={[styles.viewingDetail, { color: colors.neutral[500] }]}>
-                            10:00 AM • Client: Jane Doe
-                        </Text>
-                    </View>
-                    <TouchableOpacity style={styles.viewingAction} onPress={() => onNavigateToChat('tenant-1')}>
-                        <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
-                    </TouchableOpacity>
-                </Card>
+                )}
             </View>
         </>
     );
@@ -194,14 +240,6 @@ const HunterDashboard: React.FC<HunterDashboardProps> = ({ onNavigateToRequests,
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'earnings' && renderEarnings()}
             {activeTab === 'reviews' && renderReviews()}
-            {activeTab === 'requests' && (
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? colors.text.dark : colors.text.light, marginBottom: spacing.md }]}>
-                        Search Requests
-                    </Text>
-                    <Button onPress={onNavigateToRequests}>View All Requests</Button>
-                </View>
-            )}
         </ScrollView>
     );
 };
@@ -342,6 +380,32 @@ const styles = StyleSheet.create({
     },
     viewingAction: {
         padding: spacing.xs,
+    },
+    viewingHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        width: '100%',
+    },
+    viewingControls: {
+        marginTop: spacing.md,
+        width: '100%',
+    },
+    controlBtn: {
+        width: '100%',
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    emptyState: {
+        alignItems: 'center',
+        padding: spacing.xl,
+        gap: spacing.md,
+    },
+    emptyText: {
+        ...typography.body,
+        textAlign: 'center',
     },
     transactionCard: {
         flexDirection: 'row',

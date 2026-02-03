@@ -50,7 +50,7 @@ export const requestAlternative = async (req: any, res: Response) => {
             'Alternative Property Requested',
             `${booking.tenant.name} would like to see an alternative property. Original payment remains in escrow.`,
             'ALTERNATIVE_REQUESTED',
-            { bookingId }
+            `/bookings/${bookingId}`
         );
 
         res.json({
@@ -144,11 +144,7 @@ export const offerAlternative = async (req: any, res: Response) => {
             'Alternative Property Offered',
             `${booking.hunter.name} has offered you an alternative property to view.`,
             'ALTERNATIVE_OFFERED',
-            {
-                bookingId,
-                viewingRequestId: viewingRequest.id,
-                propertyId,
-            }
+            `/viewing-requests/${viewingRequest.id}`
         );
 
         res.json({
@@ -258,10 +254,7 @@ export const acceptAlternative = async (req: any, res: Response) => {
             'Alternative Accepted',
             `${booking.tenant.name} has accepted the alternative property. Escrow transferred to new booking.`,
             'ALTERNATIVE_ACCEPTED',
-            {
-                oldBookingId: bookingId,
-                newBookingId: newBooking.id,
-            }
+            `/bookings/${newBooking.id}`
         );
 
         res.json({
@@ -341,7 +334,7 @@ export const declineAlternative = async (req: any, res: Response) => {
             'Refund Request',
             `Tenant declined alternative property and requests refund for booking ${bookingId}`,
             'REFUND_REQUESTED',
-            { bookingId }
+            `/admin/disputes`
         );
 
         res.json({

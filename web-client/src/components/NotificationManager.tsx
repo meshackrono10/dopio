@@ -1,133 +1,98 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ButtonPrimary from "@/shared/ButtonPrimary";
 import ButtonSecondary from "@/shared/ButtonSecondary";
+import api from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/Toast";
 
 export interface Notification {
     id: string;
     title: string;
     message: string;
-    type: "info" | "success" | "warning" | "error";
+    type: string;
     timestamp: string;
     read: boolean;
     actionUrl?: string;
+    createdAt?: string;
 }
 
 interface NotificationManagerProps {
     userRole: "admin" | "tenant" | "hunter";
 }
 
-// Mock notifications based on user role
-const getMockNotifications = (role: string): Notification[] => {
-    const baseNotifications: Notification[] = [
-        {
-            id: "n1",
-            title: "Welcome!",
-            message: "Welcome to House Haunters platform. Complete your profile to get started.",
-            type: "info",
-            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            read: false,
-        },
-    ];
-
-    if (role === "tenant") {
-        return [
-            ...baseNotifications,
-            {
-                id: "n2",
-                title: "New Property Match",
-                message: "We found 3 new properties matching your search criteria in Westlands.",
-                type: "success",
-                timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-                read: false,
-                actionUrl: "/listing-stay",
-            },
-            {
-                id: "n3",
-                title: "Viewing Confirmed",
-                message: "Your property viewing at Kilimani Apartments is confirmed for tomorrow at 2 PM.",
-                type: "info",
-                timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-                read: true,
-            },
-        ];
-    }
-
-    if (role === "hunter") {
-        return [
-            ...baseNotifications,
-            {
-                id: "n2",
-                title: "New Search Request",
-                message: "A tenant is looking for a 2BR apartment in your service area.",
-                type: "info",
-                timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-                read: false,
-                actionUrl: "/request-search",
-            },
-            {
-                id: "n3",
-                title: "Bid Accepted!",
-                message: "Your bid for Search Request #SR-1234 has been accepted.",
-                type: "success",
-                timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-                read: false,
-            },
-        ];
-    }
-
-    if (role === "admin") {
-        return [
-            ...baseNotifications,
-            {
-                id: "n2",
-                title: "New Hunter Verification",
-                message: "12 new house hunter verifications pending your review.",
-                type: "warning",
-                timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-                read: false,
-                actionUrl: "/admin/verifications",
-            },
-            {
-                id: "n3",
-                title: "Dispute Filed",
-                message: "A new dispute has been filed for Request #SR-5678.",
-                type: "error",
-                timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-                read: false,
-                actionUrl: "/admin/disputes",
-            },
-        ];
-    }
-
-    return baseNotifications;
-};
-
 export default function NotificationManager({ userRole }: NotificationManagerProps) {
-    const [notifications, setNotifications] = useState<Notification[]>(
-        getMockNotifications(userRole)
-    );
+    const { isAuthenticated } = useAuth();
+    const { showToast } = useToast();
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<"all" | "unread">("all");
+
+    const fetchNotifications = useCallback(async () => {
+        if (!isAuthenticated) return;
+        setLoading(true);
+        try {
+            const response = await api.get("/notifications");
+            setNotifications(response.data);
+        } catch (error) {
+            console.error("Failed to fetch notifications", error);
+            showToast("error", "Failed to load notifications");
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, showToast]);
+
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     const unreadCount = notifications.filter((n) => !n.read).length;
 
-    const markAsRead = (id: string) => {
-        setNotifications((prev) =>
-            prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-        );
+    const markAsRead = async (id: string) => {
+        try {
+            await api.patch(`/notifications/${id}/mark-read`);
+            setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+            );
+        } catch (error) {
+            console.error("Failed to mark as read", error);
+            showToast("error", "Action failed");
+        }
     };
 
-    const deleteNotification = (id: string) => {
-        setNotifications((prev) => prev.filter((n) => n.id !== id));
+    const deleteNotification = async (id: string) => {
+        try {
+            await api.delete(`/notifications/${id}`);
+            setNotifications((prev) => prev.filter((n) => n.id !== id));
+            showToast("success", "Notification deleted");
+        } catch (error) {
+            console.error("Failed to delete notification", error);
+            showToast("error", "Delete failed");
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    const markAllAsRead = async () => {
+        try {
+            await api.patch("/notifications/mark-all-read");
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            showToast("success", "All marked as read");
+        } catch (error) {
+            console.error("Failed to mark all as read", error);
+            showToast("error", "Action failed");
+        }
     };
 
-    const deleteAll = () => {
-        setNotifications([]);
+    const deleteAll = async () => {
+        if (!window.confirm("Are you sure you want to delete all notifications?")) return;
+        try {
+            await api.delete("/notifications/delete-all");
+            setNotifications([]);
+            showToast("success", "All notifications deleted");
+        } catch (error) {
+            console.error("Failed to delete all", error);
+            showToast("error", "Action failed");
+        }
     };
 
     const filteredNotifications = filter === "unread"
@@ -146,19 +111,28 @@ export default function NotificationManager({ userRole }: NotificationManagerPro
         return "Just now";
     };
 
-    const typeColors = {
-        info: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-        success: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800",
-        warning: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800",
-        error: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800",
+    const typeColors: Record<string, string> = {
+        'RESCHEDULE_REQUEST': "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+        'BOOKING_REMINDER': "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+        'PAYMENT_RELEASED': "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800",
+        'SUCCESS': "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800",
+        'INFO': "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+        'WARNING': "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+        'ERROR': "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800",
     };
 
-    const typeIcons = {
-        info: "las la-info-circle",
-        success: "las la-check-circle",
-        warning: "las la-exclamation-triangle",
-        error: "las la-exclamation-circle",
+    const typeIcons: Record<string, string> = {
+        'RESCHEDULE_REQUEST': "las la-clock",
+        'BOOKING_REMINDER': "las la-bell",
+        'PAYMENT_RELEASED': "las la-money-bill-wave",
+        'SUCCESS': "las la-check-circle",
+        'INFO': "las la-info-circle",
+        'WARNING': "las la-exclamation-triangle",
+        'ERROR': "las la-exclamation-circle",
     };
+
+    const getColor = (type: string) => typeColors[type] || typeColors['INFO'];
+    const getIcon = (type: string) => typeIcons[type] || typeIcons['INFO'];
 
     return (
         <div className="nc-NotificationManager bg-white dark:bg-neutral-800 rounded-2xl p-6">
@@ -219,11 +193,11 @@ export default function NotificationManager({ userRole }: NotificationManagerPro
                     filteredNotifications.map((notification) => (
                         <div
                             key={notification.id}
-                            className={`${typeColors[notification.type]} border-2 rounded-xl p-4 transition-all ${!notification.read ? "shadow-md" : "opacity-70"
+                            className={`${getColor(notification.type)} border-2 rounded-xl p-4 transition-all ${!notification.read ? "shadow-md" : "opacity-70"
                                 }`}
                         >
                             <div className="flex items-start gap-3">
-                                <i className={`${typeIcons[notification.type]} text-2xl mt-0.5`}></i>
+                                <i className={`${getIcon(notification.type)} text-2xl mt-0.5`}></i>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex-1">

@@ -8,7 +8,7 @@ export interface CustomLink {
   targetBlank?: boolean;
 }
 
-// ########## HOUSE HAUNTERS TYPES ######## //
+// ########## DAPIO TYPES ######## //
 
 // Property Layout Options
 export type PropertyLayout =
@@ -27,18 +27,19 @@ export type BookingStatus =
   | "pending"
   | "pending_payment"
   | "confirmed"
+  | "in_progress"
   | "completed"
   | "cancelled"
   | "disputed";
 
 // Listing Status
-export type ListingStatus = "pending" | "approved" | "rejected" | "inactive";
+export type ListingStatus = "pending" | "approved" | "rejected" | "inactive" | "rented" | "available" | "locked" | "pending_approval";
 
 // Verification Status
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
-// House Haunter (Agent) Type
-export interface HouseHaunter {
+// Agent Type
+export interface Agent {
   id: string | number;
   name: string;
   phone: string;
@@ -80,13 +81,18 @@ export interface PropertyLocation {
 export interface PropertyUtilities {
   waterIncluded: boolean;
   waterCost?: string; // e.g., "KES 500/month"
-  electricityType: "prepaid" | "postpaid" | "included";
+  electricityType: "prepaid" | "postpaid" | "included" | "shared";
   electricityCost?: string;
+  garbageIncluded?: boolean;
+  garbageCost?: string;
+  securityIncluded?: boolean;
+  securityCost?: string;
   otherUtilities?: string[];
 }
 
 // Neighborhood Data Type (Phase 2)
 export interface NeighborhoodData {
+  neighborhoodType?: "Court" | "Estate" | "Apartment Block" | "Standalone" | "Gated Community" | string;
   safetyRating: number; // 1-5 stars
   noiseLevel: "quiet" | "moderate" | "noisy";
   internetRating: number; // 1-5 stars
@@ -118,7 +124,7 @@ export interface PropertyListing {
   utilities: PropertyUtilities;
   images: (string | StaticImageData)[]; // Minimum 8 photos
   videoUrl: string; // Mandatory video tour
-  houseHaunter: HouseHaunter;
+  agent: Agent;
   viewingPackages: ViewingPackage[];
   status: ListingStatus;
   createdAt: string;
@@ -154,6 +160,10 @@ export interface PropertyListing {
   author?: AuthorType;
   listingCategory?: TaxonomyType;
   href?: Route<string>;
+
+  // Package info
+  listingPackage?: 'BRONZE' | 'SILVER' | 'GOLD' | string;
+  packageProperties?: any;
 }
 
 
@@ -201,7 +211,7 @@ export interface Booking {
   tenantName: string;
   tenantPhone: string;
   haunterId: string | number;
-  haunter?: HouseHaunter;
+  agent?: Agent;
   package: ViewingPackage;
   status: BookingStatus;
   totalAmount: number;
@@ -374,203 +384,6 @@ export interface ViewingChecklist {
   updatedAt: string;
 }
 
-// Custom Search Request Types
-export type SearchRequestStatus =
-  | 'draft'
-  | 'pending_payment'
-  | 'pending_assignment'
-  | 'in_progress'
-  | 'pending_review'
-  | 'completed'
-  | 'cancelled'
-  | 'forfeited';
-
-export type ServiceTier = 'standard' | 'premium' | 'urgent';
-
-// Bidding System Types
-export interface Bid {
-  id: string | number;
-  haunterId: string | number;
-  haunterName: string;
-  haunterAvatar?: string;
-  hunterRating: number;
-  hunterSuccessRate: number; // 0-100%
-
-  // Bid Details
-  price: number; // KES
-  timeframe: number; // hours
-  bonuses: string[]; // e.g., ["1 extra house", "Video tours included"]
-  message?: string;
-
-  // Status
-  status: 'pending' | 'selected' | 'rejected';
-  submittedAt: string;
-}
-
-export interface PropertyEvidence {
-  id?: string | number;
-  propertyId?: string | number; // If uploading from existing listing
-  photos: string[]; // URLs
-  videos: string[]; // URLs
-  description: string;
-  generalArea: string; // General neighborhood for privacy
-  location?: {
-    neighborhoodCircle: { lat: number; lng: number; radius: number };
-    meetingPoint?: string;
-  };
-  matchScore: number;
-  uploadedAt: string;
-}
-
-export interface MeetingPoint {
-  id: string;
-  name: string; // e.g., "Shell Petrol Station, Syokimau"
-  description?: string;
-  lat?: number;
-  lng?: number;
-  instructions?: string;
-  suggestedTime?: string;
-  sharedAt?: string;
-  status?: 'pending' | 'confirmed';
-}
-
-export interface TimeframeExtension {
-  id: string | number;
-  requestedBy: 'hunter' | 'tenant';
-  hours: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: string;
-  respondedAt?: string;
-}
-
-export interface AdminReview {
-  reviewerId: string | number;
-  reviewerName: string;
-  decision: 'refund_tenant' | 'pay_hunter' | 'split_payment';
-  reasoning: string;
-  evidenceAnalysis: {
-    briefMatch: boolean;
-    timelineMet: boolean;
-    qualityAcceptable: boolean;
-  };
-  reviewedAt: string;
-}
-
-export interface SearchRequest {
-  id: string | number;
-  tenantId: string | number;
-  tenantName: string;
-  tenantPhone: string;
-  tenantAvatar?: string;
-  status: SearchRequestStatus;
-
-  // Location & Budget
-  preferredAreas: string[];
-  minRent: number;
-  maxRent: number;
-  moveInDate?: string;
-  leaseDuration: string;
-
-  // Property Requirements
-  propertyType: PropertyLayout;
-  bathrooms: number;
-  furnished: 'yes' | 'no' | 'semi' | 'flexible';
-  petFriendly: boolean;
-
-  // Amenities
-  parkingRequired: boolean;
-  parkingSpaces?: number;
-  securityFeatures: string[];
-  utilitiesIncluded: string[];
-  amenities: string[];
-
-  // Additional
-  mustHaveFeatures: string[];
-  niceToHaveFeatures: string[];
-  dealBreakers: string[];
-  additionalNotes?: string;
-
-  // Service
-  serviceTier: ServiceTier;
-  numberOfOptions: number; // 1, 2, or 3 properties
-  depositAmount: number;
-  deadline: string;
-
-  // Assignment
-  haunterId?: string | number;
-  haunterName?: string;
-  haunterAvatar?: string;
-  claimedAt?: string;
-
-  // Bidding
-  bidsOpen: boolean;
-  bidsCloseAt: string;
-  bids: Bid[];
-  selectedBidId?: string | number;
-
-  // Timeframe
-  agreedTimeframe?: number; // hours
-  timeframeStartedAt?: string;
-  timeframeExpiresAt?: string;
-  timeframeExtensions: TimeframeExtension[];
-
-  // Delivery
-  uploadedEvidence: PropertyEvidence[];
-  evidenceSubmittedAt?: string;
-
-  // Meeting & Viewing
-  meetingPoint?: MeetingPoint;
-  meetingPoints?: MeetingPoint[];
-  viewingConfirmed: boolean;
-  viewingConfirmedAt?: string;
-
-  // Refund/Dispute
-  refundRequested: boolean;
-  refundRequestedAt?: string;
-  refundReason?: string;
-  disputeReason?: string;
-  adminReview?: AdminReview;
-
-  // Properties (Deprecated - keeping for compatibility)
-  submittedProperties: string[]; // property IDs
-  submittedPropertiesData?: PropertyListing[];
-  acceptedPropertyId?: string | number;
-
-  // Payment
-  depositPaid: boolean;
-  depositPaidAt?: string;
-  mpesaTransactionId?: string;
-  paymentReleased: boolean;
-  paymentReleasedAt?: string;
-
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-  reviewedAt?: string;
-}
-
-export interface SearchRequestProperty {
-  id: string | number;
-  searchRequestId: string | number;
-  propertyId: string | number;
-  property?: PropertyListing;
-  submittedBy: string | number; // haunterId
-  matchScore: number; // 0-100
-  matchNotes: string; // Why this matches
-  matchDetails: {
-    locationMatch: boolean;
-    budgetMatch: boolean;
-    typeMatch: boolean;
-    mustHavesMatch: boolean;
-    dealBreakersAbsent: boolean;
-  };
-  submittedAt: string;
-  reviewedAt?: string;
-  accepted: boolean;
-  rejectionReason?: string;
-}
 
 
 // ########## LEGACY TYPES (Keep for compatibility during migration) ######## //

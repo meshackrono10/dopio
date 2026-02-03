@@ -1,8 +1,16 @@
 "use client";
 
 import React, { FC, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import AnyReactComponent from "@/components/AnyReactComponent/AnyReactComponent";
-import GoogleMapReact from "google-map-react";
+const GoogleMapReact = dynamic(() => import("google-map-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+      <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  )
+});
 import { DEMO_STAY_LISTINGS } from "@/data/listings";
 import ButtonClose from "@/shared/ButtonClose";
 import Checkbox from "@/shared/Checkbox";

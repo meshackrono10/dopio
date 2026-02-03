@@ -86,7 +86,7 @@ export default function SignupPage() {
           <div className="text-center mb-8">
             <h1 className="text-3xl lg:text-4xl font-bold mb-2">Create Account</h1>
             <p className="text-neutral-600 dark:text-neutral-300">
-              Join House Haunters and start your journey
+              Join Dapio and start your journey
             </p>
           </div>
 

@@ -62,7 +62,7 @@ export default function ReviewPage() {
                                     Modern 2-Bedroom Apartment in Kasarani
                                 </p>
                                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                                    House Haunter: John Kamau • Date: Dec 18, 2025
+                                    Agent: John Kamau • Date: Dec 18, 2025
                                 </p>
                             </div>
 
@@ -84,7 +84,7 @@ export default function ReviewPage() {
                             <StarRating
                                 value={professionalism}
                                 onChange={setProfilessionalism}
-                                label="Professionalism (House Haunter behavior)"
+                                label="Professionalism (Agent behavior)"
                             />
 
                             {/* Comment */}

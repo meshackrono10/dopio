@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/services/api";
 import ViewingRequestCard from "@/components/ViewingRequestCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,18 +10,19 @@ import { useToast } from "@/components/Toast";
 import Skeleton from "@/shared/Skeleton";
 
 export default function HunterViewingRequestsTab() {
-    const { user } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const { showToast } = useToast();
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         try {
             const response = await api.get("/viewing-requests");
             // Filter for requests where the hunter owns the property
             const hunterRequests = response.data.filter(
                 (r: any) => r.property.hunterId === user?.id
             );
+            console.log("DEBUG: HunterViewingRequestsTab - fetched requests:", hunterRequests.map((r: any) => ({ id: r.id, status: r.status, date: r.proposedDates })));
             setRequests(hunterRequests);
         } catch (error) {
             console.error("Failed to fetch viewing requests:", error);
@@ -29,13 +30,13 @@ export default function HunterViewingRequestsTab() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.id, showToast]);
 
     useEffect(() => {
-        if (user) {
+        if (isAuthenticated) {
             fetchRequests();
         }
-    }, [user]);
+    }, [isAuthenticated, fetchRequests]);
 
     if (loading) {
         return (
@@ -53,7 +54,7 @@ export default function HunterViewingRequestsTab() {
                 <div className="text-6xl mb-4">📭</div>
                 <h3 className="text-xl font-semibold mb-2">No Viewing Requests</h3>
                 <p className="text-neutral-500">
-                    You haven't received any viewing requests yet.
+                    You haven&apos;t received any viewing requests yet.
                 </p>
             </div>
         );
@@ -62,8 +63,10 @@ export default function HunterViewingRequestsTab() {
     const pendingRequests = requests.filter(r =>
         (r.status === 'PENDING' || r.status === 'COUNTERED') && r.paymentStatus === 'ESCROW'
     );
+    const upcomingRequests = requests.filter(r => r.status === 'ACCEPTED');
     const reviewedRequests = requests.filter(r =>
-        !((r.status === 'PENDING' || r.status === 'COUNTERED') && r.paymentStatus === 'ESCROW')
+        r.status === 'REJECTED' || r.status === 'CANCELLED' || r.status === 'COMPLETED' ||
+        ((r.status === 'PENDING' || r.status === 'COUNTERED') && r.paymentStatus !== 'ESCROW')
     );
 
     return (
@@ -81,6 +84,25 @@ export default function HunterViewingRequestsTab() {
                     </div>
                     <div className="space-y-4">
                         {pendingRequests.map((request) => (
+                            <ViewingRequestCard
+                                key={request.id}
+                                request={request}
+                                userRole="HUNTER"
+                                onUpdate={fetchRequests}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Upcoming Viewings */}
+            {upcomingRequests.length > 0 && (
+                <div>
+                    <h2 className="text-2xl font-semibold mb-4">
+                        📅 Upcoming Viewings ({upcomingRequests.length})
+                    </h2>
+                    <div className="space-y-4">
+                        {upcomingRequests.map((request) => (
                             <ViewingRequestCard
                                 key={request.id}
                                 request={request}

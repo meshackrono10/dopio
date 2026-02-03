@@ -24,14 +24,11 @@ const SectionHero2ArchivePage: FC<SectionHero2ArchivePageProps> = ({
           <div className="w-screen right-10 md:right-32 inset-y-0 absolute bg-primary-500"></div>
           <div className="relative max-w-3xl inline-flex flex-shrink-0 flex-col items-start py-16 sm:py-20 space-y-8 sm:space-y-10 text-white">
             <h2 className="font-medium text-4xl md:text-5xl xl:text-7xl leading-[110%]">
-              Nairobi, Kenya
+              Nairobi
             </h2>
             <div className="flex items-center text-base md:text-lg ">
               <i className="text-2xl las la-map-marked"></i>
-              <span className="ml-2.5">Jappan </span>
-              <span className="mx-5"></span>
-              <i className="text-2xl las la-home"></i>
-              <span className="ml-2.5">112 properties</span>
+              <span className="ml-2.5">Kenya </span>
             </div>
           </div>
         </div>

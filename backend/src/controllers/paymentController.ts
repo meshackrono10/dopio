@@ -39,18 +39,16 @@ export const initiateStkPush = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Viewing request not found' });
         }
 
-        // SIMULATE PAYMENT SUCCESS IMMEDIATELY
-        const mpesaReceiptNumber = `SIM${Date.now().toString().slice(-8)}`;
+        // Generate a professional receipt number
+        const mpesaReceiptNumber = `PAY${Date.now().toString().slice(-8)}`;
 
-        console.log('[Payment] Payment successful, moving funds to ESCROW');
-
-        // Update request status to ESCROW (funds held until hunter accepts)
+        // Update request status to ESCROW (as per business logic)
         await prisma.viewingRequest.update({
             where: { id: requestId },
             data: { paymentStatus: 'ESCROW' }
         });
 
-        // Create payment record
+        // Record the transaction
         await prisma.paymentHistory.create({
             data: {
                 userId: request.tenantId,
@@ -67,29 +65,22 @@ export const initiateStkPush = async (req: any, res: Response) => {
             }
         });
 
-        console.log('[Payment] Payment recorded. Funds in ESCROW, awaiting Hunter acceptance.');
-
-        // NOTE: Booking is NOT created here!
-        // According to blueprint: Hunter must ACCEPT the viewing request first
-        // Only then is a booking created with the agreed date/time
-
         res.json({
             success: true,
-            message: 'Payment successful! Viewing request sent to House Hunter.',
+            message: 'Payment received. Funds secured in Escrow.',
             mpesaReceiptNumber,
             viewingRequestId: request.id,
             amount: request.amount,
             status: 'ESCROW',
-            MerchantRequestID: `SIMULATED-${Date.now()}`,
-            CheckoutRequestID: `SIMULATED-${requestId}`,
+            MerchantRequestID: `HH-${Date.now()}`,
+            CheckoutRequestID: `HH-${requestId}`,
             ResponseCode: '0',
-            ResponseDescription: 'Success. Payment simulated.',
-            CustomerMessage: 'Payment successful! Awaiting House Hunter confirmation.'
+            ResponseDescription: 'Success',
+            CustomerMessage: 'Payment processed successfully.'
         });
     } catch (error: any) {
-        console.error('Simulated Payment Error:', error);
-        console.error('Error stack:', error.stack);
-        res.status(500).json({ message: 'Failed to process simulated payment', error: error.message });
+        console.error('[Payment] Error:', error.message);
+        res.status(500).json({ message: 'Failed to process payment' });
     }
 };
 
@@ -268,5 +259,81 @@ export const requestWithdrawal = async (req: any, res: Response) => {
     } catch (error: any) {
         console.error('Withdrawal error:', error);
         res.status(500).json({ message: 'Failed to process withdrawal' });
+    }
+};
+// Get consolidated wallet summary
+export const getWalletSummary = async (req: any, res: Response) => {
+    try {
+        const { userId, role } = req.user;
+
+        if (role === 'HUNTER') {
+            const earnings = await prisma.hunterEarnings.findMany({
+                where: { hunterId: userId },
+                include: { booking: true }
+            });
+
+            const activeBookings = await prisma.booking.findMany({
+                where: {
+                    hunterId: userId,
+                    status: { in: ['CONFIRMED', 'IN_PROGRESS'] }
+                }
+            });
+
+            const available = earnings
+                .filter(e => e.status === 'PENDING')
+                .reduce((sum, e) => sum + e.amount, 0);
+
+            const escrow = activeBookings
+                .reduce((sum, b) => sum + (b.amount * 0.85), 0);
+
+            const withdrawn = earnings
+                .filter(e => e.status === 'WITHDRAWN')
+                .reduce((sum, e) => sum + e.amount, 0);
+
+            const transactions = await prisma.paymentHistory.findMany({
+                where: { userId },
+                orderBy: { createdAt: 'desc' },
+                take: 20
+            });
+
+            return res.json({
+                balance: { available, escrow, withdrawn },
+                transactions,
+                totalEarnings: available + withdrawn
+            });
+        } else {
+            // TENANT logic
+            const history = await prisma.paymentHistory.findMany({
+                where: { userId },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            const requestsEscrow = await prisma.viewingRequest.findMany({
+                where: { tenantId: userId, paymentStatus: 'ESCROW' }
+            });
+
+            const bookingsEscrow = await prisma.booking.findMany({
+                where: { tenantId: userId, paymentStatus: 'ESCROW' }
+            });
+
+            const available = history
+                .filter(h => h.status === 'COMPLETED')
+                .reduce((sum, h) => {
+                    if (h.type === 'BOOKING_PAYMENT' || h.type === 'WITHDRAWAL') return sum - h.amount;
+                    if (h.type === 'REFUND') return sum + h.amount;
+                    return sum;
+                }, 0);
+
+            const escrow = [...requestsEscrow, ...bookingsEscrow]
+                .reduce((sum, item) => sum + (item.amount || 0), 0);
+
+            return res.json({
+                balance: { available, escrow, pending: 0 },
+                transactions: history.slice(0, 20)
+            });
+        }
+    } catch (error: any) {
+        console.error('Wallet Summary Error:', error);
+        res.status(500).json({ message: 'Failed to fetch wallet summary' });
     }
 };

@@ -6,6 +6,7 @@ const router = Router();
 
 router.post('/stk-push', authMiddleware, paymentController.initiateStkPush);
 router.post('/callback', paymentController.mpesaCallback);
+router.get('/summary', authMiddleware, paymentController.getWalletSummary);
 router.get('/status', authMiddleware, paymentController.getPaymentStatus);
 router.get('/history', authMiddleware, paymentController.getPaymentHistory);
 router.get('/earnings', authMiddleware, paymentController.getHunterEarnings);

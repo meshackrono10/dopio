@@ -12,13 +12,14 @@ import bookingRoutes from './routes/bookingRoutes';
 import bookingWorkflowRoutes from './routes/bookingWorkflow';
 import rescheduleRoutes from './routes/rescheduleRoutes';
 import alternativeRoutes from './routes/alternativeRoutes';
-import searchRequestRoutes from './routes/searchRequestRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 import messageRoutes from './routes/messageRoutes';
 import adminRoutes from './routes/adminRoutes';
 import userRoutes from './routes/userRoutes';
 import disputeRoutes from './routes/disputeRoutes';
+import reviewRoutes from './routes/reviewRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import logger from './config/logger'; // Added logger import
 
 import { createServer } from 'http';
@@ -65,13 +66,14 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/bookings', bookingWorkflowRoutes);
 app.use('/api/bookings', rescheduleRoutes);
 app.use('/api/bookings', alternativeRoutes);
-app.use('/api/search-requests', searchRequestRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/disputes', disputeRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Routes Placeholder - Removed as per instruction's implied change
 // app.get('/', (req: Request, res: Response) => {

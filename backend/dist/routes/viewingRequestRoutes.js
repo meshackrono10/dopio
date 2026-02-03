@@ -49,4 +49,6 @@ router.post('/:id/reject', authMiddleware_1.authMiddleware, viewingRequestContro
 router.post('/:id/counter', authMiddleware_1.authMiddleware, viewingRequestController.counterViewingRequest);
 // Legacy status update endpoint (backward compatibility)
 router.patch('/:id/status', authMiddleware_1.authMiddleware, viewingRequestController.updateRequestStatus);
+// Hide/Delete request for current user
+router.delete('/:id', authMiddleware_1.authMiddleware, viewingRequestController.hideRequest);
 exports.default = router;

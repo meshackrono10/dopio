@@ -26,15 +26,11 @@ export type PackageTier = "bronze" | "gold" | "platinum";
 
 // Booking Status
 export type BookingStatus =
-  | "pending_payment"      // Tenant initiated, needs to pay
-  | "confirmed"            // Payment in escrow, viewing scheduled
-  | "viewing_completed"    // Both parties attended viewing
-  | "pending_verification" // Waiting for tenant to confirm property matches
-  | "verified"             // Tenant confirmed match, payment released
-  | "completed"            // Transaction complete
-  | "cancelled"            // Cancelled before viewing
-  | "disputed"             // Tenant disputes property mismatch
-  | "refunded";            // Dispute verified, money returned to tenant
+  | 'pending'
+  | 'confirmed'
+  | 'completed'
+  | 'cancelled'
+  | 'disputed';
 
 // Listing Status
 export type ListingStatus = "pending" | "approved" | "rejected" | "inactive";
@@ -369,6 +365,12 @@ export interface Booking {
   scheduledTime?: string;
   chatEnabled: boolean;
   completedAt?: string;
+  tenantDone?: boolean;
+  hunterDone?: boolean;
+  issueCreated?: boolean;
+  tenantMetConfirmed?: boolean;
+  hunterMetConfirmed?: boolean;
+  physicalMeetingConfirmed?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -436,7 +438,7 @@ export type Notification = {
   userType: "tenant" | "hunter";
   title: string;
   message: string;
-  type: 'booking_confirmed' | 'booking_cancelled' | 'payment_received' | 'payment_pending' | 'review_received' | 'listing_approved' | 'listing_rejected' | 'verification_approved' | 'verification_rejected' | 'chat_message' | 'message_received' | 'dispute_filed';
+  type: 'booking_confirmed' | 'booking_cancelled' | 'payment_received' | 'payment_pending' | 'review_received' | 'listing_approved' | 'listing_rejected' | 'verification_approved' | 'verification_rejected' | 'chat_message' | 'message_received';
   read: boolean;
   createdAt: string;
   data?: any;
@@ -548,207 +550,6 @@ export interface ViewingChecklist {
   createdAt: string;
   updatedAt: string;
 }
-
-// Custom Search Request Types
-export type SearchRequestStatus =
-  | 'draft'
-  | 'pending_payment'
-  | 'pending_assignment'
-  | 'in_progress'
-  | 'pending_review'
-  | 'completed'
-  | 'cancelled'
-  | 'forfeited';
-
-export type ServiceTier = 'standard' | 'premium' | 'urgent';
-
-// Bidding System Types
-export interface Bid {
-  id: string | number;
-  hunterId: string | number;
-  hunterName: string;
-  hunterAvatar?: string;
-  hunterRating: number;
-  hunterSuccessRate: number; // 0-100%
-
-  // Bid Details
-  price: number; // KES
-  timeframe: number; // hours
-  bonuses: string[]; // e.g., ["1 extra house", "Video tours included"]
-  message?: string;
-
-  // Status
-  status: 'pending' | 'selected' | 'rejected';
-  submittedAt: string;
-}
-
-export interface PropertyEvidence {
-  id?: string | number;
-  propertyId?: string | number; // If uploading from existing listing
-  photos: string[]; // URLs
-  videos: string[]; // URLs
-  description: string;
-  generalArea: string; // General neighborhood for privacy
-  location?: {
-    neighborhoodCircle: { lat: number; lng: number; radius: number };
-    meetingPoint?: string;
-  };
-  matchScore: number;
-  uploadedAt: string;
-}
-
-export interface MeetingPoint {
-  id: string;
-  name: string; // e.g., "Shell Petrol Station, Syokimau"
-  description?: string;
-  lat?: number;
-  lng?: number;
-  instructions?: string;
-  suggestedTime?: string;
-  sharedAt?: string;
-  status?: 'pending' | 'confirmed';
-}
-
-export interface TimeframeExtension {
-  id: string | number;
-  requestedBy: 'hunter' | 'tenant';
-  hours: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: string;
-  respondedAt?: string;
-}
-
-export interface AdminReview {
-  reviewerId: string | number;
-  reviewerName: string;
-  decision: 'refund_tenant' | 'pay_hunter' | 'split_payment';
-  reasoning: string;
-  evidenceAnalysis: {
-    briefMatch: boolean;
-    timelineMet: boolean;
-    qualityAcceptable: boolean;
-  };
-  reviewedAt: string;
-}
-
-export interface SearchRequest {
-  id: string | number;
-  tenantId: string | number;
-  tenantName: string;
-  tenantPhone: string;
-  tenantAvatar?: string;
-  status: SearchRequestStatus;
-
-  // Location & Budget
-  preferredAreas: string[];
-  minRent: number;
-  maxRent: number;
-  moveInDate?: string;
-  leaseDuration: string;
-
-  // Property Requirements
-  propertyType: PropertyLayout;
-  beds: number;
-  bedrooms: number;
-  bathrooms: number;
-  furnished: 'yes' | 'no' | 'semi' | 'flexible';
-  petFriendly: boolean;
-
-  // Amenities
-  parkingRequired: boolean;
-  parkingSpaces?: number;
-  securityFeatures: string[];
-  utilitiesIncluded: string[];
-  amenities: string[];
-
-  // Additional
-  mustHaveFeatures: string[];
-  niceToHaveFeatures: string[];
-  dealBreakers: string[];
-  additionalNotes?: string;
-
-  // Service
-  serviceTier: ServiceTier;
-  numberOfOptions: number; // 1, 2, or 3 properties
-  depositAmount: number;
-  deadline: string;
-
-  // Assignment
-  hunterId: string | number;
-  hunterName?: string;
-  hunterAvatar?: string;
-  claimedAt?: string;
-
-  // Bidding
-  bidsOpen: boolean;
-  bidsCloseAt: string;
-  bids: Bid[];
-  selectedBidId?: string | number;
-
-  // Timeframe
-  agreedTimeframe?: number; // hours
-  timeframeStartedAt?: string;
-  timeframeExpiresAt?: string;
-  timeframeExtensions: TimeframeExtension[];
-
-  // Delivery
-  uploadedEvidence: PropertyEvidence[];
-  evidenceSubmittedAt?: string;
-
-  // Meeting & Viewing
-  meetingPoint?: MeetingPoint;
-  meetingPoints?: MeetingPoint[];
-  viewingConfirmed: boolean;
-  viewingConfirmedAt?: string;
-
-  // Refund/Dispute
-  refundRequested: boolean;
-  refundRequestedAt?: string;
-  refundReason?: string;
-  disputeReason?: string;
-  adminReview?: AdminReview;
-
-  // Properties (Deprecated - keeping for compatibility)
-  submittedProperties: string[]; // property IDs
-  submittedPropertiesData?: PropertyListing[];
-  acceptedPropertyId?: string | number;
-
-  // Payment
-  depositPaid: boolean;
-  depositPaidAt?: string;
-  mpesaTransactionId?: string;
-  paymentReleased: boolean;
-  paymentReleasedAt?: string;
-
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-  reviewedAt?: string;
-}
-
-export interface SearchRequestProperty {
-  id: string | number;
-  searchRequestId: string | number;
-  propertyId: string | number;
-  property?: PropertyListing;
-  submittedBy: string | number; // hunterId
-  matchScore: number; // 0-100
-  matchNotes: string; // Why this matches
-  matchDetails: {
-    locationMatch: boolean;
-    budgetMatch: boolean;
-    typeMatch: boolean;
-    mustHavesMatch: boolean;
-    dealBreakersAbsent: boolean;
-  };
-  submittedAt: string;
-  reviewedAt?: string;
-  accepted: boolean;
-  rejectionReason?: string;
-}
-
 
 // ########## LEGACY TYPES (Keep for compatibility during migration) ######## //
 

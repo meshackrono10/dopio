@@ -15,16 +15,7 @@ export default function Users() {
     const [filter, setFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
 
-    useEffect(() => {
-        if (!isAuthenticated || user?.role !== "ADMIN") {
-            router.push("/");
-            return;
-        }
-
-        fetchUsers();
-    }, [isAuthenticated, user, filter]);
-
-    const fetchUsers = async () => {
+    const fetchUsers = React.useCallback(async () => {
         try {
             setLoading(true);
             const params = filter !== "all" ? `?role=${filter.toUpperCase()}` : "";
@@ -35,7 +26,16 @@ export default function Users() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter]);
+
+    useEffect(() => {
+        if (!isAuthenticated || user?.role !== "ADMIN") {
+            router.push("/");
+            return;
+        }
+
+        fetchUsers();
+    }, [isAuthenticated, user, filter, fetchUsers, router]);
 
     const filteredUsers = users.filter(u =>
         u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -84,8 +84,8 @@ export default function Users() {
                                     key={f}
                                     onClick={() => setFilter(f)}
                                     className={`px-4 py-2 rounded-lg capitalize ${filter === f
-                                            ? "bg-primary-600 text-white"
-                                            : "bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
+                                        ? "bg-primary-600 text-white"
+                                        : "bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
                                         }`}
                                 >
                                     {f}
@@ -144,10 +144,10 @@ export default function Users() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span
                                                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${u.verificationStatus === "APPROVED"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : u.verificationStatus === "PENDING"
-                                                            ? "bg-yellow-100 text-yellow-800"
-                                                            : "bg-red-100 text-red-800"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : u.verificationStatus === "PENDING"
+                                                        ? "bg-yellow-100 text-yellow-800"
+                                                        : "bg-red-100 text-red-800"
                                                     }`}
                                             >
                                                 {u.verificationStatus}

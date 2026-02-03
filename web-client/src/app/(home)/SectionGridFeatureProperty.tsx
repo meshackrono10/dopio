@@ -21,7 +21,7 @@ const SectionGridFeatureProperty: FC<SectionGridFeaturePropertyProps> = ({
   stayListings = DEMO_DATA,
   gridClass = "",
   heading = "Featured places to stay",
-  subHeading = "Popular places to stay that Chisfis recommends for you",
+  subHeading = "Popular places to stay that Dapio recommends for you",
   headingIsCenter,
   tabs = ["Nairobi", "Mombasa", "Kisumu", "Nakuru"],
 }) => {

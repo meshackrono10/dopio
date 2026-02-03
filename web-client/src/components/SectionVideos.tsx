@@ -59,18 +59,31 @@ const SectionVideos: FC<SectionVideosProps> = ({
 
   const renderMainVideo = () => {
     const video: VideoType = videos[currentVideo];
+    if (!video) return null;
+
+    const isYoutube = !video.id.startsWith("http");
+
     return (
       <div
         className="group aspect-w-16 aspect-h-16 sm:aspect-h-9 bg-neutral-800 rounded-3xl overflow-hidden border-4 border-white dark:border-neutral-900 sm:rounded-[50px] sm:border-[10px] will-change-transform"
         title={video.title}
       >
         {isPlay ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          ></iframe>
+          isYoutube ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
+              title={video.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          ) : (
+            <video
+              src={video.id}
+              autoPlay
+              controls
+              className="w-full h-full object-cover"
+            />
+          )
         ) : (
           <>
             <div
@@ -83,7 +96,7 @@ const SectionVideos: FC<SectionVideosProps> = ({
             <Image
               fill
               className="object-cover w-full h-full transform transition-transform group-hover:scale-105 duration-300 "
-              src={video.thumbnail}
+              src={video.thumbnail || "https://images.pexels.com/photos/186077/pexels-photo-186077.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260"}
               title={video.title}
               alt={video.title}
               sizes="(max-width: 1000px) 100vw,
@@ -114,7 +127,7 @@ const SectionVideos: FC<SectionVideosProps> = ({
         <Image
           fill
           className="object-cover w-full h-full transform transition-transform group-hover:scale-110 duration-300 "
-          src={video.thumbnail}
+          src={video.thumbnail || "https://images.pexels.com/photos/186077/pexels-photo-186077.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260"}
           title={video.title}
           alt={video.title}
           sizes="(max-width: 300px) 100vw,
@@ -128,8 +141,7 @@ const SectionVideos: FC<SectionVideosProps> = ({
   return (
     <div className={`nc-SectionVideos ${className}`}>
       <Heading
-        desc="Check out our hottest videos. View more and share more new
-          perspectives on just about any topic. Everyone’s welcome."
+        desc="A video tour of the property to give you a better perspective before your visit."
       >
         🎬 The Videos
       </Heading>
@@ -139,9 +151,11 @@ const SectionVideos: FC<SectionVideosProps> = ({
         <div className="flex-grow relative pb-2 sm:pb-4 lg:pb-0 lg:pr-5 xl:pr-6">
           {renderMainVideo()}
         </div>
-        <div className="flex-shrink-0 grid gap-2 grid-cols-4 sm:gap-6 lg:grid-cols-1 lg:w-36 xl:w-40">
-          {videos.map(renderSubVideo)}
-        </div>
+        {videos.length > 1 && (
+          <div className="flex-shrink-0 grid gap-2 grid-cols-4 sm:gap-6 lg:grid-cols-1 lg:w-36 xl:w-40">
+            {videos.map(renderSubVideo)}
+          </div>
+        )}
       </div>
     </div>
   );

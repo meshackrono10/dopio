@@ -5,7 +5,7 @@ import { prisma } from '../index';
 export const updateProfile = async (req: any, res: Response) => {
     try {
         const userId = req.user.userId;
-        const { idFrontUrl, idBackUrl, selfieUrl, verificationStatus, avatarUrl, name, phone } = req.body;
+        const { idFrontUrl, idBackUrl, selfieUrl, verificationStatus, avatarUrl, name, phone, description, workLocation } = req.body;
 
         const updateData: any = {};
 
@@ -16,6 +16,8 @@ export const updateProfile = async (req: any, res: Response) => {
         if (avatarUrl) updateData.avatarUrl = avatarUrl;
         if (name) updateData.name = name;
         if (phone) updateData.phone = phone;
+        if (description) updateData.description = description;
+        if (workLocation) updateData.workLocation = workLocation;
 
         const user = await prisma.user.update({
             where: { id: userId },
@@ -57,6 +59,10 @@ export const getProfile = async (req: any, res: Response) => {
                 isVerified: true,
                 verificationStatus: true,
                 avatarUrl: true,
+                description: true,
+                workLocation: true,
+                averageRating: true,
+                reviewCount: true,
                 createdAt: true,
             },
         });
@@ -85,6 +91,10 @@ export const getHunterProfile = async (req: any, res: Response) => {
                 createdAt: true,
                 isVerified: true,
                 role: true,
+                description: true,
+                workLocation: true,
+                averageRating: true,
+                reviewCount: true,
             },
         });
 
@@ -142,7 +152,12 @@ export const getHunterProfile = async (req: any, res: Response) => {
 
         res.json({
             hunter,
-            properties,
+            properties: properties.map(p => ({
+                ...p,
+                images: typeof p.images === 'string' ? JSON.parse(p.images) : p.images,
+                location: typeof p.location === 'string' ? JSON.parse(p.location) : p.location,
+                amenities: typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities,
+            })),
             reviews: reviews.map(r => ({
                 id: r.id,
                 rating: r.rating,
@@ -151,8 +166,8 @@ export const getHunterProfile = async (req: any, res: Response) => {
                 tenantName: r.booking.tenant.name,
                 tenantAvatar: r.booking.tenant.avatarUrl,
             })),
-            rating: parseFloat(averageRating.toFixed(1)),
-            reviewCount,
+            rating: hunter.averageRating,
+            reviewCount: hunter.reviewCount,
         });
     } catch (error: any) {
         console.error('Get hunter profile error:', error);

@@ -254,7 +254,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to send message:", error);
             throw error;
         }
-    }, [user, selectedPartnerId, conversations]);
+    }, [user, conversations]);
 
     const markAsRead = useCallback(async (partnerId: string) => {
         if (!user?.id) return;

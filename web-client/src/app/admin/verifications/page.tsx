@@ -35,7 +35,7 @@ export default function Verifications() {
         }
 
         fetchHunters();
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, user, router]);
 
     const fetchHunters = async () => {
         try {
@@ -160,6 +160,7 @@ export default function Verifications() {
                                         {hunter.idFrontUrl && (
                                             <div>
                                                 <p className="text-xs text-neutral-500 mb-2">ID Front</p>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={hunter.idFrontUrl}
                                                     alt="ID Front"
@@ -174,6 +175,7 @@ export default function Verifications() {
                                         {hunter.idBackUrl && (
                                             <div>
                                                 <p className="text-xs text-neutral-500 mb-2">ID Back</p>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={hunter.idBackUrl}
                                                     alt="ID Back"
@@ -188,6 +190,7 @@ export default function Verifications() {
                                         {hunter.selfieUrl && (
                                             <div>
                                                 <p className="text-xs text-neutral-500 mb-2">Selfie</p>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={hunter.selfieUrl}
                                                     alt="Selfie"
@@ -273,6 +276,7 @@ export default function Verifications() {
                             {selectedHunter.idFrontUrl && (
                                 <div>
                                     <h3 className="font-semibold mb-3">ID Front</h3>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={selectedHunter.idFrontUrl}
                                         alt="ID Front"
@@ -284,6 +288,7 @@ export default function Verifications() {
                             {selectedHunter.idBackUrl && (
                                 <div>
                                     <h3 className="font-semibold mb-3">ID Back</h3>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={selectedHunter.idBackUrl}
                                         alt="ID Back"
@@ -295,6 +300,7 @@ export default function Verifications() {
                             {selectedHunter.selfieUrl && (
                                 <div>
                                     <h3 className="font-semibold mb-3">Selfie with ID</h3>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={selectedHunter.selfieUrl}
                                         alt="Selfie"

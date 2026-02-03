@@ -96,8 +96,8 @@ const ReviewForm: FC<ReviewFormProps> = ({
                         >
                             <StarIcon
                                 className={`w-8 h-8 ${star <= (hoveredStar || currentRating)
-                                        ? "text-yellow-500"
-                                        : "text-neutral-300 dark:text-neutral-600"
+                                    ? "text-yellow-500"
+                                    : "text-neutral-300 dark:text-neutral-600"
                                     }`}
                             />
                         </button>
@@ -147,7 +147,7 @@ const ReviewForm: FC<ReviewFormProps> = ({
                         rows={5}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        placeholder="Share your experience with this house haunter. Was the viewing helpful? Did the property match the listing? Was the haunter professional and knowledgeable?"
+                        placeholder="Share your experience with this agent. Was the viewing helpful? Did the property match the listing? Was the agent professional and knowledgeable?"
                         className="w-full"
                     />
                     <div className="flex justify-between items-center mt-1">

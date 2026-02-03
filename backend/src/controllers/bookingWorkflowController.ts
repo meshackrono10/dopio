@@ -59,7 +59,7 @@ export const confirmArrival = async (req: any, res: Response) => {
             'Arrival Confirmed',
             `${isTenant ? booking.tenant.name : booking.hunter.name} has confirmed arrival at the viewing location.`,
             'ARRIVAL_CONFIRMED',
-            { bookingId: updated.id }
+            `/bookings/${updated.id}`
         );
 
         res.json({
@@ -150,7 +150,7 @@ export const completeViewing = async (req: any, res: Response) => {
                 'Payment Released',
                 `Payment of KES ${hunterEarnings.toLocaleString()} has been released for viewing at ${booking.property.title}.`,
                 'PAYMENT_RELEASED',
-                { bookingId: booking.id }
+                `/wallet`
             );
         } else if (outcome === 'ISSUE_REPORTED') {
             // Create dispute
@@ -174,7 +174,7 @@ export const completeViewing = async (req: any, res: Response) => {
                 'New Dispute',
                 `A viewing issue has been reported for ${booking.property.title}.`,
                 'DISPUTE_CREATED',
-                { bookingId: booking.id }
+                `/admin/disputes`
             );
         }
 
@@ -256,7 +256,7 @@ export const reportNoShow = async (req: any, res: Response) => {
             'No-Show Reported',
             `A no-show has been reported for viewing at ${booking.property.title}.`,
             'NO_SHOW_REPORTED',
-            { bookingId: booking.id }
+            `/admin/disputes`
         );
 
         res.json({

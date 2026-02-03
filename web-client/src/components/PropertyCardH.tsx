@@ -27,7 +27,7 @@ const PropertyCardH: FC<PropertyCardHProps> = ({
     rent: price = 0,
     layout,
     bathrooms,
-    houseHaunter,
+    agent,
     reviewCount = 0,
     averageRating: reviewStart = 0,
   } = data;

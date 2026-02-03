@@ -73,21 +73,6 @@ export interface CreateBookingRequest {
     scheduledTime: string;
 }
 
-// Search Request Types
-export interface CreateSearchRequestRequest {
-    preferredAreas: string[];
-    minRent: number;
-    maxRent: number;
-    propertyType: string;
-    bedrooms: number;
-    bathrooms: number;
-    furnished: string;
-    amenities: string[];
-    serviceTier: 'standard' | 'premium' | 'urgent';
-    numberOfOptions: number;
-    deadline: string;
-}
-
 // Message Types
 export interface SendMessageRequest {
     message: string;

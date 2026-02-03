@@ -324,6 +324,7 @@ export default function HaunterOnboarding() {
                             </label>
                         ) : (
                             <div className="relative">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={previews[currentStepConfig.type]!}
                                     alt={currentStepConfig.title}
@@ -374,6 +375,7 @@ export default function HaunterOnboarding() {
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             <div>
                                 <p className="text-sm font-medium mb-2">ID Front</p>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={previews.idFront!}
                                     alt="ID Front"
@@ -382,6 +384,7 @@ export default function HaunterOnboarding() {
                             </div>
                             <div>
                                 <p className="text-sm font-medium mb-2">ID Back</p>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={previews.idBack!}
                                     alt="ID Back"
@@ -390,6 +393,7 @@ export default function HaunterOnboarding() {
                             </div>
                             <div>
                                 <p className="text-sm font-medium mb-2">Selfie</p>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={previews.selfie!}
                                     alt="Selfie"

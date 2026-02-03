@@ -87,11 +87,11 @@ export default function BookingConfirmationPage() {
                                 <span className="font-medium">{booking.viewingDate} at {booking.viewingTime}</span>
                             </div>
                             <div className="flex justify-between pb-4 border-b border-neutral-200 dark:border-neutral-700">
-                                <span className="text-neutral-500 dark:text-neutral-400">House Haunter</span>
+                                <span className="text-neutral-500 dark:text-neutral-400">Agent</span>
                                 <span className="font-medium">{booking.haunterName}</span>
                             </div>
                             <div className="flex justify-between pb-4 border-b border-neutral-200 dark:border-neutral-700">
-                                <span className="text-neutral-500 dark:text-neutral-400">Haunter Phone</span>
+                                <span className="text-neutral-500 dark:text-neutral-400">Agent Phone</span>
                                 <a href={`tel:${booking.haunterPhone}`} className="font-medium text-primary-600 hover:underline">
                                     {booking.haunterPhone}
                                 </a>
@@ -125,7 +125,7 @@ export default function BookingConfirmationPage() {
                         </h3>
                         <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-2 list-decimal list-inside">
                             <li>You&apos;ll receive an SMS with exact meeting location 24 hours before viewing</li>
-                            <li>Your house haunter will call you 1 hour before the viewing</li>
+                            <li>Your agent will call you 1 hour before the viewing</li>
                             <li>Meet at the exact location at the scheduled time</li>
                             <li>After viewing, you can leave a review and rating</li>
                         </ol>

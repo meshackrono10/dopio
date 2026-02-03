@@ -26,6 +26,9 @@ interface PropertyFilters {
     location?: string;
     amenities?: string[];
     furnished?: string;
+    neighborhoodType?: string[];
+    minViewingFee?: number;
+    maxViewingFee?: number;
 }
 
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
@@ -38,12 +41,15 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<PropertyFilters>({});
 
-    const clearError = () => setError(null);
+    const clearError = useCallback(() => setError(null), []);
 
     const mapBackendToFrontend = (p: any): PropertyListing => {
         const location = typeof p.location === 'string' ? JSON.parse(p.location) : p.location;
         const amenities = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities;
         const images = typeof p.images === 'string' ? JSON.parse(p.images) : p.images;
+        const utilities = typeof p.utilities === 'string' ? JSON.parse(p.utilities) : p.utilities;
+        const neighborhoodData = typeof p.neighborhoodData === 'string' ? JSON.parse(p.neighborhoodData) : p.neighborhoodData;
+        const packageProperties = typeof p.packageProperties === 'string' ? JSON.parse(p.packageProperties) : p.packageProperties;
 
         return {
             id: p.id,
@@ -57,15 +63,28 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 generalArea: location?.generalArea || 'Unknown Area',
                 county: location?.county || 'Nairobi',
                 directions: location?.address || '',
+                preciseLat: location?.lat,
+                preciseLng: location?.lng,
+            },
+            map: {
+                lat: location?.lat || 0,
+                lng: location?.lng || 0,
             },
             amenities: amenities || [],
             utilities: {
-                waterIncluded: true,
-                electricityType: 'prepaid',
+                waterIncluded: utilities?.waterIncluded ?? true,
+                waterCost: utilities?.waterCost,
+                electricityType: utilities?.electricityType || 'prepaid',
+                electricityCost: utilities?.electricityCost,
+                garbageIncluded: utilities?.garbageIncluded,
+                garbageCost: utilities?.garbageCost,
+                securityIncluded: utilities?.securityIncluded,
+                securityCost: utilities?.securityCost,
+                otherUtilities: utilities?.otherUtilities || [],
             },
             images: images || [],
             videoUrl: p.videos ? (typeof p.videos === 'string' ? JSON.parse(p.videos)[0] : p.videos[0]) : '',
-            houseHaunter: {
+            agent: {
                 id: p.hunter?.id || '',
                 name: p.hunter?.name || 'Unknown Hunter',
                 phone: '',
@@ -92,11 +111,22 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     features: features,
                 };
             }),
-            status: 'approved',
+            status: (p.status || 'AVAILABLE').toLowerCase(),
             createdAt: p.createdAt,
             updatedAt: p.updatedAt,
             viewCount: 0,
             bookingCount: 0,
+            neighborhoodData: neighborhoodData || {
+                safetyRating: 5,
+                noiseLevel: 'quiet',
+                internetRating: 5,
+                walkabilityScore: 80,
+                nearbyAmenities: [],
+                publicTransport: [],
+                neighborhoodType: p.neighborhoodType || 'Estate'
+            },
+            listingPackage: p.listingPackage,
+            packageProperties: packageProperties,
         };
     };
 
@@ -139,8 +169,36 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         if (activeFilters.location) {
             filtered = filtered.filter(p =>
-                p.location.generalArea.toLowerCase().includes(activeFilters.location!.toLowerCase())
+                p.location.generalArea.toLowerCase().includes(activeFilters.location!.toLowerCase()) ||
+                p.location.county.toLowerCase().includes(activeFilters.location!.toLowerCase())
             );
+        }
+
+        if (activeFilters.neighborhoodType && activeFilters.neighborhoodType.length > 0) {
+            filtered = filtered.filter(p => activeFilters.neighborhoodType!.includes(p.neighborhoodData?.neighborhoodType || ""));
+        }
+
+        if (activeFilters.layout && activeFilters.layout.length > 0) {
+            filtered = filtered.filter(p => activeFilters.layout!.includes(p.layout));
+        }
+
+        if (activeFilters.amenities && activeFilters.amenities.length > 0) {
+            filtered = filtered.filter(p =>
+                activeFilters.amenities!.every(amenity => p.amenities.includes(amenity))
+            );
+        }
+
+        if (activeFilters.minViewingFee !== undefined || activeFilters.maxViewingFee !== undefined) {
+            filtered = filtered.filter(p => {
+                const fees = p.viewingPackages.map(pkg => pkg.price);
+                if (fees.length === 0) return false;
+                const minFee = Math.min(...fees);
+                const maxFee = Math.max(...fees);
+
+                const matchesMin = activeFilters.minViewingFee === undefined || maxFee >= activeFilters.minViewingFee;
+                const matchesMax = activeFilters.maxViewingFee === undefined || minFee <= activeFilters.maxViewingFee;
+                return matchesMin && matchesMax;
+            });
         }
 
         setFilteredProperties(filtered);

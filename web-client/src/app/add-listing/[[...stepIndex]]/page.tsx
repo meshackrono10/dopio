@@ -1,14 +1,14 @@
+"use client";
+
 import React from "react";
 import PageAddListing1 from "./PageAddListing1";
-import PageAddListing10 from "./PageAddListing10";
 import PageAddListing2 from "./PageAddListing2";
-import PageAddListing3 from "./PageAddListing3";
-import PageAddListing4 from "./PageAddListing4";
 import PageAddListing5 from "./PageAddListing5";
-import PageAddListing6 from "./PageAddListing6";
 import PageAddListing7 from "./PageAddListing7";
 import PageAddListing8 from "./PageAddListing8";
-import PageAddListing9 from "./PageAddListing9";
+import PageAddListing10 from "./PageAddListing10";
+import PageAddListingPackages from "./PageAddListingPackages";
+import PageAddListingPackageSelect from "./PageAddListingPackageSelect";
 
 const Page = ({
   params,
@@ -17,32 +17,37 @@ const Page = ({
   params: { stepIndex: string };
   searchParams?: { [key: string]: string | string[] | undefined };
 }) => {
-  let ContentComponent = PageAddListing1;
-  switch (Number(params.stepIndex)) {
+  const stepIndex = Number(params.stepIndex) || 1;
+  let ContentComponent: any = PageAddListingPackageSelect;
+
+  switch (stepIndex) {
     case 1:
-      ContentComponent = PageAddListing1;
+      ContentComponent = PageAddListingPackageSelect;
       break;
     case 2:
-      ContentComponent = PageAddListing2;
+      ContentComponent = PageAddListing1;
       break;
     case 3:
-      ContentComponent = PageAddListing5;
+      ContentComponent = PageAddListing2;
       break;
     case 4:
-      ContentComponent = PageAddListing7;
+      ContentComponent = PageAddListing5;
       break;
     case 5:
-      ContentComponent = PageAddListing8;
+      ContentComponent = PageAddListing7;
       break;
     case 6:
-      ContentComponent = require('./PageAddListingPackages').default;
+      ContentComponent = PageAddListing8;
       break;
     case 7:
+      ContentComponent = PageAddListingPackages;
+      break;
+    case 8:
       ContentComponent = PageAddListing10;
       break;
 
     default:
-      ContentComponent = PageAddListing1;
+      ContentComponent = PageAddListingPackageSelect;
       break;
   }
 

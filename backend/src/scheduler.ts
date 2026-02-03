@@ -10,11 +10,6 @@ export const initScheduler = () => {
         await TimeControlService.processAutoReleases();
     });
 
-    // Run daily checks at midnight (e.g., for expired search requests)
-    cron.schedule('0 0 * * *', async () => {
-        console.log('[Scheduler] Running daily expiration checks...');
-        await TimeControlService.checkExpirations();
-    });
 
     // Morning-of-day reschedule prompt (7 AM)
     cron.schedule('0 7 * * *', async () => {

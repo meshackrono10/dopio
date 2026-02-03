@@ -8,7 +8,8 @@ const createRescheduleRequest = async (req, res) => {
     try {
         const { userId } = req.user;
         const bookingId = req.params.id;
-        const { proposedDate, proposedTime, reason } = req.body;
+        const { proposedDate, proposedTime, proposedLocation, reason } = req.body;
+        console.log("Backend received reschedule request:", { proposedDate, proposedTime, proposedLocation, reason });
         const booking = await index_1.prisma.booking.findUnique({
             where: { id: bookingId },
             include: {
@@ -45,13 +46,14 @@ const createRescheduleRequest = async (req, res) => {
                 proposedDate,
                 proposedTime,
                 proposedEndTime,
+                proposedLocation,
                 reason,
                 status: 'PENDING',
             },
         });
         // Notify the other party
         const recipientId = userId === booking.tenantId ? booking.hunterId : booking.tenantId;
-        await notificationService_1.NotificationService.sendNotification(recipientId, 'Reschedule Request', `${userId === booking.tenantId ? booking.tenant.name : booking.hunter.name} has requested to reschedule the viewing.`, 'RESCHEDULE_REQUESTED', { bookingId, rescheduleRequestId: rescheduleRequest.id });
+        await notificationService_1.NotificationService.sendNotification(recipientId, 'Reschedule Request', `${userId === booking.tenantId ? booking.tenant.name : booking.hunter.name} has requested to reschedule the viewing.`, 'RESCHEDULE_REQUESTED', `/bookings/${bookingId}`);
         res.json({
             success: true,
             message: 'Reschedule request sent',
@@ -69,7 +71,7 @@ const respondToReschedule = async (req, res) => {
     try {
         const { userId } = req.user;
         const rescheduleId = req.params.rescheduleId;
-        const { action, counterDate, counterTime, counterReason } = req.body;
+        const { action, counterDate, counterTime, counterLocation, counterReason } = req.body;
         const rescheduleRequest = await index_1.prisma.rescheduleRequest.findUnique({
             where: { id: rescheduleId },
             include: {
@@ -116,12 +118,33 @@ const respondToReschedule = async (req, res) => {
                     physicalMeetingConfirmed: false,
                 },
             });
+            // Update meeting point if proposedLocation exists
+            if (rescheduleRequest.proposedLocation) {
+                const locationData = typeof rescheduleRequest.proposedLocation === 'string'
+                    ? rescheduleRequest.proposedLocation
+                    : JSON.stringify(rescheduleRequest.proposedLocation);
+                await index_1.prisma.meetingPoint.upsert({
+                    where: { bookingId: booking.id },
+                    update: {
+                        location: locationData,
+                        sharedBy: rescheduleRequest.requestedBy,
+                        sharedAt: new Date(),
+                        tenantViewed: false,
+                    },
+                    create: {
+                        bookingId: booking.id,
+                        type: 'LANDMARK',
+                        location: locationData,
+                        sharedBy: rescheduleRequest.requestedBy,
+                    },
+                });
+            }
             // Notify requester
-            await notificationService_1.NotificationService.sendNotification(rescheduleRequest.requestedBy, 'Reschedule Accepted', `Your reschedule request has been accepted. New date: ${new Date(rescheduleRequest.proposedDate).toLocaleDateString()} at ${rescheduleRequest.proposedTime}`, 'RESCHEDULE_ACCEPTED', { bookingId: booking.id });
+            await notificationService_1.NotificationService.sendNotification(rescheduleRequest.requestedBy, 'Reschedule Accepted', `Your reschedule request has been accepted. New date: ${new Date(rescheduleRequest.proposedDate).toLocaleDateString()} at ${rescheduleRequest.proposedTime}`, 'RESCHEDULE_ACCEPTED', `/bookings/${booking.id}`);
         }
         else if (action === 'REJECT') {
             updateData.status = 'REJECTED';
-            await notificationService_1.NotificationService.sendNotification(rescheduleRequest.requestedBy, 'Reschedule Rejected', 'Your reschedule request has been rejected. The original schedule remains.', 'RESCHEDULE_REJECTED', { bookingId: booking.id });
+            await notificationService_1.NotificationService.sendNotification(rescheduleRequest.requestedBy, 'Reschedule Rejected', 'Your reschedule request has been rejected. The original schedule remains.', 'RESCHEDULE_REJECTED', `/bookings/${booking.id}`);
         }
         else if (action === 'COUNTER') {
             if (!counterDate || !counterTime) {
@@ -134,8 +157,9 @@ const respondToReschedule = async (req, res) => {
             updateData.counterDate = counterDate;
             updateData.counterTime = counterTime;
             updateData.counterEndTime = counterEndTime;
+            updateData.counterLocation = counterLocation;
             updateData.counterReason = counterReason;
-            await notificationService_1.NotificationService.sendNotification(rescheduleRequest.requestedBy, 'Counter-Proposal', `A counter-proposal has been made for the reschedule request.`, 'RESCHEDULE_COUNTERED', { bookingId: booking.id, rescheduleRequestId: rescheduleId });
+            await notificationService_1.NotificationService.sendNotification(rescheduleRequest.requestedBy, 'Counter-Proposal', `A counter-proposal has been made for the reschedule request.`, 'RESCHEDULE_COUNTERED', `/bookings/${booking.id}`);
         }
         const updated = await index_1.prisma.rescheduleRequest.update({
             where: { id: rescheduleId },
@@ -206,8 +230,29 @@ const acceptCounterProposal = async (req, res) => {
                 physicalMeetingConfirmed: false,
             },
         });
+        // Update meeting point if counterLocation exists
+        if (rescheduleRequest.counterLocation) {
+            const locationData = typeof rescheduleRequest.counterLocation === 'string'
+                ? rescheduleRequest.counterLocation
+                : JSON.stringify(rescheduleRequest.counterLocation);
+            await index_1.prisma.meetingPoint.upsert({
+                where: { bookingId: rescheduleRequest.bookingId },
+                update: {
+                    location: locationData,
+                    sharedBy: userId,
+                    sharedAt: new Date(),
+                    tenantViewed: false,
+                },
+                create: {
+                    bookingId: rescheduleRequest.bookingId,
+                    type: 'LANDMARK',
+                    location: locationData,
+                    sharedBy: userId,
+                },
+            });
+        }
         // Notify the other party
-        await notificationService_1.NotificationService.sendNotification(rescheduleRequest.respondedBy, 'Counter-Proposal Accepted', `Your counter-proposal has been accepted. New date: ${new Date(rescheduleRequest.counterDate).toLocaleDateString()} at ${rescheduleRequest.counterTime}`, 'COUNTER_ACCEPTED', { bookingId: rescheduleRequest.bookingId });
+        await notificationService_1.NotificationService.sendNotification(rescheduleRequest.respondedBy, 'Counter-Proposal Accepted', `Your counter-proposal has been accepted. New date: ${new Date(rescheduleRequest.counterDate).toLocaleDateString()} at ${rescheduleRequest.counterTime}`, 'COUNTER_ACCEPTED', `/bookings/${rescheduleRequest.bookingId}`);
         res.json({
             success: true,
             message: 'Counter-proposal accepted. Booking rescheduled.',
@@ -267,7 +312,7 @@ const updateMeetingPoint = async (req, res) => {
             });
         }
         // Notify tenant
-        await notificationService_1.NotificationService.sendNotification(booking.tenantId, 'Meeting Point Updated', `The meeting point for your viewing has been shared.`, 'MEETING_POINT_UPDATED', { bookingId });
+        await notificationService_1.NotificationService.sendNotification(booking.tenantId, 'Meeting Point Updated', `The meeting point for your viewing has been shared.`, 'MEETING_POINT_UPDATED', `/bookings/${bookingId}`);
         res.json({
             success: true,
             message: 'Meeting point updated',

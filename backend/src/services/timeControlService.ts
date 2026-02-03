@@ -108,7 +108,7 @@ export class TimeControlService {
                     'Viewing Today!',
                     `You have a viewing scheduled for today at ${booking.scheduledTime}. Still good to go?`,
                     'MORNING_PROMPT',
-                    { bookingId: booking.id }
+                    `/bookings/${booking.id}`
                 );
 
                 await NotificationService.sendNotification(
@@ -116,7 +116,7 @@ export class TimeControlService {
                     'Viewing Today!',
                     `You have a viewing scheduled for today at ${booking.scheduledTime}. Still good to go?`,
                     'MORNING_PROMPT',
-                    { bookingId: booking.id }
+                    `/bookings/${booking.id}`
                 );
             }
         } catch (error) {
@@ -124,11 +124,4 @@ export class TimeControlService {
         }
     }
 
-    /**
-     * Checks for expired search requests or bids if needed.
-     */
-    static async checkExpirations() {
-        console.log('[TimeControlService] Checking for expirations...');
-        // Add logic for expired search requests (e.g., older than 7 days)
-    }
 }

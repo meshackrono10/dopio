@@ -120,7 +120,6 @@ export const deleteAccount = async (req: any, res: Response) => {
         await prisma.viewingRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { property: { hunterId: userId } }] } });
         await prisma.booking.deleteMany({ where: { OR: [{ tenantId: userId }, { hunterId: userId }] } });
         await prisma.property.deleteMany({ where: { hunterId: userId } });
-        await prisma.searchRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { haunterId: userId }] } });
 
         // Finally delete the user
         await prisma.user.delete({ where: { id: userId } });
@@ -166,5 +165,36 @@ export const changePassword = async (req: any, res: Response) => {
     } catch (error: any) {
         console.error('Change password error:', error);
         res.status(500).json({ message: 'Failed to update password', error: error.message });
+    }
+};
+// Reset password (without code)
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return res.status(400).json({ message: 'Please provide both email and new password' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword },
+        });
+
+        res.json({ message: 'Password reset successfully' });
+    } catch (error: any) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Failed to reset password', error: error.message });
     }
 };

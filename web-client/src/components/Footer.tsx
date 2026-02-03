@@ -15,35 +15,35 @@ export interface WidgetFooterMenu {
 const widgetMenus: WidgetFooterMenu[] = [
   {
     id: "5",
-    title: "Getting started",
+    title: "Company",
     menus: [
-      { href: "#", label: "Installation" },
-      { href: "#", label: "Release Notes" },
-      { href: "#", label: "Upgrade Guide" },
-      { href: "#", label: "Browser Support" },
-      { href: "#", label: "Editor Support" },
+      { href: "/about", label: "About Us" },
+      { href: "/contact", label: "Contact Us" },
+      { href: "/how-it-works", label: "How it Works" },
+      { href: "#", label: "Trust & Safety" },
+      { href: "#", label: "Terms of Service" },
     ],
   },
   {
     id: "1",
-    title: "Explore",
+    title: "Services",
     menus: [
-      { href: "#", label: "Design features" },
-      { href: "#", label: "Prototyping" },
-      { href: "#", label: "Design systems" },
-      { href: "#", label: "Pricing" },
-      { href: "#", label: "Security" },
+      { href: "/listing-stay", label: "Browse Properties" },
+      { href: "/listing-stay-map", label: "Map Search" },
+      { href: "/add-listing", label: "List a Property" },
+      { href: "#", label: "Agent Verification" },
+      { href: "#", label: "Premium Packages" },
     ],
   },
   {
     id: "2",
-    title: "Resources",
+    title: "Support",
     menus: [
-      { href: "#", label: "Best practices" },
-      { href: "#", label: "Support" },
-      { href: "#", label: "Developers" },
-      { href: "#", label: "Learn design" },
-      { href: "#", label: "Releases" },
+      { href: "#", label: "Help Center" },
+      { href: "#", label: "Report an Issue" },
+      { href: "#", label: "Safety Tips" },
+      { href: "#", label: "FAQs" },
+      { href: "#", label: "Refund Policy" },
     ],
   },
   {
@@ -51,10 +51,10 @@ const widgetMenus: WidgetFooterMenu[] = [
     title: "Community",
     menus: [
       { href: "#", label: "Discussion Forums" },
-      { href: "#", label: "Code of Conduct" },
-      { href: "#", label: "Community Resources" },
-      { href: "#", label: "Contributing" },
-      { href: "#", label: "Concurrent Mode" },
+      { href: "#", label: "Blog" },
+      { href: "#", label: "Newsletter" },
+      { href: "#", label: "Social Impact" },
+      { href: "#", label: "Dapio Community" },
     ],
   },
 ];
@@ -107,7 +107,7 @@ const Footer: React.FC = () => {
         </div>
         <div className="container mt-10 border-t border-neutral-200 dark:border-neutral-700 pt-8">
           <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
-            © {year} House Haunters. All rights reserved.
+            © {year} Dapio. All rights reserved.
           </p>
         </div>
       </div>

@@ -30,7 +30,7 @@ const SectionOurFeatures: FC<SectionOurFeaturesProps> = ({
         <span className="uppercase text-sm text-gray-400 tracking-widest">
           Benefits
         </span>
-        <h2 className="font-semibold text-4xl mt-5">Why Choose House Haunters?</h2>
+        <h2 className="font-semibold text-4xl mt-5">Why Choose Dapio?</h2>
 
         <ul className="space-y-10 mt-16">
           <li className="space-y-4">
@@ -44,13 +44,13 @@ const SectionOurFeatures: FC<SectionOurFeaturesProps> = ({
             </span>
           </li>
           <li className="space-y-4">
-            <Badge color="green" name="Exposure " />
+            <Badge color="green" name="Exposure" />
             <span className="block text-xl font-semibold">
-              Reach millions with House Haunters
+              Reach more tenants
             </span>
             <span className="block mt-5 text-neutral-500 dark:text-neutral-400">
-              Thousands of tenants are searching for unique places to stay around
-              Kenya
+              Dapio helps you connect with qualified tenants searching for unique places to stay around
+              Kenya.
             </span>
           </li>
           <li className="space-y-4">
@@ -59,7 +59,7 @@ const SectionOurFeatures: FC<SectionOurFeaturesProps> = ({
               Secure and simple
             </span>
             <span className="block mt-5 text-neutral-500 dark:text-neutral-400">
-              A House Haunters listing gives you a secure and easy way to take
+              A Dapio listing gives you a secure and easy way to take
               bookings and payments online via M-Pesa
             </span>
           </li>

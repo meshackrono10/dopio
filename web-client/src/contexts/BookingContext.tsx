@@ -25,8 +25,15 @@ export interface Booking {
     price: number;
     status: BookingStatus;
     isPropertyLocked: boolean;
+    viewingOutcome?: string;
+    physicalMeetingConfirmed?: boolean;
+    hunterMetConfirmed?: boolean;
+    tenantMetConfirmed?: boolean;
+    hunterDone?: boolean;
+    tenantDone?: boolean;
     createdAt: string;
     completedAt?: string;
+    reviews?: any[];
 }
 
 interface BookingContextType {
@@ -40,6 +47,8 @@ interface BookingContextType {
     completeViewing: (id: string) => Promise<void>;
     acceptViewing: (id: string) => Promise<void>;
     reportIssue: (id: string) => Promise<void>;
+    confirmMeetup: (id: string) => Promise<void>;
+    markDone: (id: string) => Promise<void>;
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
@@ -49,61 +58,58 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const mapBackendToBooking = (b: any): Booking => {
-        let status: BookingStatus = 'pending'; // Default to pending
+        let status: BookingStatus = 'pending';
 
-        if (b.paymentStatus === 'ESCROW' || b.paymentStatus === 'PAID') {
-            status = 'confirmed';
-        } else if (b.status === 'ACCEPTED') {
-            status = 'confirmed';
-        } else if (b.status === 'REJECTED' || b.status === 'CANCELLED') {
-            status = 'cancelled';
-        } else if (b.status === 'COMPLETED') {
+        if (b.status === 'COMPLETED') {
             status = 'completed';
-        } else if (b.status === 'PENDING' || b.status === 'COUNTERED') {
-            status = 'pending';
+        } else if (b.status === 'CANCELLED') {
+            status = 'cancelled';
+        } else if (b.status === 'CONFIRMED') {
+            status = 'confirmed';
         }
+
+        const property = b.property || {};
+        const images = Array.isArray(property.images) ? property.images : [];
+        const location = property.location || {};
 
         return {
             id: b.id,
             propertyId: b.propertyId,
-            propertyTitle: b.property?.title || 'Unknown Property',
-            propertyImage: b.property?.images?.[0] || '',
+            propertyTitle: property.title || 'Unknown Property',
+            propertyImage: images[0] || '',
             tenantId: b.tenantId,
             tenantName: b.tenant?.name || 'Unknown Tenant',
-            haunterId: b.property?.hunterId || '',
-            haunterName: b.property?.hunter?.name || 'Unknown Hunter',
-            scheduledDate: b.counterDate || b.proposedDates?.[0]?.date || b.createdAt,
-            scheduledTime: b.counterTime || b.proposedDates?.[0]?.timeSlot || 'TBD',
-            meetupLocation: b.counterLocation || b.property?.location ? {
-                address: b.counterLocation?.location || b.property.location.address || '',
-                lat: b.property.location.lat || 0,
-                lng: b.property.location.lng || 0,
-                directions: b.property.location.directions || '',
+            haunterId: b.hunterId,
+            haunterName: property.hunter?.name || 'Unknown Hunter',
+            scheduledDate: b.scheduledDate,
+            scheduledTime: b.scheduledTime,
+            meetupLocation: b.meetingPoint ? {
+                address: b.meetingPoint.location?.name || b.meetingPoint.location || '',
+                lat: b.meetingPoint.location?.lat || 0,
+                lng: b.meetingPoint.location?.lng || 0,
+                directions: '',
             } : undefined,
-            packageName: 'Standard Package', // TODO: Fetch real package name
+            packageName: b.viewingRequest?.packageId ? `${b.viewingRequest.packageId.charAt(0).toUpperCase()}${b.viewingRequest.packageId.slice(1)} Package` : 'Standard Package',
             price: b.amount || 0,
             status: status,
             isPropertyLocked: true,
+            viewingOutcome: b.viewingOutcome,
+            physicalMeetingConfirmed: b.physicalMeetingConfirmed,
+            hunterMetConfirmed: b.hunterMetConfirmed,
+            tenantMetConfirmed: b.tenantMetConfirmed,
+            hunterDone: b.hunterDone,
+            tenantDone: b.tenantDone,
             createdAt: b.createdAt,
             completedAt: b.completedAt,
+            reviews: b.reviews || [],
         };
     };
 
     const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/viewing-requests');
-            // Filter for requests that are relevant to bookings
-            const mapped = response.data
-                .filter((vr: any) =>
-                    vr.status === 'PENDING' ||
-                    vr.status === 'COUNTERED' ||
-                    vr.status === 'ACCEPTED' ||
-                    vr.paymentStatus === 'ESCROW' ||
-                    vr.paymentStatus === 'PAID' ||
-                    vr.status === 'COMPLETED'
-                )
-                .map(mapBackendToBooking);
+            const response = await api.get('/bookings');
+            const mapped = response.data.map(mapBackendToBooking);
             setBookings(mapped);
         } catch (err) {
             console.error('Failed to fetch bookings:', err);
@@ -143,7 +149,18 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     };
 
     const reportIssue = async (id: string) => {
-        await updateBooking(id, { status: 'disputed' });
+        await api.post(`/bookings/${id}/outcome`, { outcome: 'ISSUE_REPORTED' });
+        await fetchBookings();
+    };
+
+    const confirmMeetup = async (id: string) => {
+        await api.post(`/bookings/${id}/confirm-meeting`);
+        await fetchBookings();
+    };
+
+    const markDone = async (id: string) => {
+        await api.post(`/bookings/${id}/done`);
+        await fetchBookings();
     };
 
     return (
@@ -158,6 +175,8 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             completeViewing,
             acceptViewing,
             reportIssue,
+            confirmMeetup,
+            markDone,
         }}>
             {children}
         </BookingContext.Provider>

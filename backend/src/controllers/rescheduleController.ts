@@ -65,7 +65,7 @@ export const createRescheduleRequest = async (req: any, res: Response) => {
             'Reschedule Request',
             `${userId === booking.tenantId ? booking.tenant.name : booking.hunter.name} has requested to reschedule the viewing.`,
             'RESCHEDULE_REQUESTED',
-            { bookingId, rescheduleRequestId: rescheduleRequest.id }
+            `/bookings/${bookingId}`
         );
 
         res.json({
@@ -170,7 +170,7 @@ export const respondToReschedule = async (req: any, res: Response) => {
                 'Reschedule Accepted',
                 `Your reschedule request has been accepted. New date: ${new Date(rescheduleRequest.proposedDate).toLocaleDateString()} at ${rescheduleRequest.proposedTime}`,
                 'RESCHEDULE_ACCEPTED',
-                { bookingId: booking.id }
+                `/bookings/${booking.id}`
             );
         } else if (action === 'REJECT') {
             updateData.status = 'REJECTED';
@@ -180,7 +180,7 @@ export const respondToReschedule = async (req: any, res: Response) => {
                 'Reschedule Rejected',
                 'Your reschedule request has been rejected. The original schedule remains.',
                 'RESCHEDULE_REJECTED',
-                { bookingId: booking.id }
+                `/bookings/${booking.id}`
             );
         } else if (action === 'COUNTER') {
             if (!counterDate || !counterTime) {
@@ -203,7 +203,7 @@ export const respondToReschedule = async (req: any, res: Response) => {
                 'Counter-Proposal',
                 `A counter-proposal has been made for the reschedule request.`,
                 'RESCHEDULE_COUNTERED',
-                { bookingId: booking.id, rescheduleRequestId: rescheduleId }
+                `/bookings/${booking.id}`
             );
         }
 
@@ -312,7 +312,7 @@ export const acceptCounterProposal = async (req: any, res: Response) => {
             'Counter-Proposal Accepted',
             `Your counter-proposal has been accepted. New date: ${new Date(rescheduleRequest.counterDate!).toLocaleDateString()} at ${rescheduleRequest.counterTime}`,
             'COUNTER_ACCEPTED',
-            { bookingId: rescheduleRequest.bookingId }
+            `/bookings/${rescheduleRequest.bookingId}`
         );
 
         res.json({
@@ -383,7 +383,7 @@ export const updateMeetingPoint = async (req: any, res: Response) => {
             'Meeting Point Updated',
             `The meeting point for your viewing has been shared.`,
             'MEETING_POINT_UPDATED',
-            { bookingId }
+            `/bookings/${bookingId}`
         );
 
         res.json({

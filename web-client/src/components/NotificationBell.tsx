@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Route } from "@/routers/types";
+import { Route } from "next";
+import api from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Notification {
     id: string;
-    type: "bid_received" | "bid_accepted" | "evidence_uploaded" | "extension_request" | "payment_released" | "general";
+    type: string;
     title: string;
     message: string;
     timestamp: string;
@@ -15,68 +17,72 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+    const { isAuthenticated } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: "1",
-            type: "bid_received",
-            title: "New Bid Received",
-            message: "Hunter John Doe submitted a bid of KES 5,000",
-            timestamp: new Date().toISOString(),
-            read: false,
-            actionUrl: "/request-search/req-1",
-        },
-        {
-            id: "2",
-            type: "evidence_uploaded",
-            title: "Properties Uploaded",
-            message: "Hunter uploaded 2 new properties for your review",
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            read: false,
-            actionUrl: "/request-search/req-1",
-        },
-        {
-            id: "3",
-            type: "payment_released",
-            title: "Payment Released",
-            message: "Escrow payment of KES 10,000 released to hunter",
-            timestamp: new Date(Date.now() - 86400000).toISOString(),
-            read: true,
-        },
-    ]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchNotifications = useCallback(async () => {
+        if (!isAuthenticated) return;
+        setLoading(true);
+        try {
+            const response = await api.get("/notifications");
+            setNotifications(response.data);
+        } catch (error) {
+            console.error("Failed to fetch notifications", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        fetchNotifications();
+        // Refresh every 30 seconds
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, [fetchNotifications]);
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    const getNotificationIcon = (type: Notification["type"]) => {
-        const icons = {
-            bid_received: "la-hand-pointer",
-            bid_accepted: "la-check-circle",
-            evidence_uploaded: "la-images",
-            extension_request: "la-clock",
-            payment_released: "la-money-bill-wave",
-            general: "la-bell",
+    const getNotificationIcon = (type: string) => {
+        const icons: any = {
+            'RESCHEDULE_REQUEST': "la-clock",
+            'BOOKING_REMINDER': "la-bell",
+            'PAYMENT_RELEASED': "la-money-bill-wave",
+            'SUCCESS': "la-check-circle",
+            'INFO': "la-info-circle",
+            'WARNING': "la-exclamation-triangle",
         };
-        return icons[type] || icons.general;
+        return icons[type] || "la-bell";
     };
 
-    const getNotificationColor = (type: Notification["type"]) => {
-        const colors = {
-            bid_received: "text-blue-600 dark:text-blue-400",
-            bid_accepted: "text-green-600 dark:text-green-400",
-            evidence_uploaded: "text-purple-600 dark:text-purple-400",
-            extension_request: "text-yellow-600 dark:text-yellow-400",
-            payment_released: "text-green-600 dark:text-green-400",
-            general: "text-neutral-600 dark:text-neutral-400",
+    const getNotificationColor = (type: string) => {
+        const colors: any = {
+            'RESCHEDULE_REQUEST': "text-blue-600 dark:text-blue-400",
+            'BOOKING_REMINDER': "text-orange-600 dark:text-orange-400",
+            'PAYMENT_RELEASED': "text-green-600 dark:text-green-400",
+            'SUCCESS': "text-green-600 dark:text-green-400",
+            'WARNING': "text-red-600 dark:text-red-400",
         };
-        return colors[type] || colors.general;
+        return colors[type] || "text-neutral-600 dark:text-neutral-400";
     };
 
-    const markAsRead = (id: string) => {
-        setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    const markAsRead = async (id: string) => {
+        try {
+            await api.patch(`/notifications/${id}/mark-read`);
+            setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+        } catch (error) {
+            console.error("Failed to mark notification as read", error);
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications(notifications.map(n => ({ ...n, read: true })));
+    const markAllAsRead = async () => {
+        try {
+            await api.patch("/notifications/mark-all-read");
+            setNotifications(notifications.map(n => ({ ...n, read: true })));
+        } catch (error) {
+            console.error("Failed to mark all notifications as read", error);
+        }
     };
 
     const formatTimestamp = (timestamp: string) => {
@@ -157,15 +163,12 @@ export default function NotificationBell() {
                                                             <h4 className={`font-semibold text-sm ${!notification.read ? "text-neutral-900 dark:text-white" : ""}`}>
                                                                 {notification.title}
                                                             </h4>
-                                                            {!notification.read && (
-                                                                <span className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0 mt-1 ml-2"></span>
-                                                            )}
+                                                            <span className="text-xs text-neutral-500 whitespace-nowrap">
+                                                                {formatTimestamp(notification.timestamp)}
+                                                            </span>
                                                         </div>
-                                                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                                                        <p className="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2 mt-1">
                                                             {notification.message}
-                                                        </p>
-                                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                                            {formatTimestamp(notification.timestamp)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -181,15 +184,12 @@ export default function NotificationBell() {
                                                         <h4 className={`font-semibold text-sm ${!notification.read ? "text-neutral-900 dark:text-white" : ""}`}>
                                                             {notification.title}
                                                         </h4>
-                                                        {!notification.read && (
-                                                            <span className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0 mt-1 ml-2"></span>
-                                                        )}
+                                                        <span className="text-xs text-neutral-500 whitespace-nowrap">
+                                                            {formatTimestamp(notification.timestamp)}
+                                                        </span>
                                                     </div>
-                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2 mt-1">
                                                         {notification.message}
-                                                    </p>
-                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                                        {formatTimestamp(notification.timestamp)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -198,24 +198,24 @@ export default function NotificationBell() {
                                 ))
                             ) : (
                                 <div className="p-8 text-center">
-                                    <i className="las la-bell-slash text-5xl text-neutral-400 mb-2"></i>
-                                    <p className="text-neutral-600 dark:text-neutral-400">No notifications</p>
+                                    <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <i className="las la-bell-slash text-2xl text-neutral-400"></i>
+                                    </div>
+                                    <p className="text-neutral-500 dark:text-neutral-400">No notifications yet</p>
                                 </div>
                             )}
                         </div>
 
                         {/* Footer */}
-                        {notifications.length > 0 && (
-                            <div className="p-3 border-t border-neutral-200 dark:border-neutral-700 text-center">
-                                <Link
-                                    href={"/notifications" as Route}
-                                    onClick={() => setIsOpen(false)}
-                                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                                >
-                                    View All Notifications
-                                </Link>
-                            </div>
-                        )}
+                        <div className="p-4 border-t border-neutral-200 dark:border-neutral-700 text-center">
+                            <Link
+                                href="/notifications"
+                                className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                View all notifications
+                            </Link>
+                        </div>
                     </div>
                 </>
             )}

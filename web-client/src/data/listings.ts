@@ -76,7 +76,7 @@ const DEMO_STAY_LISTINGS = __stayListing.map((post, index): StayDataType => {
     },
     images: post.galleryImgs || [],
     videoUrl: "",
-    houseHaunter: {
+    agent: {
       id: post.authorId,
       name: "Agent",
       phone: "",

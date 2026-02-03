@@ -100,7 +100,7 @@ export default function AlternativeOfferCard({
                             </p>
                             {offer.message && (
                                 <div className="bg-neutral-50 dark:bg-neutral-700/50 p-4 rounded-xl italic text-sm">
-                                    "{offer.message}"
+                                    &quot;{offer.message}&quot;
                                 </div>
                             )}
                         </div>

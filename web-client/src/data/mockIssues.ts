@@ -66,7 +66,7 @@ export const MOCK_ISSUES: Issue[] = [
     {
         id: "issue-4",
         type: "property_mismatch",
-        title: "House Haunter showed different properties than listed",
+        title: "Agent showed different properties than listed",
         description: "I booked to view the Westlands 3-bedroom apartment but the agent took me to completely different properties in Kilimani. When I asked about the original property, they said it was already taken.",
         status: "resolved",
         priority: "high",
@@ -126,7 +126,7 @@ export const MOCK_ISSUES: Issue[] = [
         id: "issue-7",
         type: "other",
         title: "Cannot access chat after payment",
-        description: "I paid for a viewing package but the chat is still locked. I can't communicate with the House Haunter to arrange the viewing time.",
+        description: "I paid for a viewing package but the chat is still locked. I can't communicate with the Agent to arrange the viewing time.",
         status: "pending",
         priority: "high",
         createdBy: {

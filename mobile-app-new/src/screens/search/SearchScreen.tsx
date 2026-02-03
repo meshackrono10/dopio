@@ -11,42 +11,11 @@ import { useWishlist } from '../../contexts/WishlistContext';
 import PropertyCard from '../../components/property/PropertyCard';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
-import { MOCK_PROPERTIES, MOCK_SEARCH_REQUESTS, getAvailableSearchRequests } from '../../services/mockData';
+import { MOCK_PROPERTIES } from '../../services/mockData';
 import { SearchStackParamList } from '../../types/navigation';
 
 type SearchScreenNavigationProp = StackNavigationProp<SearchStackParamList, 'Search'>;
 
-const SearchRequestItem = ({ item, isDark, onPress }: any) => (
-    <Card style={[styles.requestCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
-        <View style={styles.requestHeader}>
-            <View style={styles.requestInfo}>
-                <Text style={[styles.requestTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                    {item.propertyType} in {item.preferredAreas.join(', ')}
-                </Text>
-                <Text style={[styles.requestBudget, { color: colors.primary[600] }]}>
-                    Budget: KES {item.minRent.toLocaleString()} - {item.maxRent.toLocaleString()}
-                </Text>
-            </View>
-            {item.serviceTier === 'urgent' && (
-                <View style={styles.urgentBadge}>
-                    <Text style={styles.urgentText}>Urgent</Text>
-                </View>
-            )}
-        </View>
-        <Text style={[styles.requestDesc, { color: isDark ? colors.neutral[400] : colors.neutral[600] }]} numberOfLines={2}>
-            {item.additionalNotes}
-        </Text>
-        <View style={styles.requestFooter}>
-            <View style={styles.footerDetail}>
-                <Ionicons name="time-outline" size={14} color={colors.neutral[500]} />
-                <Text style={[styles.footerText, { color: colors.neutral[500] }]}>
-                    Deadline: {new Date(item.deadline).toLocaleDateString()}
-                </Text>
-            </View>
-            <Button size="sm" onPress={onPress}>View & Bid</Button>
-        </View>
-    </Card>
-);
 
 const SearchScreen = () => {
     const { isDark } = useTheme();
@@ -113,44 +82,6 @@ const SearchScreen = () => {
         setSelectedPropertyTypes([]);
     };
 
-    if (user?.role === 'hunter') {
-        const availableRequests = getAvailableSearchRequests();
-
-        return (
-            <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50] }]}>
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                        Search Requests
-                    </Text>
-                </View>
-                <FlatList
-                    data={availableRequests}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <SearchRequestItem
-                            item={item}
-                            isDark={isDark}
-                            onPress={() => navigation.navigate('SearchRequestDetail', { requestId: item.id })}
-                        />
-                    )}
-                    contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={
-                        <Text style={[styles.resultsText, { color: isDark ? colors.neutral[400] : colors.neutral[600], marginBottom: spacing.md }]}>
-                            {availableRequests.length} requests available for bidding
-                        </Text>
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Ionicons name="search-outline" size={64} color={colors.neutral[400]} />
-                            <Text style={[styles.emptyText, { color: isDark ? colors.neutral[400] : colors.neutral[600] }]}>
-                                No search requests found
-                            </Text>
-                        </View>
-                    }
-                />
-            </SafeAreaView>
-        );
-    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50] }]}>
@@ -193,22 +124,6 @@ const SearchScreen = () => {
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
                     <View>
-                        <TouchableOpacity
-                            style={[styles.customSearchBanner, { backgroundColor: colors.primary[50] }]}
-                            onPress={() => navigation.navigate('SearchRequestLanding')}
-                        >
-                            <View style={styles.bannerContent}>
-                                <View style={styles.bannerText}>
-                                    <Text style={[styles.bannerTitle, { color: colors.primary[700] }]}>
-                                        Can't find what you need?
-                                    </Text>
-                                    <Text style={[styles.bannerDesc, { color: colors.primary[600] }]}>
-                                        Request a custom search from our hunters
-                                    </Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={24} color={colors.primary[600]} />
-                            </View>
-                        </TouchableOpacity>
                         <Text style={[styles.resultsText, { color: isDark ? colors.neutral[400] : colors.neutral[600] }]}>
                             {filteredProperties.length} properties found
                         </Text>
@@ -508,28 +423,6 @@ const styles = StyleSheet.create({
     filterBadgeText: { ...typography.caption, color: 'white', fontSize: 10, fontWeight: '700' },
     listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
     resultsText: { ...typography.bodySmall, marginBottom: spacing.md },
-    customSearchBanner: {
-        padding: spacing.md,
-        borderRadius: borderRadius.lg,
-        marginBottom: spacing.lg,
-    },
-    bannerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    bannerText: {
-        flex: 1,
-        gap: 2,
-    },
-    bannerTitle: {
-        ...typography.body,
-        fontWeight: '700',
-    },
-    bannerDesc: {
-        ...typography.caption,
-        fontWeight: '500',
-    },
     modalContainer: { flex: 1 },
     modalHeader: {
         flexDirection: 'row',
@@ -584,59 +477,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         minWidth: 20,
         textAlign: 'center',
-    },
-    // Hunter Search Request Styles
-    requestCard: {
-        padding: spacing.md,
-        marginBottom: spacing.md,
-        gap: spacing.sm,
-    },
-    requestHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    requestInfo: {
-        flex: 1,
-    },
-    requestTitle: {
-        ...typography.body,
-        fontWeight: '700',
-        textTransform: 'capitalize',
-    },
-    requestBudget: {
-        ...typography.caption,
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    urgentBadge: {
-        backgroundColor: colors.error + '20',
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
-    },
-    urgentText: {
-        color: colors.error,
-        fontSize: 10,
-        fontWeight: '700',
-    },
-    requestDesc: {
-        ...typography.bodySmall,
-        lineHeight: 20,
-    },
-    requestFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: spacing.xs,
-    },
-    footerDetail: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    footerText: {
-        ...typography.caption,
     },
     emptyState: {
         alignItems: 'center',

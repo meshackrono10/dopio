@@ -50,7 +50,7 @@ export default function Settings() {
                             </label>
                             <input
                                 type="text"
-                                defaultValue="House Haunters"
+                                defaultValue="Dapio"
                                 className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-neutral-700"
                             />
                         </div>
@@ -60,7 +60,7 @@ export default function Settings() {
                             </label>
                             <input
                                 type="email"
-                                defaultValue="support@househaunters.com"
+                                defaultValue="support@dapio.com"
                                 className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-neutral-700"
                             />
                         </div>

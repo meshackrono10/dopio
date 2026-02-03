@@ -11,13 +11,13 @@ interface FAQItem {
 const FAQS: FAQItem[] = [
     {
         category: "General",
-        question: "What is House Haunters?",
-        answer: "House Haunters is a platform that connects tenants looking for rental properties with verified house haunters (agents) who conduct in-person property viewings on your behalf for a fee.",
+        question: "What is Dapio?",
+        answer: "Dapio is a platform that connects tenants looking for rental properties with verified agents who conduct in-person property viewings on your behalf for a fee.",
     },
     {
         category: "General",
         question: "How does it work?",
-        answer: "Simply browse properties on our platform, select one you like, choose a viewing package, pay via M-Pesa, and our verified house haunter will meet you at the property for a detailed tour.",
+        answer: "Simply browse properties on our platform, select one you like, choose a viewing package, pay via M-Pesa, and our verified agent will meet you at the property for a detailed tour.",
     },
     {
         category: "Pricing",
@@ -27,7 +27,7 @@ const FAQS: FAQItem[] = [
     {
         category: "Pricing",
         question: "Can I get a refund if I don't like the property?",
-        answer: "Viewing fees are non-refundable as they cover the house haunter's time and service. However, if the house haunter doesn't show up or the property doesn't exist, you'll receive a full refund.",
+        answer: "Viewing fees are non-refundable as they cover the agent's time and service. However, if the agent doesn't show up or the property doesn't exist, you'll receive a full refund.",
     },
     {
         category: "Payments",
@@ -52,17 +52,17 @@ const FAQS: FAQItem[] = [
     {
         category: "Viewings",
         question: "What happens during a viewing?",
-        answer: "Your house haunter will meet you at the property, show you around all rooms and amenities, answer your questions, and provide information about the neighborhood and landlord terms.",
+        answer: "Your agent will meet you at the property, show you around all rooms and amenities, answer your questions, and provide information about the neighborhood and landlord terms.",
     },
     {
-        category: "For Haunters",
-        question: "How do I become a house haunter?",
+        category: "For Agents",
+        question: "How do I become an agent?",
         answer: "Sign up on our platform, upload your National ID for verification, complete your profile, and once approved by our admin team, you can start listing properties and conducting viewings.",
     },
     {
-        category: "For Haunters",
-        question: "How much can I earn as a house haunter?",
-        answer: "You earn 80% of the viewing fee. For example, on a Gold package (KES 2,500), you earn KES 2,000. Most active haunters conduct 10-15 viewings per month.",
+        category: "For Agents",
+        question: "How much can I earn as an agent?",
+        answer: "You earn 80% of the viewing fee. For example, on a Gold package (KES 2,500), you earn KES 2,000. Most active agents conduct 10-15 viewings per month.",
     },
     {
         category: "For Haunters",
@@ -71,18 +71,18 @@ const FAQS: FAQItem[] = [
     },
     {
         category: "Trust & Safety",
-        question: "Are house haunters verified?",
-        answer: "Yes! All house haunters must submit their National ID and undergo verification by our admin team before they can conduct viewings.",
+        question: "Are agents verified?",
+        answer: "Yes! All agents must submit their National ID and undergo verification by our admin team before they can conduct viewings.",
     },
     {
         category: "Trust & Safety",
         question: "What if I have a bad experience?",
-        answer: "You can rate and review house haunters after each viewing. If you encounter Issues, report them through your dashboard and our team will investigate and resolve them.",
+        answer: "You can rate and review agents after each viewing. If you encounter Issues, report them through your dashboard and our team will investigate and resolve them.",
     },
     {
         category: "Trust & Safety",
         question: "Are the properties real?",
-        answer: "All properties are submitted by verified house haunters. However, we recommend viewing the property in person before making any rental agreements with landlords.",
+        answer: "All properties are submitted by verified agents. However, we recommend viewing the property in person before making any rental agreements with landlords.",
     },
 ];
 
@@ -121,7 +121,7 @@ export default function FAQPage() {
                             Frequently Asked Questions
                         </h1>
                         <p className="text-xl text-neutral-600 dark:text-neutral-300 mb-8">
-                            Find answers to common questions about House Haunters
+                            Find answers to common questions about Dapio
                         </p>
 
                         {/* Search */}

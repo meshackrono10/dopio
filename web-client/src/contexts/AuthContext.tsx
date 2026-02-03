@@ -14,6 +14,10 @@ export interface User {
     phone?: string;
     isVerified?: boolean;
     verificationStatus?: "PENDING" | "APPROVED" | "REJECTED" | "UNVERIFIED" | "NONE";
+    description?: string;
+    workLocation?: string;
+    averageRating?: number;
+    reviewCount?: number;
     createdAt?: string;
     updatedAt?: string;
 }

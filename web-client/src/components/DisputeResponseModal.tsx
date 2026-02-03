@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import api from "@/services/api";
 import { useToast } from "@/components/Toast";
 import ButtonPrimary from "@/shared/ButtonPrimary";
+import Image from "next/image";
 
 interface DisputeResponseModalProps {
     disputeId: string;
@@ -130,9 +131,10 @@ export default function DisputeResponseModal({ disputeId, onClose, onSuccess }: 
                             <div className="mt-4 grid grid-cols-3 gap-2">
                                 {evidenceUrls.map((url, index) => (
                                     <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700">
-                                        <img
+                                        <Image
                                             src={url}
                                             alt={`Evidence ${index + 1}`}
+                                            fill
                                             className="w-full h-full object-cover"
                                         />
                                     </div>

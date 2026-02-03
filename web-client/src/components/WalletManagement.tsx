@@ -1,21 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ButtonPrimary from "@/shared/ButtonPrimary";
 import ButtonSecondary from "@/shared/ButtonSecondary";
+import api from "@/services/api";
+import { useToast } from "./Toast";
 
 interface WalletBalance {
     available: number;
     escrow: number;
-    pending: number;
+    withdrawn: number;
+    pending?: number;
 }
 
-export default function WalletManagement() {
+interface WalletManagementProps {
+    bookings?: any[];
+    userRole?: "hunter" | "tenant";
+}
+
+export default function WalletManagement({ userRole = "tenant" }: WalletManagementProps) {
+    const { showToast } = useToast();
     const [balance, setBalance] = useState<WalletBalance>({
-        available: 25000,
-        escrow: 15000,
-        pending: 5000,
+        available: 0,
+        escrow: 0,
+        withdrawn: 0,
+        pending: 0
     });
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [showDeposit, setShowDeposit] = useState(false);
     const [showWithdraw, setShowWithdraw] = useState(false);
@@ -30,68 +42,75 @@ export default function WalletManagement() {
     const [withdrawPhone, setWithdrawPhone] = useState("+254");
     const [withdrawProcessing, setWithdrawProcessing] = useState(false);
 
-    const handleDeposit = () => {
-        if (!depositAmount || parseFloat(depositAmount) <= 0) {
-            alert("Please enter a valid amount");
-            return;
+    const fetchWalletData = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get("/payments/summary");
+            setBalance(response.data.balance);
+            setTransactions(response.data.transactions);
+        } catch (error) {
+            console.error("Failed to fetch wallet data", error);
+        } finally {
+            setLoading(false);
         }
+    };
 
-        if (depositPhone.length < 12) {
-            alert("Please enter a valid phone number");
+    useEffect(() => {
+        fetchWalletData();
+    }, []);
+
+    const handleDeposit = async () => {
+        if (!depositAmount || parseFloat(depositAmount) <= 0) {
+            showToast("error", "Please enter a valid amount");
             return;
         }
 
         setDepositProcessing(true);
-
-        // Simulate M-Pesa STK Push
-        setTimeout(() => {
-            const amount = parseFloat(depositAmount);
-            setBalance(prev => ({
-                ...prev,
-                available: prev.available + amount,
-            }));
-
-            setDepositProcessing(false);
+        try {
+            await api.post("/payments/stk-push", {
+                amount: parseFloat(depositAmount),
+                phone: depositPhone,
+                requestId: "WALLET_DEPOSIT" // Backend can handle special cases if needed
+            });
+            showToast("success", "Deposit request sent. Please complete on your phone.");
             setShowDeposit(false);
             setDepositAmount("");
-
-            alert(`Successfully deposited KES ${amount.toLocaleString()} to your wallet!`);
-        }, 3000);
+            // Refresh after a delay to allow simulator to record it
+            setTimeout(fetchWalletData, 5000);
+        } catch (error: any) {
+            showToast("error", error.response?.data?.message || "Deposit failed");
+        } finally {
+            setDepositProcessing(false);
+        }
     };
 
-    const handleWithdraw = () => {
+    const handleWithdraw = async () => {
         const amount = parseFloat(withdrawAmount);
-
         if (!withdrawAmount || amount <= 0) {
-            alert("Please enter a valid amount");
+            showToast("error", "Please enter a valid amount");
             return;
         }
 
         if (amount > balance.available) {
-            alert("Insufficient balance");
-            return;
-        }
-
-        if (withdrawPhone.length < 12) {
-            alert("Please enter a valid phone number");
+            showToast("error", "Insufficient balance");
             return;
         }
 
         setWithdrawProcessing(true);
-
-        // Simulate withdrawal processing
-        setTimeout(() => {
-            setBalance(prev => ({
-                ...prev,
-                available: prev.available - amount,
-            }));
-
-            setWithdrawProcessing(false);
+        try {
+            await api.post("/payments/withdraw", {
+                amount,
+                phoneNumber: withdrawPhone
+            });
+            showToast("success", `Successfully requested withdrawal of KES ${amount.toLocaleString()}`);
             setShowWithdraw(false);
             setWithdrawAmount("");
-
-            alert(`Successfully withdrew KES ${amount.toLocaleString()} to ${withdrawPhone}`);
-        }, 3000);
+            fetchWalletData();
+        } catch (error: any) {
+            showToast("error", error.response?.data?.message || "Withdrawal failed");
+        } finally {
+            setWithdrawProcessing(false);
+        }
     };
 
     return (
@@ -101,13 +120,13 @@ export default function WalletManagement() {
                 <h3 className="text-sm font-medium opacity-90 mb-2">Total Balance</h3>
                 <div className="flex items-baseline gap-2 mb-4">
                     <span className="text-4xl font-bold">
-                        KES {(balance.available + balance.escrow + balance.pending).toLocaleString()}
+                        KES {(balance.available + balance.escrow + (balance.pending || 0)).toLocaleString()}
                     </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
                     <div>
-                        <p className="text-xs opacity-75 mb-1">Available</p>
+                        <p className="text-xs opacity-75 mb-1">{userRole === "hunter" ? "Withdrawable" : "Available"}</p>
                         <p className="font-semibold">KES {balance.available.toLocaleString()}</p>
                     </div>
                     <div>
@@ -115,8 +134,8 @@ export default function WalletManagement() {
                         <p className="font-semibold">KES {balance.escrow.toLocaleString()}</p>
                     </div>
                     <div>
-                        <p className="text-xs opacity-75 mb-1">Pending</p>
-                        <p className="font-semibold">KES {balance.pending.toLocaleString()}</p>
+                        <p className="text-xs opacity-75 mb-1">{userRole === "hunter" ? "Total Withdrawn" : "Pending"}</p>
+                        <p className="font-semibold">KES {(balance.withdrawn || balance.pending || 0).toLocaleString()}</p>
                     </div>
                 </div>
             </div>
@@ -311,55 +330,57 @@ export default function WalletManagement() {
                 </div>
             )}
 
-            {/* Recent Transactions */}
+            {/* Recent Transactions & Earnings */}
             <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700">
                 <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
-                    <h3 className="font-bold">Recent Transactions</h3>
+                    <h3 className="font-bold">{userRole === "hunter" ? "Recent Transactions & Earnings" : "Recent Transactions"}</h3>
                 </div>
                 <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                    {[
-                        { type: "deposit", amount: 10000, date: "2024-12-22", status: "completed" },
-                        { type: "withdrawal", amount: 5000, date: "2024-12-21", status: "completed" },
-                        { type: "escrow_release", amount: 15000, date: "2024-12-20", status: "completed" },
-                    ].map((tx, idx) => (
-                        <div key={idx} className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === "deposit"
-                                    ? "bg-green-100 dark:bg-green-900/20"
-                                    : tx.type === "withdrawal"
-                                        ? "bg-blue-100 dark:bg-blue-900/20"
-                                        : "bg-purple-100 dark:bg-purple-900/20"
-                                    }`}>
-                                    <i className={`las ${tx.type === "deposit"
-                                        ? "la-arrow-down text-green-600"
-                                        : tx.type === "withdrawal"
-                                            ? "la-arrow-up text-blue-600"
-                                            : "la-lock-open text-purple-600"
-                                        } text-xl`}></i>
+                    {transactions.length > 0 ? (
+                        transactions.map((tx, idx) => (
+                            <div key={idx} className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === "DEPOSIT" || tx.type === "BOOKING_EARNING"
+                                        ? "bg-green-100 dark:bg-green-900/20"
+                                        : tx.type === "WITHDRAWAL" || tx.type === "BOOKING_PAYMENT"
+                                            ? "bg-blue-100 dark:bg-blue-900/20"
+                                            : "bg-purple-100 dark:bg-purple-900/20"
+                                        }`}>
+                                        <i className={`las ${tx.type === "DEPOSIT" || tx.type === "BOOKING_EARNING"
+                                            ? "la-arrow-down text-green-600"
+                                            : tx.type === "WITHDRAWAL" || tx.type === "BOOKING_PAYMENT"
+                                                ? "la-arrow-up text-blue-600"
+                                                : "la-lock-open text-purple-600"
+                                            } text-xl`}></i>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold capitalize text-sm">
+                                            {tx.description}
+                                        </p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                            {new Date(tx.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold capitalize">
-                                        {tx.type.replace("_", " ")}
+                                <div className="text-right">
+                                    <p className={`font-bold ${tx.type === "DEPOSIT" || tx.type === "REFUND"
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                        }`}>
+                                        {tx.type === "DEPOSIT" || tx.type === "REFUND" ? "+" : "-"}
+                                        KES {tx.amount.toLocaleString()}
                                     </p>
-                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                        {new Date(tx.date).toLocaleDateString()}
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 capitalize">
+                                        {tx.status.toLowerCase()}
                                     </p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className={`font-bold ${tx.type === "deposit" || tx.type === "escrow_release"
-                                    ? "text-green-600"
-                                    : "text-red-600"
-                                    }`}>
-                                    {tx.type === "deposit" || tx.type === "escrow_release" ? "+" : "-"}
-                                    KES {tx.amount.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                    {tx.status}
-                                </p>
-                            </div>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center text-neutral-500">
+                            <p>No transactions found</p>
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
         </div>

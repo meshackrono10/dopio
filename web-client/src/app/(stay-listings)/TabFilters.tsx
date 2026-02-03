@@ -14,21 +14,28 @@ import { useProperties } from "@/contexts/PropertyContext";
 // DEMO DATA
 const typeOfPaces = [
   {
-    name: "Entire place",
-    description: "Have a place to yourself",
+    name: "Single Room",
+    description: "Shared bathroom & kitchen",
   },
   {
-    name: "Private room",
-    description: "Have your own room and share some common spaces",
+    name: "Bedsitter",
+    description: "Self-contained with private bathroom",
   },
   {
-    name: "Hotel room",
-    description:
-      "Have a private or shared room in a boutique hotel, hostel, and more",
+    name: "Studio",
+    description: "Open plan with separate kitchen",
   },
   {
-    name: "Shared room",
-    description: "Stay in a shared space, like a common room",
+    name: "1-bedroom",
+    description: "Standalone or apartment bedroom",
+  },
+  {
+    name: "2-bedroom",
+    description: "Standalone or apartment 2 bedrooms",
+  },
+  {
+    name: "3-bedroom",
+    description: "Standalone or apartment 3 bedrooms",
   },
 ];
 
@@ -68,12 +75,22 @@ const moreFilter3 = [
 
 const moreFilter4 = [{ name: " Pets allowed" }, { name: "Smoking allowed" }];
 
+const neighborhoodTypes = [
+  { name: "Court", description: "Secured court with gated entrance" },
+  { name: "Estate", description: "Large residential estate" },
+  { name: "Apartment Block", description: "Multi-story residential building" },
+  { name: "Standalone", description: "Individual house with private compound" },
+  { name: "Gated Community", description: "High-end secured community" },
+];
+
 const TabFilters = () => {
   const { filterProperties } = useProperties();
   const [isOpenMoreFilter, setisOpenMoreFilter] = useState(false);
   const [isOpenMoreFilterMobile, setisOpenMoreFilterMobile] = useState(false);
   const [rangePrices, setRangePrices] = useState([0, 100000]);
+  const [viewingFeeRange, setViewingFeeRange] = useState([0, 5000]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<string[]>([]);
   const [beds, setBeds] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
   const [bathrooms, setBathrooms] = useState(0);
@@ -331,6 +348,141 @@ const TabFilters = () => {
                     <ButtonPrimary
                       onClick={() => {
                         filterProperties({ minRent: rangePrices[0], maxRent: rangePrices[1] });
+                        close();
+                      }}
+                      sizeClass="px-4 py-2 sm:px-5"
+                    >
+                      Apply
+                    </ButtonPrimary>
+                  </div>
+                </div>
+              </Popover.Panel>
+            </Transition>
+          </>
+        )}
+      </Popover>
+    );
+  };
+
+  const renderTabsNeighborhoodType = () => {
+    return (
+      <Popover className="relative">
+        {({ open, close }) => (
+          <>
+            <Popover.Button
+              className={`flex items-center justify-center px-4 py-2 text-sm rounded-full border border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-6000 focus:outline-none ${open ? "!border-primary-500 " : ""
+                }`}
+            >
+              <span>Neighborhood</span>
+              <i className="las la-angle-down ml-2"></i>
+            </Popover.Button>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-200"
+              enterFrom="opacity-0 translate-y-1"
+              enterTo="opacity-100 translate-y-0"
+              leave="transition ease-in duration-150"
+              leaveFrom="opacity-100 translate-y-0"
+              leaveTo="opacity-0 translate-y-1"
+            >
+              <Popover.Panel className="absolute z-10 w-screen max-w-sm px-4 mt-3 left-0 sm:px-0 lg:max-w-md">
+                <div className="overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700">
+                  <div className="relative flex flex-col px-5 py-6 space-y-5">
+                    {neighborhoodTypes.map((item) => (
+                      <div key={item.name} className="">
+                        <Checkbox
+                          name={item.name}
+                          label={item.name}
+                          subLabel={item.description}
+                          onChange={(checked) => {
+                            if (checked) {
+                              setSelectedNeighborhoods([...selectedNeighborhoods, item.name]);
+                            } else {
+                              setSelectedNeighborhoods(selectedNeighborhoods.filter(t => t !== item.name));
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-5 bg-neutral-50 dark:bg-neutral-900 dark:border-t dark:border-neutral-800 flex items-center justify-between">
+                    <ButtonThird onClick={close} sizeClass="px-4 py-2 sm:px-5">
+                      Clear
+                    </ButtonThird>
+                    <ButtonPrimary
+                      onClick={() => {
+                        filterProperties({ neighborhoodType: selectedNeighborhoods });
+                        close();
+                      }}
+                      sizeClass="px-4 py-2 sm:px-5"
+                    >
+                      Apply
+                    </ButtonPrimary>
+                  </div>
+                </div>
+              </Popover.Panel>
+            </Transition>
+          </>
+        )}
+      </Popover>
+    );
+  };
+
+  const renderTabsViewingFee = () => {
+    return (
+      <Popover className="relative">
+        {({ open, close }) => (
+          <>
+            <Popover.Button
+              className={`flex items-center justify-center px-4 py-2 text-sm rounded-full border border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-6000 focus:outline-none ${open ? "!border-primary-500 " : ""
+                }`}
+            >
+              <span>Viewing Fee</span>
+              <i className="las la-angle-down ml-2"></i>
+            </Popover.Button>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-200"
+              enterFrom="opacity-0 translate-y-1"
+              enterTo="opacity-100 translate-y-0"
+              leave="transition ease-in duration-150"
+              leaveFrom="opacity-100 translate-y-0"
+              leaveTo="opacity-0 translate-y-1"
+            >
+              <Popover.Panel className="absolute z-10 w-screen max-w-sm px-4 mt-3 left-0 sm:px-0 ">
+                <div className="overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700">
+                  <div className="relative flex flex-col px-5 py-6 space-y-8">
+                    <div className="space-y-5">
+                      <span className="font-medium">Viewing Fee Range</span>
+                      <Slider
+                        range
+                        min={0}
+                        max={5000}
+                        step={100}
+                        defaultValue={[viewingFeeRange[0], viewingFeeRange[1]]}
+                        allowCross={false}
+                        onChange={(e) => setViewingFeeRange(e as number[])}
+                      />
+                    </div>
+                    <div className="flex justify-between space-x-5">
+                      <div>
+                        <span className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Min: KSh {viewingFeeRange[0]}</span>
+                      </div>
+                      <div>
+                        <span className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Max: KSh {viewingFeeRange[1]}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-5 bg-neutral-50 dark:bg-neutral-900 dark:border-t dark:border-neutral-800 flex items-center justify-between">
+                    <ButtonThird onClick={close} sizeClass="px-4 py-2 sm:px-5">
+                      Clear
+                    </ButtonThird>
+                    <ButtonPrimary
+                      onClick={() => {
+                        filterProperties({
+                          minViewingFee: viewingFeeRange[0],
+                          maxViewingFee: viewingFeeRange[1]
+                        });
                         close();
                       }}
                       sizeClass="px-4 py-2 sm:px-5"
@@ -702,7 +854,8 @@ const TabFilters = () => {
       <div className="hidden lg:flex space-x-4">
         {renderTabsTypeOfPlace()}
         {renderTabsPriceRage()}
-        {renderTabsRoomAndBeds()}
+        {renderTabsNeighborhoodType()}
+        {renderTabsViewingFee()}
         {renderTabMoreFilter()}
       </div>
       {renderTabMoreFilterMobile()}

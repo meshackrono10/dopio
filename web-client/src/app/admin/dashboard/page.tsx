@@ -21,15 +21,7 @@ export default function AdminDashboard() {
     const [properties, setProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (!authLoading && (!user || user.role !== "ADMIN")) {
-            router.push("/");
-            return;
-        }
-        fetchData();
-    }, [user, authLoading, activeTab]);
-
-    const fetchData = async () => {
+    const fetchData = React.useCallback(async () => {
         setLoading(true);
         try {
             if (activeTab === "stats") {
@@ -50,7 +42,15 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeTab, showToast]);
+
+    useEffect(() => {
+        if (!authLoading && (!user || user.role !== "ADMIN")) {
+            router.push("/");
+            return;
+        }
+        fetchData();
+    }, [user, authLoading, activeTab, router, fetchData]);
 
     const handleUpdateUserStatus = async (userId: string, status: string) => {
         try {
@@ -106,8 +106,8 @@ export default function AdminDashboard() {
                             <button
                                 onClick={() => setActiveTab("stats")}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "stats"
-                                        ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
-                                        : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                                    ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
+                                    : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
                                     }`}
                             >
                                 <i className="las la-chart-bar text-xl"></i>
@@ -116,8 +116,8 @@ export default function AdminDashboard() {
                             <button
                                 onClick={() => setActiveTab("disputes")}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "disputes"
-                                        ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
-                                        : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                                    ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
+                                    : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
                                     }`}
                             >
                                 <i className="las la-exclamation-circle text-xl"></i>
@@ -126,8 +126,8 @@ export default function AdminDashboard() {
                             <button
                                 onClick={() => setActiveTab("users")}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "users"
-                                        ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
-                                        : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                                    ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
+                                    : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
                                     }`}
                             >
                                 <i className="las la-users text-xl"></i>
@@ -136,8 +136,8 @@ export default function AdminDashboard() {
                             <button
                                 onClick={() => setActiveTab("properties")}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "properties"
-                                        ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
-                                        : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                                    ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20"
+                                    : "hover:bg-neutral-50 dark:hover:bg-neutral-700"
                                     }`}
                             >
                                 <i className="las la-home text-xl"></i>

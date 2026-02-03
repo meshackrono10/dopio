@@ -7,36 +7,36 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import DashboardTabs from '../common/DashboardTabs';
 import WalletCard from '../common/WalletCard';
-import { MOCK_PROPERTIES, getSearchRequestsByTenantId } from '../../services/mockData';
+import { MOCK_PROPERTIES } from '../../services/mockData';
+import { useBookings } from '../../contexts/BookingContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TenantDashboardProps {
     onNavigateToSearch: () => void;
-    onNavigateToRequests: () => void;
     onNavigateToBookings: () => void;
     onNavigateToChat: (id: string) => void;
-    onNavigateToRequestDetail: (id: string) => void;
 }
 
 const TenantDashboard: React.FC<TenantDashboardProps> = ({
     onNavigateToSearch,
-    onNavigateToRequests,
     onNavigateToBookings,
     onNavigateToChat,
-    onNavigateToRequestDetail
 }) => {
     const { isDark } = useTheme();
+    const { user } = useAuth();
+    const { getBookingsForUser, confirmMeetup, markDone, reportIssue, cancelIssue } = useBookings();
     const [activeTab, setActiveTab] = useState('saved');
+
+    const myBookings = getBookingsForUser(user?.id || '', 'tenant');
 
     const tabs = [
         { id: 'saved', label: 'Saved', icon: 'heart' },
         { id: 'bookings', label: 'Bookings', icon: 'calendar' },
-        { id: 'requests', label: 'Requests', icon: 'search' },
         { id: 'reviews', label: 'Reviews', icon: 'star' },
         { id: 'wallet', label: 'Wallet', icon: 'wallet' },
     ];
 
     const tenantId = "tenant-1";
-    const myRequests = getSearchRequestsByTenantId(tenantId);
     const savedProperties = MOCK_PROPERTIES.slice(0, 3); // Mock saved properties
 
     const renderSaved = () => (
@@ -75,68 +75,86 @@ const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
     const renderBookings = () => (
         <View style={styles.section}>
-            <Card style={[styles.bookingCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
-                <View style={styles.bookingHeader}>
-                    <View style={styles.bookingDate}>
-                        <Text style={styles.dateDay}>18</Text>
-                        <Text style={styles.dateMonth}>DEC</Text>
-                    </View>
-                    <View style={styles.bookingInfo}>
-                        <Text style={[styles.bookingTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                            Modern 2BR Kasarani
-                        </Text>
-                        <Text style={[styles.bookingStatus, { color: colors.success }]}>Confirmed</Text>
-                    </View>
-                </View>
-                <View style={styles.bookingFooter}>
-                    <View style={styles.hunterInfo}>
-                        <Ionicons name="person-circle" size={24} color={colors.neutral[400]} />
-                        <Text style={[styles.hunterName, { color: isDark ? colors.neutral[300] : colors.neutral[600] }]}>
-                            John Kamau
-                        </Text>
-                    </View>
-                    <Button size="sm" variant="outline" onPress={() => onNavigateToChat('hunter-1')}>Chat</Button>
-                </View>
-            </Card>
-        </View>
-    );
+            {myBookings.map((booking) => {
+                const isToday = new Date(booking.scheduledDate).toDateString() === new Date().toDateString();
+                const canMeetup = isToday && !booking.tenantMetConfirmed && !booking.physicalMeetingConfirmed;
+                const showDoneIssue = booking.physicalMeetingConfirmed && !booking.tenantDone && !booking.issueCreated;
+                const canCancelIssue = booking.issueCreated;
+                const canEditCancel = !booking.physicalMeetingConfirmed;
 
-    const renderRequests = () => (
-        <View style={styles.section}>
-            {myRequests.map((request) => (
-                <Card key={request.id} style={[styles.requestCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
-                    <View style={styles.requestHeader}>
-                        <Text style={[styles.requestTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                            {request.propertyType} in {request.preferredAreas[0]}
-                        </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: colors.primary[50] }]}>
-                            <Text style={[styles.statusText, { color: colors.primary[600] }]}>
-                                {request.status.replace('_', ' ')}
-                            </Text>
+                const date = new Date(booking.scheduledDate);
+                const day = date.getDate();
+                const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+
+                return (
+                    <Card key={booking.id} style={[styles.bookingCard, { backgroundColor: isDark ? colors.neutral[800] : 'white', marginBottom: spacing.md }]}>
+                        <View style={styles.bookingHeader}>
+                            <View style={styles.bookingDate}>
+                                <Text style={styles.dateDay}>{day}</Text>
+                                <Text style={styles.dateMonth}>{month}</Text>
+                            </View>
+                            <View style={styles.bookingInfo}>
+                                <Text style={[styles.bookingTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
+                                    {booking.propertyTitle}
+                                </Text>
+                                <Text style={[styles.bookingStatus, { color: booking.status === 'completed' ? colors.success : colors.primary[600] }]}>
+                                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                </Text>
+                            </View>
                         </View>
-                    </View>
-                    <Text style={[styles.requestBudget, { color: colors.neutral[500] }]}>
-                        Budget: KES {request.minRent.toLocaleString()} - {request.maxRent.toLocaleString()}
-                    </Text>
-                    <View style={styles.requestFooter}>
-                        <Text style={[styles.bidCount, { color: colors.secondary[500] }]}>
-                            {request.bids.length} Bids received
-                        </Text>
-                        <TouchableOpacity onPress={() => onNavigateToRequestDetail(request.id.toString())}>
-                            <Text style={{ color: colors.primary[600], fontWeight: '600' }}>View Details</Text>
-                        </TouchableOpacity>
-                    </View>
-                </Card>
-            ))}
-            {myRequests.length === 0 && (
+
+                        <View style={styles.bookingControls}>
+                            {canMeetup && (
+                                <Button size="sm" style={styles.controlBtn} onPress={() => confirmMeetup(booking.id)}>
+                                    Confirm Meetup
+                                </Button>
+                            )}
+                            {showDoneIssue && (
+                                <View style={styles.row}>
+                                    <Button size="sm" style={[styles.controlBtn, { flex: 1, marginRight: spacing.xs }]} onPress={() => markDone(booking.id)}>
+                                        Done
+                                    </Button>
+                                    <Button size="sm" variant="outline" style={[styles.controlBtn, { flex: 1 }]} onPress={() => reportIssue(booking.id, 'Issue reported during meetup')}>
+                                        Issue
+                                    </Button>
+                                </View>
+                            )}
+                            {canCancelIssue && (
+                                <Button size="sm" variant="outline" style={styles.controlBtn} onPress={() => cancelIssue(booking.id)}>
+                                    Cancel Issue
+                                </Button>
+                            )}
+                        </View>
+
+                        <View style={styles.bookingFooter}>
+                            <View style={styles.hunterInfo}>
+                                <Ionicons name="person-circle" size={24} color={colors.neutral[400]} />
+                                <Text style={[styles.hunterName, { color: isDark ? colors.neutral[300] : colors.neutral[600] }]}>
+                                    {booking.hunterName}
+                                </Text>
+                            </View>
+                            <View style={styles.row}>
+                                {canEditCancel && (
+                                    <TouchableOpacity style={{ marginRight: spacing.md }}>
+                                        <Text style={{ color: colors.error, fontSize: 12, fontWeight: '600' }}>Cancel</Text>
+                                    </TouchableOpacity>
+                                )}
+                                <Button size="sm" variant="outline" onPress={() => onNavigateToChat(booking.hunterId)}>Chat</Button>
+                            </View>
+                        </View>
+                    </Card>
+                );
+            })}
+            {myBookings.length === 0 && (
                 <View style={styles.emptyState}>
-                    <Ionicons name="search-outline" size={48} color={colors.neutral[300]} />
-                    <Text style={[styles.emptyText, { color: colors.neutral[500] }]}>No search requests yet</Text>
-                    <Button size="sm" onPress={onNavigateToRequests}>Create Request</Button>
+                    <Ionicons name="calendar-outline" size={48} color={colors.neutral[300]} />
+                    <Text style={[styles.emptyText, { color: colors.neutral[500] }]}>No active bookings</Text>
+                    <Button size="sm" onPress={onNavigateToSearch}>Browse Properties</Button>
                 </View>
             )}
         </View>
     );
+
 
     const renderReviews = () => (
         <View style={styles.section}>
@@ -193,10 +211,6 @@ const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     <Text style={styles.statValue}>1</Text>
                     <Text style={styles.statLabel}>Bookings</Text>
                 </View>
-                <View style={styles.statItem}>
-                    <Text style={styles.statValue}>2</Text>
-                    <Text style={styles.statLabel}>Requests</Text>
-                </View>
             </View>
 
             <DashboardTabs
@@ -207,7 +221,6 @@ const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
             {activeTab === 'saved' && renderSaved()}
             {activeTab === 'bookings' && renderBookings()}
-            {activeTab === 'requests' && renderRequests()}
             {activeTab === 'reviews' && renderReviews()}
             {activeTab === 'wallet' && renderWallet()}
         </ScrollView>
@@ -365,6 +378,16 @@ const styles = StyleSheet.create({
     hunterName: {
         ...typography.bodySmall,
         fontWeight: '500',
+    },
+    bookingControls: {
+        marginBottom: spacing.md,
+    },
+    controlBtn: {
+        width: '100%',
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     requestCard: {
         padding: spacing.md,

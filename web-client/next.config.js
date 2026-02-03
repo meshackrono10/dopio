@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: false,
   experimental: {
     appDir: true,
-    typedRoutes: true,
+    typedRoutes: false,
   },
   images: {
     unoptimized: true,

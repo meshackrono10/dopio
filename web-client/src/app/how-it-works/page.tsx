@@ -11,11 +11,11 @@ export default function HowItWorksPage() {
                 <div className="container">
                     <div className="max-w-3xl mx-auto text-center">
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold">
-                            How House Haunters Works
+                            How Dapio Works
                         </h1>
                         <p className="mt-6 text-lg text-neutral-600 dark:text-neutral-300">
                             Finding your perfect rental home in Kenya is now easier, safer, and more transparent.
-                            Here&apos;s how our platform connects you with verified House Haunters.
+                            Here&apos;s how our platform connects you with verified agents.
                         </p>
                     </div>
                 </div>
@@ -71,7 +71,7 @@ export default function HowItWorksPage() {
                         </div>
                         <h3 className="text-xl font-semibold mb-3">Chat & Coordinate</h3>
                         <p className="text-neutral-600 dark:text-neutral-300">
-                            After payment, unlock in-app chat with your House Haunter. Get the exact location and coordinate the viewing time.
+                            After payment, unlock in-app chat with your agent. Get the exact location and coordinate the viewing time.
                         </p>
                     </div>
 
@@ -82,7 +82,7 @@ export default function HowItWorksPage() {
                         </div>
                         <h3 className="text-xl font-semibold mb-3">View Your Homes</h3>
                         <p className="text-neutral-600 dark:text-neutral-300">
-                            Meet your House Haunter and tour the properties. They&apos;ll show you exactly what you paid to see.
+                            Meet your agent and tour the properties. They&apos;ll show you exactly what you paid to see.
                         </p>
                     </div>
 
@@ -93,17 +93,17 @@ export default function HowItWorksPage() {
                         </div>
                         <h3 className="text-xl font-semibold mb-3">Leave a Review</h3>
                         <p className="text-neutral-600 dark:text-neutral-300">
-                            Rate your experience and help future tenants make informed decisions about House Haunters.
+                            Rate your experience and help future tenants make informed decisions about Dapio agents.
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* FOR HOUSE HAUNTERS */}
+            {/* FOR AGENTS */}
             <div className="bg-neutral-100 dark:bg-neutral-900 py-16 lg:py-24">
                 <div className="container">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl lg:text-4xl font-semibold">For House Haunters</h2>
+                        <h2 className="text-3xl lg:text-4xl font-semibold">For Agents</h2>
                         <p className="mt-4 text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto">
                             Build your business, earn income, and help people find homes
                         </p>
@@ -160,7 +160,7 @@ export default function HowItWorksPage() {
             {/* VALUE PROPOSITIONS */}
             <div className="container py-16 lg:py-24">
                 <div className="text-center mb-16">
-                    <h2 className="text-3xl lg:text-4xl font-semibold">Why Choose House Haunters?</h2>
+                    <h2 className="text-3xl lg:text-4xl font-semibold">Why Choose Dapio?</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -170,7 +170,7 @@ export default function HowItWorksPage() {
                         </div>
                         <h3 className="text-xl font-semibold mb-3">Verified Agents Only</h3>
                         <p className="text-neutral-600 dark:text-neutral-300">
-                            Every House Haunter is ID-verified by our team. No more dealing with unvetted agents.
+                            Every agent is ID-verified by our team. No more dealing with unvetted agents.
                         </p>
                     </div>
 
@@ -204,7 +204,7 @@ export default function HowItWorksPage() {
                             Ready to Find Your Home?
                         </h2>
                         <p className="text-lg mb-8 text-primary-100">
-                            Join thousands of Kenyans using House Haunters to find quality rental properties
+                            Join thousands of Kenyans using Dapio to find quality rental properties
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <ButtonPrimary
@@ -217,7 +217,7 @@ export default function HowItWorksPage() {
                                 href={"/add-listing" as Route}
                                 className="bg-primary-800 hover:bg-primary-900 border-2 border-white"
                             >
-                                Become a House Haunter
+                                Become an Agent
                             </ButtonPrimary>
                         </div>
                     </div>

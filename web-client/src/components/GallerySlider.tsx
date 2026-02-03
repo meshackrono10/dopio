@@ -35,7 +35,18 @@ export default function GallerySlider({
   const [loaded, setLoaded] = useState(false);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
-  const images = galleryImgs;
+  const images = (() => {
+    if (Array.isArray(galleryImgs)) return galleryImgs;
+    if (typeof galleryImgs === 'string') {
+      try {
+        const parsed = JSON.parse(galleryImgs);
+        return Array.isArray(parsed) ? parsed : [galleryImgs];
+      } catch (e) {
+        return [galleryImgs];
+      }
+    }
+    return [];
+  })();
 
   function changePhotoId(newVal: number) {
     if (newVal > index) {

@@ -26,9 +26,13 @@ export interface Booking {
     tenantCheckIn?: CheckIn;
     hunterCheckIn?: CheckIn;
     rescheduleRequest?: RescheduleRequest;
-    isPropertyLocked: boolean;
-    resolutionDeadline?: string;
-    resolvedAt?: string;
+    physicalMeetingConfirmed?: boolean;
+    tenantMetConfirmed?: boolean;
+    hunterMetConfirmed?: boolean;
+    tenantDone?: boolean;
+    hunterDone?: boolean;
+    issueCreated?: boolean;
+    isPropertyLocked?: boolean;
     createdAt: string;
     completedAt?: string;
 }
@@ -46,7 +50,11 @@ interface BookingContextType {
     respondToReschedule: (bookingId: string, accept: boolean, counterTime?: string) => Promise<void>;
     completeViewing: (id: string) => Promise<void>;
     acceptViewing: (id: string) => Promise<void>;
-    reportIssue: (id: string) => Promise<void>;
+    reportIssue: (id: string, feedback: string) => Promise<void>;
+    cancelIssue: (id: string) => Promise<void>;
+    respondToIssue: (id: string, action: 'accept' | 'deny') => Promise<void>;
+    confirmMeetup: (id: string) => Promise<void>;
+    markDone: (id: string) => Promise<void>;
     requestAlternative: (id: string) => Promise<void>;
 }
 
@@ -64,7 +72,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         propertyImage: b.property?.images?.[0] || '',
         tenantId: b.tenantId,
         tenantName: b.tenant?.name || 'Unknown Tenant',
-        hunterId: b.property?.hunterId || '',
+        hunterId: b.hunterId || b.property?.hunterId || '',
         hunterName: b.property?.hunter?.name || 'Unknown Hunter',
         scheduledDate: b.scheduledDate || b.createdAt,
         scheduledTime: b.scheduledTime || 'TBD',
@@ -77,19 +85,21 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         packageName: 'Standard Package',
         price: b.invoice?.amount || 0,
         status: b.status.toLowerCase() as BookingStatus,
-        isPropertyLocked: true,
+        isPropertyLocked: b.property?.isLocked ?? true,
+        physicalMeetingConfirmed: b.physicalMeetingConfirmed,
+        tenantMetConfirmed: b.tenantMetConfirmed,
+        hunterMetConfirmed: b.hunterMetConfirmed,
+        tenantDone: b.tenantDone,
+        hunterDone: b.hunterDone,
+        issueCreated: b.issueCreated,
         createdAt: b.createdAt,
         completedAt: b.completedAt,
     });
 
     const fetchBookings = async () => {
         try {
-            // Note: Backend might need a /bookings endpoint or we use /viewing-requests
-            // For now, assuming /bookings exists or mapping from viewing requests
-            const response = await api.get('/viewing-requests');
-            const mapped = response.data
-                .filter((vr: any) => vr.status === 'PAID' || vr.status === 'SCHEDULED')
-                .map(mapBackendToBooking);
+            const response = await api.get('/bookings');
+            const mapped = response.data.map(mapBackendToBooking);
             setBookings(mapped);
         } catch (err) {
             console.error('Failed to fetch bookings:', err);
@@ -139,19 +149,42 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     };
 
     const completeViewing = async (id: string) => {
-        await updateBooking(id, { status: 'viewing_completed' });
+        await markDone(id);
     };
 
     const acceptViewing = async (id: string): Promise<void> => {
-        await updateBooking(id, { status: 'verified' });
+        // This was for verified property match, now part of markDone/outcome
+        await markDone(id);
     };
 
-    const reportIssue = async (id: string) => {
-        await updateBooking(id, { status: 'disputed' });
+    const reportIssue = async (id: string, feedback: string) => {
+        await api.post(`/bookings/${id}/outcome`, { outcome: 'ISSUE_REPORTED', feedback });
+        await fetchBookings();
+    };
+
+    const cancelIssue = async (id: string) => {
+        await api.post(`/bookings/${id}/cancel-issue`);
+        await fetchBookings();
+    };
+
+    const respondToIssue = async (id: string, action: 'accept' | 'deny') => {
+        await api.post(`/bookings/${id}/respond-issue`, { action });
+        await fetchBookings();
+    };
+
+    const confirmMeetup = async (id: string) => {
+        await api.post(`/bookings/${id}/confirm-meeting`);
+        await fetchBookings();
+    };
+
+    const markDone = async (id: string) => {
+        await api.post(`/bookings/${id}/done`);
+        await fetchBookings();
     };
 
     const requestAlternative = async (id: string) => {
-        await updateBooking(id, { status: 'pending_verification' });
+        // await api.post(`/bookings/${id}/alternative`);
+        await fetchBookings();
     };
 
     return (
@@ -169,6 +202,10 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             completeViewing,
             acceptViewing,
             reportIssue,
+            cancelIssue,
+            respondToIssue,
+            confirmMeetup,
+            markDone,
             requestAlternative,
         }}>
             {children}

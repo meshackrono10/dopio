@@ -94,20 +94,13 @@ class TimeControlService {
             console.log(`[TimeControlService] Found ${todaysBookings.length} bookings for today.`);
             for (const booking of todaysBookings) {
                 // Notify both parties
-                await notificationService_1.NotificationService.sendNotification(booking.tenantId, 'Viewing Today!', `You have a viewing scheduled for today at ${booking.scheduledTime}. Still good to go?`, 'MORNING_PROMPT', { bookingId: booking.id });
-                await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Viewing Today!', `You have a viewing scheduled for today at ${booking.scheduledTime}. Still good to go?`, 'MORNING_PROMPT', { bookingId: booking.id });
+                await notificationService_1.NotificationService.sendNotification(booking.tenantId, 'Viewing Today!', `You have a viewing scheduled for today at ${booking.scheduledTime}. Still good to go?`, 'MORNING_PROMPT', `/bookings/${booking.id}`);
+                await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Viewing Today!', `You have a viewing scheduled for today at ${booking.scheduledTime}. Still good to go?`, 'MORNING_PROMPT', `/bookings/${booking.id}`);
             }
         }
         catch (error) {
             console.error('[TimeControlService] Error sending morning prompts:', error);
         }
-    }
-    /**
-     * Checks for expired search requests or bids if needed.
-     */
-    static async checkExpirations() {
-        console.log('[TimeControlService] Checking for expirations...');
-        // Add logic for expired search requests (e.g., older than 7 days)
     }
 }
 exports.TimeControlService = TimeControlService;

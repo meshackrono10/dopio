@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changePassword = exports.deleteAccount = exports.login = exports.register = void 0;
+exports.resetPassword = exports.changePassword = exports.deleteAccount = exports.login = exports.register = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const index_1 = require("../index");
@@ -106,7 +106,6 @@ const deleteAccount = async (req, res) => {
         await index_1.prisma.viewingRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { property: { hunterId: userId } }] } });
         await index_1.prisma.booking.deleteMany({ where: { OR: [{ tenantId: userId }, { hunterId: userId }] } });
         await index_1.prisma.property.deleteMany({ where: { hunterId: userId } });
-        await index_1.prisma.searchRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { haunterId: userId }] } });
         // Finally delete the user
         await index_1.prisma.user.delete({ where: { id: userId } });
         res.json({ message: 'Account deleted successfully' });
@@ -149,3 +148,30 @@ const changePassword = async (req, res) => {
     }
 };
 exports.changePassword = changePassword;
+// Reset password (without code)
+const resetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+        if (!email || !newPassword) {
+            return res.status(400).json({ message: 'Please provide both email and new password' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+        }
+        const user = await index_1.prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const hashedPassword = await bcryptjs_1.default.hash(newPassword, 10);
+        await index_1.prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword },
+        });
+        res.json({ message: 'Password reset successfully' });
+    }
+    catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Failed to reset password', error: error.message });
+    }
+};
+exports.resetPassword = resetPassword;

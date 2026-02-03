@@ -5,32 +5,24 @@ export class NotificationService {
      * Sends a notification to a user.
      * For now, this just logs to console and creates a notification record if we had one.
      */
-    static async sendNotification(userId: string, title: string, message: string, type: string, data?: any) {
+    static async sendNotification(userId: string, title: string, message: string, type: string, actionUrl?: string) {
         console.log(`[NotificationService] Sending ${type} to user ${userId}: ${title} - ${message}`);
 
-        // In a real app, this would send a push notification (FCM), email, or SMS.
-        // For now, we could also store it in a Notifications table if we had one.
+        try {
+            await prisma.notification.create({
+                data: {
+                    userId,
+                    title,
+                    message,
+                    type,
+                    actionUrl,
+                },
+            });
+        } catch (error) {
+            console.error('[NotificationService] Failed to persist notification:', error);
+        }
     }
 
-    static async notifyHunterOfNewBid(hunterId: string, searchRequestId: string) {
-        await this.sendNotification(
-            hunterId,
-            'New Bid Opportunity',
-            'A tenant has posted a search request that matches your area.',
-            'BID_OPPORTUNITY',
-            { searchRequestId }
-        );
-    }
-
-    static async notifyTenantOfBid(tenantId: string, bidId: string) {
-        await this.sendNotification(
-            tenantId,
-            'New Bid Received',
-            'A hunter has submitted a bid for your search request.',
-            'NEW_BID',
-            { bidId }
-        );
-    }
 
     static async notifyRescheduleRequest(userId: string, bookingId: string, requesterName: string) {
         await this.sendNotification(
@@ -38,7 +30,7 @@ export class NotificationService {
             'Reschedule Requested',
             `${requesterName} has requested to reschedule your viewing.`,
             'RESCHEDULE_REQUEST',
-            { bookingId }
+            `/bookings/${bookingId}`
         );
     }
 
@@ -48,7 +40,7 @@ export class NotificationService {
             'Viewing Reminder',
             `Reminder: You have a viewing scheduled for ${time}.`,
             'BOOKING_REMINDER',
-            { bookingId }
+            `/bookings/${bookingId}`
         );
     }
 
@@ -58,7 +50,7 @@ export class NotificationService {
             'Payment Released',
             `Payment of KES ${amount} has been released to your wallet.`,
             'PAYMENT_RELEASED',
-            { amount }
+            '/wallet'
         );
     }
 }

@@ -15,7 +15,7 @@ export default function ForHauntersPage() {
                                 Earn Money Helping People Find Homes
                             </h1>
                             <p className="text-xl text-primary-100 mb-8">
-                                Join House Haunters and turn your local knowledge into income.
+                                Join Dapio and turn your local knowledge into income.
                                 Conduct property viewings and earn up to KES 4,000 per viewing.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4">
@@ -29,7 +29,7 @@ export default function ForHauntersPage() {
                             <div className="mt-8 flex gap-8">
                                 <div>
                                     <div className="text-3xl font-bold">500+</div>
-                                    <div className="text-primary-200 text-sm">Active Haunters</div>
+                                    <div className="text-primary-200 text-sm">Active Agents</div>
                                 </div>
                                 <div>
                                     <div className="text-3xl font-bold">KES 2,000</div>
@@ -44,7 +44,7 @@ export default function ForHauntersPage() {
                         <div className="hidden lg:block">
                             <Image
                                 src={haunterHero}
-                                alt="House Haunter"
+                                alt="Agent"
                                 width={500}
                                 height={500}
                                 className="object-contain"
@@ -58,7 +58,7 @@ export default function ForHauntersPage() {
             <div className="container py-16 lg:py-24">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl lg:text-4xl font-semibold mb-4">
-                        Why Become a House Haunter?
+                        Why Become a Dapio Agent?
                     </h2>
                     <p className="text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto">
                         Flexible hours, great earnings, and the satisfaction of helping people find their dream homes
@@ -72,7 +72,7 @@ export default function ForHauntersPage() {
                         </div>
                         <h3 className="text-xl font-semibold mb-3">Great Earnings</h3>
                         <p className="text-neutral-600 dark:text-neutral-300">
-                            Earn KES 1,200 - 4,000 per viewing. Active haunters make KES 20,000 - 60,000/month.
+                            Earn KES 1,200 - 4,000 per viewing. Active agents make KES 20,000 - 60,000/month.
                         </p>
                     </div>
 
@@ -208,7 +208,7 @@ export default function ForHauntersPage() {
                         Ready to Start Earning?
                     </h2>
                     <p className="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
-                        Join hundreds of Kenyans already earning with House Haunters
+                        Join hundreds of Kenyans already earning with Dapio
                     </p>
                     <ButtonPrimary className="bg-white text-primary-600 hover:bg-primary-50">
                         Apply Now  →

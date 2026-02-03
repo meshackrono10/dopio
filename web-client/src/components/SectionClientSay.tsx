@@ -28,21 +28,21 @@ const DEMO_DATA = [
     clientName: "Tiana Abie",
     clientAddress: "Malaysia",
     content:
-      "This place is exactly like the picture posted on Chisfis. Great service, we had a great stay!",
+      "This place is exactly like the picture posted on Dapio. Great service, we had a great stay!",
   },
   {
     id: 2,
     clientName: "Lennie Swiffan",
     clientAddress: "Nairobi",
     content:
-      "This place is exactly like the picture posted on Chisfis. Great service, we had a great stay!",
+      "This place is exactly like the picture posted on Dapio. Great service, we had a great stay!",
   },
   {
     id: 3,
     clientName: "Berta Emili",
     clientAddress: "Kisumu",
     content:
-      "This place is exactly like the picture posted on Chisfis. Great service, we had a great stay!",
+      "This place is exactly like the picture posted on Dapio. Great service, we had a great stay!",
   },
 ];
 

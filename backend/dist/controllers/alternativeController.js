@@ -40,7 +40,7 @@ const requestAlternative = async (req, res) => {
             },
         });
         // Notify hunter
-        await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Alternative Property Requested', `${booking.tenant.name} would like to see an alternative property. Original payment remains in escrow.`, 'ALTERNATIVE_REQUESTED', { bookingId });
+        await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Alternative Property Requested', `${booking.tenant.name} would like to see an alternative property. Original payment remains in escrow.`, 'ALTERNATIVE_REQUESTED', `/bookings/${bookingId}`);
         res.json({
             success: true,
             message: 'Alternative property request sent to hunter',
@@ -117,11 +117,7 @@ const offerAlternative = async (req, res) => {
             },
         });
         // Notify tenant
-        await notificationService_1.NotificationService.sendNotification(booking.tenantId, 'Alternative Property Offered', `${booking.hunter.name} has offered you an alternative property to view.`, 'ALTERNATIVE_OFFERED', {
-            bookingId,
-            viewingRequestId: viewingRequest.id,
-            propertyId,
-        });
+        await notificationService_1.NotificationService.sendNotification(booking.tenantId, 'Alternative Property Offered', `${booking.hunter.name} has offered you an alternative property to view.`, 'ALTERNATIVE_OFFERED', `/viewing-requests/${viewingRequest.id}`);
         res.json({
             success: true,
             message: 'Alternative property offered',
@@ -212,10 +208,7 @@ const acceptAlternative = async (req, res) => {
             data: { isLocked: false },
         });
         // Notify hunter
-        await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Alternative Accepted', `${booking.tenant.name} has accepted the alternative property. Escrow transferred to new booking.`, 'ALTERNATIVE_ACCEPTED', {
-            oldBookingId: bookingId,
-            newBookingId: newBooking.id,
-        });
+        await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Alternative Accepted', `${booking.tenant.name} has accepted the alternative property. Escrow transferred to new booking.`, 'ALTERNATIVE_ACCEPTED', `/bookings/${newBooking.id}`);
         res.json({
             success: true,
             message: 'Alternative property accepted. Escrow transferred to new booking.',
@@ -282,7 +275,7 @@ const declineAlternative = async (req, res) => {
             },
         });
         // Notify admin
-        await notificationService_1.NotificationService.sendNotification('ADMIN', 'Refund Request', `Tenant declined alternative property and requests refund for booking ${bookingId}`, 'REFUND_REQUESTED', { bookingId });
+        await notificationService_1.NotificationService.sendNotification('ADMIN', 'Refund Request', `Tenant declined alternative property and requests refund for booking ${bookingId}`, 'REFUND_REQUESTED', `/admin/disputes`);
         res.json({
             success: true,
             message: 'Alternative declined. Refund request submitted for admin review.',

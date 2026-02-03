@@ -28,7 +28,7 @@ const DEMO_DATA: SectionHowItWorkProps["data"] = [
     id: 2,
     img: HIW2img,
     title: "Schedule Viewings",
-    desc: "Book property viewings with verified house haunters at your convenience",
+    desc: "Book property viewings with verified agents at your convenience",
   },
   {
     id: 3,
@@ -48,7 +48,7 @@ const SectionHowItWork: FC<SectionHowItWorkProps> = ({
       data-nc-id="SectionHowItWork"
     >
       <Heading isCenter desc="Finding your perfect rental home made simple">
-        How House Haunters Works
+        How Dapio Works
       </Heading>
       <div className="mt-20 relative grid md:grid-cols-3 gap-20">
         <Image

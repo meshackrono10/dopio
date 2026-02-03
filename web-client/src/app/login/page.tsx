@@ -59,7 +59,7 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             <h1 className="text-3xl lg:text-4xl font-bold mb-2">Welcome Back!</h1>
             <p className="text-neutral-600 dark:text-neutral-300">
-              Sign in to continue to House Haunters
+              Sign in to continue to Dapio
             </p>
           </div>
 
@@ -68,13 +68,13 @@ export default function LoginPage() {
             <h3 className="font-semibold text-sm mb-2">🔐 Test Credentials:</h3>
             <div className="text-xs space-y-1 text-blue-900 dark:text-blue-100">
               <p>
-                <strong>Admin:</strong> admin@househaunters.com / admin123
+                <strong>Admin:</strong> admin@dapio.com / admin123
               </p>
               <p>
-                <strong>Tenant:</strong> tenant@househaunters.com / tenant123
+                <strong>Tenant:</strong> tenant@dapio.com / tenant123
               </p>
               <p>
-                <strong>Hunter:</strong> hunter@househaunters.com / hunter123
+                <strong>Hunter:</strong> hunter@dapio.com / hunter123
               </p>
             </div>
           </div>

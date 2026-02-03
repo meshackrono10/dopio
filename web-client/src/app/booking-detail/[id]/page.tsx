@@ -7,6 +7,7 @@ import api from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/Toast";
 import ButtonPrimary from "@/shared/ButtonPrimary";
+import { Route } from "@/routers/types";
 import PostViewingModal from "../../../components/PostViewingModal";
 import RescheduleModal from "@/components/RescheduleModal";
 import RescheduleRequestCard from "@/components/RescheduleRequestCard";
@@ -60,9 +61,21 @@ export default function BookingDetailPage() {
     const isHunter = user?.role === "HUNTER";
     const isTenant = user?.role === "TENANT";
 
+    const fetchBooking = React.useCallback(async () => {
+        try {
+            const response = await api.get(`/bookings/${bookingId}`);
+            setBooking(response.data);
+        } catch (error: any) {
+            console.error("Failed to fetch booking:", error);
+            showToast("error", "Failed to load booking details");
+        } finally {
+            setLoading(false);
+        }
+    }, [bookingId, showToast]);
+
     useEffect(() => {
         fetchBooking();
-    }, [bookingId]);
+    }, [bookingId, fetchBooking]);
 
     useEffect(() => {
         if (!booking) return;
@@ -96,18 +109,6 @@ export default function BookingDetailPage() {
         return () => clearInterval(interval);
     }, [booking]);
 
-    const fetchBooking = async () => {
-        try {
-            const response = await api.get(`/bookings/${bookingId}`);
-            setBooking(response.data);
-        } catch (error: any) {
-            console.error("Failed to fetch booking:", error);
-            showToast("error", "Failed to load booking details");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleConfirmArrival = async () => {
         setActionLoading(true);
         try {
@@ -130,7 +131,7 @@ export default function BookingDetailPage() {
                 reason: `${isHunter ? "Tenant" : "Hunter"} did not show up for scheduled viewing`
             });
             showToast("success", "No-show reported. Admin will review.");
-            router.push(isHunter ? "/haunter-dashboard" : "/tenant-dashboard");
+            router.push((isHunter ? "/haunter-dashboard" : "/tenant-dashboard") as Route);
         } catch (error: any) {
             showToast("error", error.response?.data?.message || "Failed to report no-show");
         } finally {
@@ -146,7 +147,7 @@ export default function BookingDetailPage() {
         try {
             await api.post(`/bookings/${bookingId}/cancel`, { reason });
             showToast("success", "Booking cancelled");
-            router.push(isHunter ? "/haunter-dashboard" : "/tenant-dashboard");
+            router.push((isHunter ? "/haunter-dashboard" : "/tenant-dashboard") as Route);
         } catch (error: any) {
             showToast("error", "Failed to cancel booking");
         } finally {
@@ -328,7 +329,7 @@ export default function BookingDetailPage() {
                                     disabled={actionLoading}
                                     className="text-red-600 hover:underline text-sm font-medium"
                                 >
-                                    They haven't shown up? Report No-Show
+                                    They haven&apos;t shown up? Report No-Show
                                 </button>
                             </div>
                         ) : null}
@@ -411,7 +412,7 @@ export default function BookingDetailPage() {
                     <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-8 shadow-lg border-primary-100">
                         <h3 className="text-xl font-bold mb-2">Viewing in Progress</h3>
                         <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-                            Once you've finished viewing the property, please let us know the outcome. This will release the payment to the hunter or allow you to report an issue.
+                            Once you&apos;ve finished viewing the property, please let us know the outcome. This will release the payment to the hunter or allow you to report an issue.
                         </p>
                         <ButtonPrimary onClick={handleViewingComplete} className="w-full py-4">
                             <i className="las la-clipboard-check mr-2 text-xl"></i>
@@ -477,6 +478,7 @@ export default function BookingDetailPage() {
             {showPostViewingModal && (
                 <PostViewingModal
                     bookingId={booking.id}
+                    hunterId={booking.hunter.id}
                     onClose={() => setShowPostViewingModal(false)}
                     onSuccess={() => {
                         setShowPostViewingModal(false);

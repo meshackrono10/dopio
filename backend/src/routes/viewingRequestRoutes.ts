@@ -21,4 +21,7 @@ router.post('/:id/counter', authMiddleware, viewingRequestController.counterView
 // Legacy status update endpoint (backward compatibility)
 router.patch('/:id/status', authMiddleware, viewingRequestController.updateRequestStatus);
 
+// Hide/Delete request for current user
+router.delete('/:id', authMiddleware, viewingRequestController.hideRequest);
+
 export default router;

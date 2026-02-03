@@ -182,54 +182,6 @@ const PageAddListing5: FC<PageAddListing5Props> = () => {
           </div>
         </div>
 
-        {/* GARBAGE COLLECTION */}
-        <div>
-          <label className="text-lg font-semibold">
-            Garbage Collection
-          </label>
-          <div className="mt-6 space-y-4">
-            <div className="flex items-start">
-              <input
-                type="radio"
-                id="garbage_included"
-                name="garbage_billing"
-                value="included"
-                checked={formData.garbageBilling === 'included'}
-                onChange={() => updateFormData('garbageBilling', 'included')}
-                className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
-              />
-              <label htmlFor="garbage_included" className="ml-3 flex-1">
-                <span className="block font-medium">Garbage collection included in rent</span>
-                <span className="block text-sm text-neutral-500 dark:text-neutral-400">
-                  No separate charge for waste disposal
-                </span>
-              </label>
-            </div>
-
-            <div className="flex items-start">
-              <input
-                type="radio"
-                id="garbage_separate"
-                name="garbage_billing"
-                value="separate"
-                checked={formData.garbageBilling === 'separate'}
-                onChange={() => updateFormData('garbageBilling', 'separate')}
-                className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
-              />
-              <label htmlFor="garbage_separate" className="ml-3 flex-1">
-                <span className="block font-medium">Garbage collection charged separately</span>
-                <span className="block text-sm text-neutral-500 dark:text-neutral-400">
-                  Tenant pays for waste management service
-                </span>
-              </label>
-            </div>
-
-            <FormItem label="If charged separately, how much?" desc="Optional">
-              <Input placeholder="e.g., KSh 300 per month" />
-            </FormItem>
-          </div>
-        </div>
-
         {/* ELECTRICITY */}
         <div>
           <label className="text-lg font-semibold">

@@ -2,7 +2,7 @@ import { MegamenuItem, NavItemType } from "@/shared/Navigation/NavigationItem";
 import ncNanoId from "@/utils/ncNanoId";
 import { Route } from "@/routers/types";
 
-// House Haunters Navigation - Focused on Property Rentals Only
+// Agents Navigation - Focused on Property Rentals Only
 
 export const NAVIGATION_DEMO: NavItemType[] = [
   // Navigation links removed per user request

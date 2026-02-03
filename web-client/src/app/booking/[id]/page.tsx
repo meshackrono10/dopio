@@ -37,7 +37,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
         }, 1500);
     };
 
-    const { houseHaunter } = property;
+    const { agent } = property;
 
     return (
         <div className="nc-BookingPage container pb-24 lg:pb-32">
@@ -137,7 +137,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
                         <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl p-6">
                             <h3 className="text-xl font-semibold mb-4">Preferred Viewing Time</h3>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-                                After payment, you&apos;ll coordinate the exact time with your House Haunter via chat
+                                After payment, you&apos;ll coordinate the exact time with your Agent via chat
                             </p>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -174,26 +174,26 @@ export default function BookingPage({ params }: { params: { id: string } }) {
                     {/* RIGHT - PAYMENT & SUMMARY */}
                     <div className="lg:w-96">
                         <div className="sticky top-24 space-y-6">
-                            {/* House Haunter */}
+                            {/* Agent */}
                             <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl p-6">
-                                <h3 className="text-lg font-semibold mb-4">Your House Haunter</h3>
+                                <h3 className="text-lg font-semibold mb-4">Your Agent</h3>
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full overflow-hidden relative">
                                         <Image
                                             fill
-                                            src={houseHaunter.profilePhoto}
-                                            alt={houseHaunter.name}
+                                            src={agent.profilePhoto}
+                                            alt={agent.name}
                                             className="object-cover"
                                         />
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-1">
-                                            <h4 className="font-semibold">{houseHaunter.name}</h4>
-                                            {houseHaunter.isVerified && (
+                                            <h4 className="font-semibold">{agent.name}</h4>
+                                            {agent.isVerified && (
                                                 <i className="las la-check-circle text-primary-600"></i>
                                             )}
                                         </div>
-                                        <StartRating point={houseHaunter.rating} reviewCount={houseHaunter.reviewCount} />
+                                        <StartRating point={agent.rating} reviewCount={agent.reviewCount} />
                                     </div>
                                 </div>
                             </div>

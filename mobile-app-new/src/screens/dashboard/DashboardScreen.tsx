@@ -19,7 +19,6 @@ const DashboardScreen = () => {
             case 'hunter':
                 return (
                     <HunterDashboard
-                        onNavigateToRequests={() => (navigation as any).navigate('RequestsTab')}
                         onNavigateToBookings={() => (navigation as any).navigate('BookingsTab')}
                         onNavigateToChat={(id: string) => (navigation as any).navigate('MessagesTab', { screen: 'Chat', params: { id } })}
                     />
@@ -31,10 +30,8 @@ const DashboardScreen = () => {
                 return (
                     <TenantDashboard
                         onNavigateToSearch={() => (navigation as any).navigate('ExploreTab')}
-                        onNavigateToRequests={() => (navigation as any).navigate('ExploreTab', { screen: 'Search' })}
                         onNavigateToBookings={() => (navigation as any).navigate('BookingsTab')}
                         onNavigateToChat={(id: string) => (navigation as any).navigate('MessagesTab', { screen: 'Chat', params: { id } })}
-                        onNavigateToRequestDetail={(id: string) => (navigation as any).navigate('ExploreTab', { screen: 'SearchRequestDetail', params: { id } })}
                     />
                 );
         }

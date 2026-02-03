@@ -28,6 +28,10 @@ export const createRequest = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Property not found' });
         }
 
+        if (property.status === 'RENTED') {
+            return res.status(400).json({ message: 'This property has already been booked and is no longer available for viewing.' });
+        }
+
         const selectedPackage = property.packages.find((p: any) => p.id === packageId);
         if (!selectedPackage) {
             return res.status(400).json({ message: 'Invalid package selected' });
@@ -86,7 +90,7 @@ export const createRequest = async (req: any, res: Response) => {
             'New Viewing Request',
             `A tenant has requested to view ${viewingRequest.property.title}.`,
             'NEW_VIEWING_REQUEST',
-            { requestId: viewingRequest.id }
+            `/viewing-requests/${viewingRequest.id}`
         );
 
         res.status(201).json(viewingRequest);
@@ -105,8 +109,8 @@ export const getRequests = async (req: any, res: Response) => {
 
         const requests = await prisma.viewingRequest.findMany({
             where: role === 'HUNTER'
-                ? { property: { hunterId: userId } }
-                : { tenantId: userId },
+                ? { property: { hunterId: userId }, hunterVisible: true }
+                : { tenantId: userId, tenantVisible: true },
             include: {
                 property: {
                     include: {
@@ -127,11 +131,32 @@ export const getRequests = async (req: any, res: Response) => {
                         phone: true,
                     },
                 },
+                booking: {
+                    include: {
+                        reviews: true
+                    }
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
 
-        res.json(requests);
+        const processedRequests = requests.map(req => {
+            const property = req.property;
+            if (property) {
+                property.images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
+                property.location = typeof property.location === 'string' ? JSON.parse(property.location) : property.location;
+                property.amenities = typeof property.amenities === 'string' ? JSON.parse(property.amenities) : property.amenities;
+                property.videos = typeof property.videos === 'string' ? JSON.parse(property.videos) : property.videos;
+            }
+            return {
+                ...req,
+                proposedDates: typeof req.proposedDates === 'string' ? JSON.parse(req.proposedDates) : req.proposedDates,
+                counterLocation: typeof req.counterLocation === 'string' ? JSON.parse(req.counterLocation) : req.counterLocation,
+                proposedLocation: typeof req.proposedLocation === 'string' ? JSON.parse(req.proposedLocation) : req.proposedLocation,
+            };
+        });
+
+        res.json(processedRequests);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -161,6 +186,11 @@ export const getRequestById = async (req: any, res: Response) => {
                         avatarUrl: true,
                     },
                 },
+                booking: {
+                    include: {
+                        reviews: true
+                    }
+                },
             },
         });
 
@@ -172,7 +202,22 @@ export const getRequestById = async (req: any, res: Response) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        res.json(request);
+        const property = request.property;
+        if (property) {
+            property.images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
+            property.location = typeof property.location === 'string' ? JSON.parse(property.location) : property.location;
+            property.amenities = typeof property.amenities === 'string' ? JSON.parse(property.amenities) : property.amenities;
+            property.videos = typeof property.videos === 'string' ? JSON.parse(property.videos) : property.videos;
+        }
+
+        const responseData = {
+            ...request,
+            proposedDates: typeof request.proposedDates === 'string' ? JSON.parse(request.proposedDates) : request.proposedDates,
+            counterLocation: typeof request.counterLocation === 'string' ? JSON.parse(request.counterLocation) : request.counterLocation,
+            proposedLocation: typeof request.proposedLocation === 'string' ? JSON.parse(request.proposedLocation) : request.proposedLocation,
+        };
+
+        res.json(responseData);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -241,6 +286,7 @@ export const acceptViewingRequest = async (req: any, res: Response) => {
                     : finalLocation;
             } catch (error) {
                 console.error('Error parsing location:', error);
+                locationData = { name: finalLocation, location: finalLocation };
             }
         }
 
@@ -274,7 +320,10 @@ export const acceptViewingRequest = async (req: any, res: Response) => {
 
         await prisma.viewingRequest.update({
             where: { id: requestId },
-            data: { status: 'ACCEPTED' }
+            data: {
+                status: 'ACCEPTED',
+                bookingId: booking.id
+            }
         });
 
         // Notify both parties
@@ -283,7 +332,7 @@ export const acceptViewingRequest = async (req: any, res: Response) => {
             'Viewing Confirmed!',
             `Your viewing for ${viewingRequest.property.title} is confirmed for ${finalDate} at ${finalTime}.`,
             'VIEWING_CONFIRMED',
-            { bookingId: booking.id }
+            `/bookings/${booking.id}`
         );
 
         res.json({
@@ -318,16 +367,43 @@ export const rejectViewingRequest = async (req: any, res: Response) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        const isTenant = viewingRequest.tenantId === userId;
+        const newStatus = isTenant ? 'CANCELLED' : 'REJECTED';
+
+        // POST-MEETUP RESTRICTION for rejectViewingRequest (fallback)
+        if (viewingRequest.bookingId) {
+            const booking = await prisma.booking.findUnique({
+                where: { id: viewingRequest.bookingId }
+            });
+            if (booking?.physicalMeetingConfirmed && isTenant) {
+                return res.status(403).json({ message: 'Tenants cannot cancel after the meetup has been confirmed' });
+            }
+        }
+
         await prisma.viewingRequest.update({
             where: { id: requestId },
             data: {
-                status: 'REJECTED',
-                message: reason || 'Request rejected'
+                status: newStatus,
+                message: reason || (isTenant ? 'Request cancelled by tenant' : 'Request rejected by hunter')
             }
         });
 
-        // If payment was made, mark for refund
-        if (viewingRequest.paymentStatus === 'ESCROW' || viewingRequest.paymentStatus === 'PAID') {
+        // If a booking exists, cancel it too
+        if (viewingRequest.bookingId) {
+            await prisma.booking.update({
+                where: { id: viewingRequest.bookingId },
+                data: { status: 'CANCELLED', paymentStatus: 'REFUNDED' }
+            });
+
+            // Unlock property
+            await prisma.property.update({
+                where: { id: viewingRequest.propertyId },
+                data: { isLocked: false },
+            });
+        }
+
+        // If payment was made but no booking yet (unlikely in current flow but safe), mark for refund
+        if (!viewingRequest.bookingId && (viewingRequest.paymentStatus === 'ESCROW' || viewingRequest.paymentStatus === 'PAID')) {
             await prisma.viewingRequest.update({
                 where: { id: requestId },
                 data: { paymentStatus: 'REFUNDED' }
@@ -335,18 +411,23 @@ export const rejectViewingRequest = async (req: any, res: Response) => {
         }
 
         // Notify other party
-        const recipientId = userId === viewingRequest.tenantId ? viewingRequest.property.hunterId : viewingRequest.tenantId;
+        const recipientId = isTenant ? viewingRequest.property.hunterId : viewingRequest.tenantId;
+        const notificationTitle = isTenant ? 'Viewing Request Cancelled' : 'Viewing Request Rejected';
+        const notificationBody = isTenant
+            ? `The tenant has cancelled the request for ${viewingRequest.property.title}.`
+            : `The request for ${viewingRequest.property.title} was rejected by the hunter.`;
+
         await NotificationService.sendNotification(
             recipientId,
-            'Viewing Request Rejected',
-            `The request for ${viewingRequest.property.title} was rejected.`,
-            'VIEWING_REQUEST_REJECTED',
-            { requestId: viewingRequest.id }
+            notificationTitle,
+            notificationBody,
+            isTenant ? 'VIEWING_REQUEST_CANCELLED' : 'VIEWING_REQUEST_REJECTED',
+            `/viewing-requests/${viewingRequest.id}`
         );
 
         res.json({
             success: true,
-            message: 'Viewing request rejected.',
+            message: `Viewing request ${isTenant ? 'cancelled' : 'rejected'}.`,
         });
     } catch (error: any) {
         console.error('Reject viewing request error:', error);
@@ -379,7 +460,7 @@ export const counterViewingRequest = async (req: any, res: Response) => {
                 status: 'COUNTERED',
                 counterDate: date,
                 counterTime: time,
-                counterLocation: location,
+                counterLocation: typeof location === 'object' ? JSON.stringify(location) : location,
                 counteredBy: userId,
                 message: message || 'Alternative proposed'
             },
@@ -396,7 +477,7 @@ export const counterViewingRequest = async (req: any, res: Response) => {
             'New Counter-Offer',
             `A counter-offer has been proposed for ${viewingRequest.property.title}.`,
             'VIEWING_REQUEST_COUNTERED',
-            { requestId: updated.id }
+            `/viewing-requests/${updated.id}`
         );
 
         res.json({
@@ -415,7 +496,7 @@ export const updateRequestStatus = async (req: any, res: Response) => {
         const { userId } = req.user;
         const { status } = req.body;
 
-        if (!['ACCEPTED', 'REJECTED', 'COUNTERED'].includes(status)) {
+        if (!['ACCEPTED', 'REJECTED', 'COUNTERED', 'CANCELLED'].includes(status)) {
             return res.status(400).json({ message: 'Invalid status' });
         }
 
@@ -438,6 +519,42 @@ export const updateRequestStatus = async (req: any, res: Response) => {
         });
 
         res.json(updatedRequest);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const hideRequest = async (req: any, res: Response) => {
+    try {
+        const { userId, role } = req.user;
+        const requestId = req.params.id;
+
+        const request = await prisma.viewingRequest.findUnique({
+            where: { id: requestId },
+            include: { property: true }
+        });
+
+        if (!request) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        if (request.tenantId !== userId && request.property.hunterId !== userId) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const data: any = {};
+        if (role === 'HUNTER') {
+            data.hunterVisible = false;
+        } else {
+            data.tenantVisible = false;
+        }
+
+        await prisma.viewingRequest.update({
+            where: { id: requestId },
+            data
+        });
+
+        res.json({ success: true, message: 'Request hidden successfully' });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

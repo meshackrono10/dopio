@@ -24,7 +24,7 @@ export default function ViewingRequestsPage() {
         }
     }, [isAuthenticated, authLoading, router]);
 
-    const fetchRequests = async () => {
+    const fetchRequests = React.useCallback(async () => {
         if (!user) return;
 
         setLoading(true);
@@ -37,13 +37,13 @@ export default function ViewingRequestsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, showToast]);
 
     useEffect(() => {
         if (user) {
             fetchRequests();
         }
-    }, [user]);
+    }, [user, fetchRequests]);
 
     if (authLoading || !user) {
         return (

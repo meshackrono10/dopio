@@ -18,8 +18,6 @@ import MessagesScreen from '../screens/messages/MessagesScreen';
 import ChatScreen from '../screens/messages/ChatScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import PropertyDetailScreen from '../screens/properties/PropertyDetailScreen';
-import SearchRequestLandingScreen from '../screens/search/SearchRequestLandingScreen';
-import CreateSearchRequestScreen from '../screens/search/CreateSearchRequestScreen';
 import HunterDashboardScreen from '../screens/hunter/HunterDashboardScreen';
 import TenantDashboardScreen from '../screens/tenant/TenantDashboardScreen';
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
@@ -28,7 +26,6 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import BookingConfirmationScreen from '../screens/bookings/BookingConfirmationScreen';
-import SearchRequestDetailScreen from '../screens/search-request/SearchRequestDetailScreen';
 import AddListingScreen from '../screens/properties/AddListingScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import WithdrawScreen from '../screens/wallet/WithdrawScreen';
@@ -44,8 +41,6 @@ import ReviewsScreen from '../screens/reviews/ReviewsScreen';
 import HunterListingsScreen from '../screens/hunter/HunterListingsScreen';
 import EditPropertyScreen from '../screens/properties/EditPropertyScreen';
 import ActivityScreen from '../screens/ActivityScreen';
-import BidReviewScreen from '../screens/search-request/BidReviewScreen';
-import EvidenceReviewScreen from '../screens/search-request/EvidenceReviewScreen';
 import PropertyAnalyticsScreen from '../screens/properties/PropertyAnalyticsScreen';
 import AdminVerificationsScreen from '../screens/admin/AdminVerificationsScreen';
 import AdminSettingsScreen from '../screens/admin/AdminSettingsScreen';
@@ -68,18 +63,6 @@ const MessagesStack = createStackNavigator<MessagesStackParamList>();
 const ProfileStack = createStackNavigator<ProfileStackParamList>();
 const BookingsStack = createStackNavigator<BookingsStackParamList>();
 
-// Hunter Screens Stack - Requests/Search Requests
-function HunterRequestsNavigator() {
-    return (
-        <HunterStack.Navigator screenOptions={{ headerShown: false }}>
-            <HunterStack.Screen name="SearchRequests" component={SearchScreen} />
-            <HunterStack.Screen name="SearchRequestDetail" component={SearchRequestDetailScreen} />
-            <HunterStack.Screen name="CreateSearchRequest" component={CreateSearchRequestScreen} />
-            <HunterStack.Screen name="BidReview" component={BidReviewScreen} />
-            <HunterStack.Screen name="EvidenceReview" component={EvidenceReviewScreen} />
-        </HunterStack.Navigator>
-    );
-}
 
 // Explore Stack for Tenants
 function ExploreStackNavigator() {
@@ -88,14 +71,9 @@ function ExploreStackNavigator() {
             <ExploreStack.Screen name="Explore" component={ExploreScreen} />
             <ExploreStack.Screen name="Search" component={SearchScreen} />
             <ExploreStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
-            <ExploreStack.Screen name="SearchRequestLanding" component={SearchRequestLandingScreen} />
-            <ExploreStack.Screen name="CreateSearchRequest" component={CreateSearchRequestScreen} />
-            <ExploreStack.Screen name="SearchRequestDetail" component={SearchRequestDetailScreen} />
             <ExploreStack.Screen name="Checkout" component={CheckoutScreen} />
             <ExploreStack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
             <ExploreStack.Screen name="PropertyComparison" component={PropertyComparisonScreen} />
-            <ExploreStack.Screen name="BidReview" component={BidReviewScreen} />
-            <ExploreStack.Screen name="EvidenceReview" component={EvidenceReviewScreen} />
         </ExploreStack.Navigator>
     );
 }
@@ -103,14 +81,9 @@ function ExploreStackNavigator() {
 // Search Stack for Tenants (Dedicated Search Tab)
 function TenantSearchStackNavigator() {
     return (
-        <ExploreStack.Navigator screenOptions={{ headerShown: false }}>
-            <ExploreStack.Screen name="SearchRequestLanding" component={SearchRequestLandingScreen} />
-            <ExploreStack.Screen name="CreateSearchRequest" component={CreateSearchRequestScreen} />
-            <ExploreStack.Screen name="SearchRequestDetail" component={SearchRequestDetailScreen} />
+        <ExploreStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Search">
             <ExploreStack.Screen name="Search" component={SearchScreen} />
             <ExploreStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
-            <ExploreStack.Screen name="BidReview" component={BidReviewScreen} />
-            <ExploreStack.Screen name="EvidenceReview" component={EvidenceReviewScreen} />
         </ExploreStack.Navigator>
     );
 }
@@ -146,8 +119,6 @@ function ProfileStackNavigator() {
             <ProfileStack.Screen name="EditProperty" component={EditPropertyScreen} />
             <ProfileStack.Screen name="TenantDashboard" component={TenantDashboardScreen} />
             <ProfileStack.Screen name="HunterDashboard" component={HunterDashboardScreen} />
-            <ProfileStack.Screen name="CreateSearchRequest" component={CreateSearchRequestScreen} />
-            <ProfileStack.Screen name="SearchRequestDetail" component={SearchRequestDetailScreen} />
             <ProfileStack.Screen name="PropertyComparison" component={PropertyComparisonScreen} />
             <ProfileStack.Screen name="PropertyAnalytics" component={PropertyAnalyticsScreen} />
             <ProfileStack.Screen name="AdminVerifications" component={AdminVerificationsScreen} />
@@ -218,20 +189,11 @@ const MainNavigator = () => {
                             case 'ListingsTab':
                                 iconName = focused ? 'home' : 'home-outline';
                                 break;
-                            case 'RequestsTab':
-                                iconName = focused ? 'search' : 'search-outline';
-                                break;
-                            case 'EarningsTab':
-                                iconName = focused ? 'wallet' : 'wallet-outline';
-                                break;
-                            case 'ReviewsTab':
-                                iconName = focused ? 'star' : 'star-outline';
+                            case 'OrdersTab':
+                                iconName = focused ? 'clipboard' : 'clipboard-outline';
                                 break;
                             case 'MessagesTab':
                                 iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-                                break;
-                            case 'OrdersTab':
-                                iconName = focused ? 'clipboard' : 'clipboard-outline';
                                 break;
                             case 'ProfileTab':
                                 iconName = focused ? 'person' : 'person-outline';
@@ -255,11 +217,6 @@ const MainNavigator = () => {
                     name="ListingsTab"
                     component={HunterListingsScreen}
                     options={{ tabBarLabel: 'Listings', headerShown: false }}
-                />
-                <Tab.Screen
-                    name="RequestsTab"
-                    component={HunterRequestsNavigator}
-                    options={{ tabBarLabel: 'Requests' }}
                 />
                 <Tab.Screen
                     name="OrdersTab"

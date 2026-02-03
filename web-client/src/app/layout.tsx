@@ -17,6 +17,7 @@ import { PropertyProvider } from "@/contexts/PropertyContext";
 import { BookingProvider } from "@/contexts/BookingContext";
 import { InvoiceProvider } from "@/contexts/InvoiceContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
+import { PropertyFormProvider } from "@/contexts/PropertyFormContext";
 import ComparisonBar from "@/components/ComparisonBar";
 
 const font = Plus_Jakarta_Sans({
@@ -26,9 +27,9 @@ const font = Plus_Jakarta_Sans({
 });
 
 export const metadata = {
-  title: "House Haunters - The Uber for Kenyan Rental Hunting",
-  description: "House Haunters is Kenya's most trusted digital platform for residential property rentals. Connect with verified agents, book viewings securely, and find your perfect home.",
-  keywords: "rentals, kenya, nairobi, house haunters, verified agents, secure viewings, m-pesa",
+  title: "Dapio - The Uber for Kenyan Rental Hunting",
+  description: "Dapio is Kenya's most trusted digital platform for residential property rentals. Connect with verified agents, book viewings securely, and find your perfect home.",
+  keywords: "rentals, kenya, nairobi, dapio, verified agents, secure viewings, m-pesa",
 };
 
 export default function RootLayout({
@@ -43,34 +44,36 @@ export default function RootLayout({
       <body className="bg-white text-base dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200">
         <AuthProvider>
           <PropertyProvider>
-            <BookingProvider>
-              <InvoiceProvider>
-                <MessagingProvider>
-                  <ComparisonProvider>
-                    <ToastProvider>
-                      <ClientCommons />
-                      <SiteHeader />
-                      {children}
-                      <FooterNav />
-                      <Footer />
-                      <ComparisonBar />
-                      <ToastContainer
-                        position="top-right"
-                        autoClose={3000}
-                        hideProgressBar={false}
-                        newestOnTop
-                        closeOnClick
-                        rtl={false}
-                        pauseOnFocusLoss
-                        draggable
-                        pauseOnHover
-                        theme="colored"
-                      />
-                    </ToastProvider>
-                  </ComparisonProvider>
-                </MessagingProvider>
-              </InvoiceProvider>
-            </BookingProvider>
+            <PropertyFormProvider>
+              <BookingProvider>
+                <InvoiceProvider>
+                  <MessagingProvider>
+                    <ComparisonProvider>
+                      <ToastProvider>
+                        <ClientCommons />
+                        <SiteHeader />
+                        {children}
+                        <FooterNav />
+                        <Footer />
+                        <ComparisonBar />
+                        <ToastContainer
+                          position="top-right"
+                          autoClose={3000}
+                          hideProgressBar={false}
+                          newestOnTop
+                          closeOnClick
+                          rtl={false}
+                          pauseOnFocusLoss
+                          draggable
+                          pauseOnHover
+                          theme="colored"
+                        />
+                      </ToastProvider>
+                    </ComparisonProvider>
+                  </MessagingProvider>
+                </InvoiceProvider>
+              </BookingProvider>
+            </PropertyFormProvider>
           </PropertyProvider>
         </AuthProvider>
       </body>

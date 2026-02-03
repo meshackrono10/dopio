@@ -5,7 +5,6 @@ import { FC } from "react";
 import ButtonPrimary from "@/shared/ButtonPrimary";
 import ButtonSecondary from "@/shared/ButtonSecondary";
 import { Route } from "@/routers/types";
-import { PropertyFormProvider } from "@/contexts/PropertyFormContext";
 import { useProperties } from "@/contexts/PropertyContext";
 import { usePropertyForm } from "@/contexts/PropertyFormContext";
 import { useRouter } from "next/navigation";
@@ -22,9 +21,9 @@ export interface CommonLayoutProps {
 const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
   const index = Number(params.stepIndex) || 1;
   const router = useRouter();
-  const { addProperty, updateProperty } = useProperties();
+  const { addProperty, updateProperty, refreshProperties } = useProperties();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
-  const { formData, clearFormData } = usePropertyForm();
+  const { formData, clearFormData, getPackageProgress, canPublishPackage, addPropertyToPackage } = usePropertyForm();
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -36,7 +35,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
     // Check if user is a hunter and verification status
     if (!authLoading && isAuthenticated && user) {
       if (user.role !== "HUNTER") {
-        toast.error("Only verified House Haunters can add listings.");
+        toast.error("Only verified Agents can add listings.");
         router.push("/" as Route);
         return;
       }
@@ -69,27 +68,49 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
   }
 
   const nextHref = (
-    index < 7 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
+    index < 8 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
   ) as Route;
   const backtHref = (
     index > 1 ? `/add-listing/${index - 1}` : `/add-listing/${1}`
   ) as Route;
-  const nextBtnText = index === 6 ? "Publish listing" : "Continue";
+
+  // Determine button text based on package state
+  let nextBtnText = "Continue";
+  // const { getPackageProgress, canPublishPackage, addPropertyToPackage } = usePropertyForm(); // Moved up
+  const progress = getPackageProgress();
+  const isLastStep = index === 7;
+  const isPackageComplete = canPublishPackage();
+
+  if (isLastStep) {
+    if (isPackageComplete) {
+      nextBtnText = "Publish Listing";
+    } else {
+      nextBtnText = `Add Property ${progress.current + 2} of ${progress.required}`;
+    }
+  }
 
   const handlePublish = async () => {
-    // Packages are now optional - no validation needed
-
     setLoading(true);
     try {
+      // If package is not complete, add property and redirect to start
+      if (!isPackageComplete) {
+        addPropertyToPackage();
+        toast.success(`Property added to package! Please add property ${progress.current + 2} of ${progress.required}.`);
+        router.push("/add-listing/2" as Route); // Go back to Step 2 (Property Details) for next property
+        setLoading(false);
+        return;
+      }
+
+      // If package IS complete, publish everything
       const isEditing = !!formData.propertyId;
 
-      console.log('[Layout] handlePublish called:', {
-        isEditing,
-        propertyId: formData.propertyId,
-        formDataKeys: Object.keys(formData)
+      // In a real implementation, we would send the array of properties here
+      // For now, we'll just publish the current one and assume backend handles the package group
+      console.log('[Layout] Publishing Package:', {
+        package: formData.selectedPackage,
+        properties: formData.packageProperties
       });
 
-      // Map formData to backend format
       const propertyData = {
         title: formData.propertyName,
         description: formData.description || `A beautiful ${formData.propertyType} in ${formData.areaName}`,
@@ -101,8 +122,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
           address: formData.buildingName,
           generalArea: formData.areaName,
           county: formData.county,
-          lat: formData.coordinates?.[1] || 0,  // Correct: lat is second element
-          lng: formData.coordinates?.[0] || 0,  // Correct: lng is first element
+          lat: formData.coordinates?.[1] || 0,
+          lng: formData.coordinates?.[0] || 0,
         },
         amenities: formData.amenities,
         images: formData.photos,
@@ -110,22 +131,30 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         packages: formData.viewingPackages || [],
         utilities: {
           waterIncluded: formData.waterBilling === 'included',
+          waterCost: formData.waterBillingAmount,
           electricityType: formData.electricityBilling || 'prepaid',
-        }
+          electricityCost: formData.electricityBillingAmount,
+          garbageIncluded: formData.garbageBilling === 'included',
+          garbageCost: formData.garbageBillingAmount,
+          securityIncluded: formData.securityBilling === 'included',
+          securityCost: formData.securityBillingAmount,
+        },
+        // Include package info
+        listingPackage: formData.selectedPackage,
+        packageProperties: formData.packageProperties
       };
 
       if (isEditing && formData.propertyId) {
-        console.log('[Layout] Updating property:', formData.propertyId, propertyData);
         await updateProperty(formData.propertyId, propertyData);
         toast.success("Property updated successfully!");
       } else {
-        console.log('[Layout] Creating new property:', propertyData);
         await addProperty(propertyData as any);
-        toast.success("Property published successfully!");
+        toast.success("All properties in package published successfully!");
       }
 
+      await refreshProperties();
       clearFormData();
-      router.push("/add-listing/7" as Route);
+      router.push("/add-listing/8" as Route);
     } catch (err: any) {
       console.error('[Layout] Publish error:', err);
       toast.error(err.message || "Failed to publish property");
@@ -142,8 +171,13 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         <div>
           <span className="text-4xl font-semibold">{index}</span>{" "}
           <span className="text-lg text-neutral-500 dark:text-neutral-400">
-            / 7
+            / 8
           </span>
+          {progress.required > 1 && (
+            <div className="block mt-2 px-3 py-1 bg-primary-50 dark:bg-primary-900/10 text-primary-600 dark:text-primary-400 text-sm font-medium rounded-full border border-primary-100 dark:border-primary-800 w-fit">
+              {isPackageComplete ? "Package Complete" : `Property ${progress.current + 1} of ${progress.required}`}
+            </div>
+          )}
         </div>
 
         {/* --------------------- */}
@@ -152,19 +186,27 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         {/* --------------------- */}
         <div className="flex justify-end space-x-5">
           <ButtonSecondary href={backtHref}>Go back</ButtonSecondary>
-          {index === 6 ? (
+          {index === 7 ? (
             <ButtonPrimary onClick={handlePublish} loading={loading}>
-              Publish listing
+              {nextBtnText}
             </ButtonPrimary>
-          ) : index === 7 ? (
+          ) : index === 8 ? (
             <ButtonPrimary href={"/haunter-dashboard?tab=listings" as Route}>
               Go to Dashboard
             </ButtonPrimary>
           ) : (
             <ButtonPrimary
               onClick={() => {
-                // Step 1: Property Type & Name
+                // Step 1: Package Selection
                 if (index === 1) {
+                  if (!formData.selectedPackage) {
+                    toast.warning("Please select a listing package to continue.");
+                    return;
+                  }
+                }
+
+                // Step 2: Property Type & Name (was Step 1)
+                if (index === 2) {
                   if (!formData.propertyType) {
                     toast.warning("Please select a property type to continue.");
                     return;
@@ -175,8 +217,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 2: Location
-                if (index === 2) {
+                // Step 3: Location (was Step 2)
+                if (index === 3) {
                   if (!formData.county) {
                     toast.warning("Please select a county.");
                     return;
@@ -191,8 +233,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 3: Utilities - validate billing amounts
-                if (index === 3) {
+                // Step 4: Utilities (was Step 3)
+                if (index === 4) {
                   if (formData.waterBilling === 'separate' && (!formData.waterBillingAmount || Number(formData.waterBillingAmount) <= 0)) {
                     toast.warning("Please enter the water billing amount.");
                     return;
@@ -208,8 +250,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                 }
 
 
-                // Step 4: Photos & Videos
-                if (index === 4) {
+                // Step 5: Photos & Videos (was Step 4)
+                if (index === 5) {
                   const isEditing = !!formData.propertyId;
                   if (!isEditing && formData.photos.length < 4) {
                     toast.warning("Please upload at least 4 photos of the property to continue.");
@@ -226,8 +268,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 5: Price & Description
-                if (index === 5) {
+                // Step 6: Price & Description (was Step 5)
+                if (index === 6) {
                   if (!formData.monthlyRent || Number(formData.monthlyRent) <= 0) {
                     toast.warning("Please enter a valid monthly rent amount.");
                     return;
@@ -238,7 +280,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 6: Viewing Packages - now optional, no validation needed
+                // Step 7: Viewing Packages (was Step 6) - now optional
 
                 router.push(nextHref);
               }}
@@ -254,9 +296,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
 
 const CommonLayout: FC<CommonLayoutProps> = (props) => {
   return (
-    <PropertyFormProvider>
-      <AddListingContent {...props} />
-    </PropertyFormProvider>
+    <AddListingContent {...props} />
   );
 };
 

@@ -24,7 +24,7 @@ const SectionGridFeaturePlaces: FC<SectionGridFeaturePlacesProps> = ({
   stayListings: stayListingsProp,
   gridClass = "",
   heading = "Featured places to stay",
-  subHeading = "Popular places to stay that House Haunters recommends for you",
+  subHeading = "Popular places to stay that Dapio recommends for you",
   headingIsCenter,
   tabs = ["Nairobi", "Mombasa", "Kisumu", "Nakuru"],
   cardType = "card2",

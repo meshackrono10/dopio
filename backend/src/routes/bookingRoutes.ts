@@ -37,4 +37,16 @@ router.post('/:id/reschedule/:rescheduleId/respond', authMiddleware, bookingCont
 // Cancel booking
 router.post('/:id/cancel', authMiddleware, bookingController.cancelBooking);
 
+// Mark booking as done
+router.post('/:id/done', authMiddleware, bookingController.markBookingDone);
+
+// Cancel reported issue
+router.post('/:id/cancel-issue', authMiddleware, bookingController.cancelIssue);
+
+// Respond to issue
+router.post('/:id/respond-issue', authMiddleware, bookingController.respondToIssue);
+
+// Hide/Delete booking for current user
+router.delete('/:id', authMiddleware, bookingController.hideBooking);
+
 export default router;

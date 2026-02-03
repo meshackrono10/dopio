@@ -7,7 +7,6 @@ import { ThemeProvider } from './src/contexts/ThemeContext';
 import { PropertyProvider } from './src/contexts/PropertyContext';
 import { BookingProvider } from './src/contexts/BookingContext';
 import { InvoiceProvider } from './src/contexts/InvoiceContext';
-import { SearchRequestProvider } from './src/contexts/SearchRequestContext';
 import { ComparisonProvider } from './src/contexts/ComparisonContext';
 import { WalletProvider } from './src/contexts/WalletContext';
 import { NotificationProvider } from './src/contexts/NotificationContext';
@@ -32,15 +31,13 @@ export default function App() {
                       <ComparisonProvider>
                         <BookingProvider>
                           <InvoiceProvider>
-                            <SearchRequestProvider>
-                              <WishlistProvider>
-                                <ChatProvider>
-                                  <StatusBar style="auto" />
-                                  <RootNavigator />
-                                  <Toast />
-                                </ChatProvider>
-                              </WishlistProvider>
-                            </SearchRequestProvider>
+                            <WishlistProvider>
+                              <ChatProvider>
+                                <StatusBar style="auto" />
+                                <RootNavigator />
+                                <Toast />
+                              </ChatProvider>
+                            </WishlistProvider>
                           </InvoiceProvider>
                         </BookingProvider>
                       </ComparisonProvider>

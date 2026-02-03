@@ -1,7 +1,4 @@
-/**
- * API Configuration
- * Environment-based configuration for API endpoints
- */
+declare const __DEV__: boolean;
 
 export const API_CONFIG = {
     // Base URLs for different environments
@@ -53,18 +50,13 @@ export const ENDPOINTS = {
         CREATE: '/bookings',
         UPDATE: (id: string) => `/bookings/${id}`,
         CANCEL: (id: string) => `/bookings/${id}/cancel`,
+        CONFIRM_MEETING: (id: string) => `/bookings/${id}/confirm-meeting`,
+        DONE: (id: string) => `/bookings/${id}/done`,
+        OUTCOME: (id: string) => `/bookings/${id}/outcome`,
+        CANCEL_ISSUE: (id: string) => `/bookings/${id}/cancel-issue`,
+        RESPOND_ISSUE: (id: string) => `/bookings/${id}/respond-issue`,
     },
 
-    // Search Requests
-    SEARCH_REQUESTS: {
-        LIST: '/search-requests',
-        DETAIL: (id: string) => `/search-requests/${id}`,
-        CREATE: '/search-requests',
-        UPDATE: (id: string) => `/search-requests/${id}`,
-        SUBMIT_BID: (id: string) => `/search-requests/${id}/bids`,
-        ACCEPT_BID: (id: string, bidId: string) => `/search-requests/${id}/bids/${bidId}/accept`,
-        SUBMIT_EVIDENCE: (id: string) => `/search-requests/${id}/evidence`,
-    },
 
     // Wallet & Payments
     WALLET: {

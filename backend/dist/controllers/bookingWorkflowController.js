@@ -48,7 +48,7 @@ const confirmArrival = async (req, res) => {
         });
         // Notify the other party
         const recipientId = isTenant ? booking.hunterId : booking.tenantId;
-        await notificationService_1.NotificationService.sendNotification(recipientId, 'Arrival Confirmed', `${isTenant ? booking.tenant.name : booking.hunter.name} has confirmed arrival at the viewing location.`, 'ARRIVAL_CONFIRMED', { bookingId: updated.id });
+        await notificationService_1.NotificationService.sendNotification(recipientId, 'Arrival Confirmed', `${isTenant ? booking.tenant.name : booking.hunter.name} has confirmed arrival at the viewing location.`, 'ARRIVAL_CONFIRMED', `/bookings/${updated.id}`);
         res.json({
             success: true,
             message: 'Arrival confirmed',
@@ -121,7 +121,7 @@ const completeViewing = async (req, res) => {
                 data: { isLocked: false },
             });
             // Notify hunter of payment
-            await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Payment Released', `Payment of KES ${hunterEarnings.toLocaleString()} has been released for viewing at ${booking.property.title}.`, 'PAYMENT_RELEASED', { bookingId: booking.id });
+            await notificationService_1.NotificationService.sendNotification(booking.hunterId, 'Payment Released', `Payment of KES ${hunterEarnings.toLocaleString()} has been released for viewing at ${booking.property.title}.`, 'PAYMENT_RELEASED', `/wallet`);
         }
         else if (outcome === 'ISSUE_REPORTED') {
             // Create dispute
@@ -139,7 +139,7 @@ const completeViewing = async (req, res) => {
                 },
             });
             // Notify admin
-            await notificationService_1.NotificationService.sendNotification('ADMIN', 'New Dispute', `A viewing issue has been reported for ${booking.property.title}.`, 'DISPUTE_CREATED', { bookingId: booking.id });
+            await notificationService_1.NotificationService.sendNotification('ADMIN', 'New Dispute', `A viewing issue has been reported for ${booking.property.title}.`, 'DISPUTE_CREATED', `/admin/disputes`);
         }
         const updated = await index_1.prisma.booking.update({
             where: { id: bookingId },
@@ -207,7 +207,7 @@ const reportNoShow = async (req, res) => {
             },
         });
         // Notify admin
-        await notificationService_1.NotificationService.sendNotification('ADMIN', 'No-Show Reported', `A no-show has been reported for viewing at ${booking.property.title}.`, 'NO_SHOW_REPORTED', { bookingId: booking.id });
+        await notificationService_1.NotificationService.sendNotification('ADMIN', 'No-Show Reported', `A no-show has been reported for viewing at ${booking.property.title}.`, 'NO_SHOW_REPORTED', `/admin/disputes`);
         res.json({
             success: true,
             message: 'No-show reported. Admin will review and process refund if applicable.',

@@ -11,7 +11,7 @@ export default function PrivacyPage() {
                     <div className="prose dark:prose-invert max-w-none">
                         <h2>1. Introduction</h2>
                         <p>
-                            House Haunters (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains
+                            Dapio (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains
                             how we collect, use, disclose, and safeguard your information when you use our platform.
                         </p>
 
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
                         <p>We collect information that you provide directly to us:</p>
                         <ul>
                             <li>Name and contact information (email, phone number)</li>
-                            <li>National ID number (for house haunters)</li>
+                            <li>National ID number (for agents)</li>
                             <li>Profile photo</li>
                             <li>Payment information (M-Pesa phone number)</li>
                             <li>Communication preferences</li>
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
                         <ul>
                             <li>Provide and improve our services</li>
                             <li>Process payments and transactions</li>
-                            <li>Verify house haunter identities</li>
+                            <li>Verify agent identities</li>
                             <li>Communicate with you (booking confirmations, reminders, support)</li>
                             <li>Personalize your experience</li>
                             <li>Prevent fraud and ensure platform security</li>
@@ -61,8 +61,8 @@ export default function PrivacyPage() {
                         <h3>4.1 With Other Users</h3>
                         <p>When you book a viewing:</p>
                         <ul>
-                            <li>Tenants can see house haunter name, photo, and rating</li>
-                            <li>House haunters can see tenant name and phone number</li>
+                            <li>Tenants can see agent name, photo, and rating</li>
+                            <li>Agents can see tenant name and phone number</li>
                             <li>After viewing, both parties can see reviews</li>
                         </ul>
 
@@ -162,14 +162,14 @@ export default function PrivacyPage() {
                             For privacy-related questions or to exercise your rights, contact us at:
                         </p>
                         <ul>
-                            <li>Email: privacy@househaunters.co.ke</li>
+                            <li>Email: privacy@dapio.com</li>
                             <li>Phone: +254 700 123 456</li>
                             <li>Address: Nairobi, Kenya</li>
                         </ul>
 
                         <h2>13. Consent</h2>
                         <p>
-                            By using House Haunters, you consent to the collection and use of your information as described in this
+                            By using Dapio, you consent to the collection and use of your information as described in this
                             Privacy Policy.
                         </p>
                     </div>

@@ -32,55 +32,38 @@ const PageAddListing1: FC<PageAddListing1Props> = () => {
       <div className="space-y-8">
         {/* ITEM */}
         <FormItem
-          label="Property Category"
-          desc="Is this an apartment, in a court, or a standalone house?"
-        >
-          <Select
-            value={formData.propertyCategory}
-            onChange={(e) => updateFormData('propertyCategory', e.target.value)}
-          >
-            <option value="Apartment / Flat">Apartment / Flat</option>
-            <option value="Apartment in a Court">Apartment in a Court (Gated community)</option>
-            <option value="House in an Estate">House in an Estate (e.g., Nyayo, Buruburu)</option>
-            <option value="Independent House / Standalone">Independent House / Standalone</option>
-            <option value="Shared Accommodation">Shared Accommodation (Roommate / Hostel)</option>
-          </Select>
-        </FormItem>
-
-        <FormItem
-          label="Choose a property type"
-          desc="Select the specific type of unit you're listing"
+          label="Type of Place"
+          desc="Select the specific type of accommodation you're listing"
         >
           <Select
             onChange={handlePropertyTypeChange}
             value={formData.propertyType || ''}
           >
             <option value="">Select property type</option>
-            {formData.propertyCategory === 'Apartment / Flat' ||
-              formData.propertyCategory === 'Apartment in a Court' ||
-              formData.propertyCategory === 'Shared Accommodation' ? (
-              <>
-                <option value="Single Room">Single Room (Shared bathroom & kitchen)</option>
-                <option value="Bedsitter">Bedsitter (Room with private bathroom)</option>
-                <option value="Studio">Studio Apartment (Open plan with kitchen)</option>
-                <option value="1 Bedroom">1 Bedroom Apartment</option>
-                <option value="2 Bedroom">2 Bedroom Apartment</option>
-                <option value="3 Bedroom">3 Bedroom Apartment</option>
-                <option value="4+ Bedroom">4+ Bedroom Apartment</option>
-                <option value="Servant Quarter">Servant Quarter (SQ)</option>
-              </>
-            ) : (
-              <>
-                <option value="1 Bedroom">1 Bedroom House</option>
-                <option value="2 Bedroom">2 Bedroom House</option>
-                <option value="3 Bedroom">3 Bedroom House</option>
-                <option value="4+ Bedroom">4+ Bedroom House</option>
-                <option value="Maisonette">Maisonette</option>
-                <option value="Bungalow">Bungalow</option>
-                <option value="Townhouse">Townhouse</option>
-                <option value="Servant Quarter">Servant Quarter (SQ)</option>
-              </>
-            )}
+            <option value="Single Room">Single Room - Shared bathroom & kitchen</option>
+            <option value="Bedsitter">Bedsitter - Self-contained with private bathroom</option>
+            <option value="Studio">Studio - Open plan with separate kitchen</option>
+            <option value="1 Bedroom">1-bedroom - Standalone or apartment bedroom</option>
+            <option value="2 Bedroom">2-bedroom - Standalone or apartment 2 bedrooms</option>
+            <option value="3 Bedroom">3-bedroom - Standalone or apartment 3 bedrooms</option>
+            <option value="4+ Bedroom">4+ Bedroom - Standalone or apartment</option>
+          </Select>
+        </FormItem>
+
+        <FormItem
+          label="Neighborhood Type"
+          desc="What type of neighborhood is this property in?"
+        >
+          <Select
+            value={formData.neighborhoodType || ''}
+            onChange={(e) => updateFormData('neighborhoodType', e.target.value)}
+          >
+            <option value="">Select neighborhood type</option>
+            <option value="Court">Court - Secured court with gated entrance</option>
+            <option value="Estate">Estate - Large residential estate</option>
+            <option value="Apartment Block">Apartment Block - Multi-story residential building</option>
+            <option value="Standalone">Standalone - Individual house with private compound</option>
+            <option value="Gated Community">Gated Community - High-end secured community</option>
           </Select>
         </FormItem>
 
@@ -97,6 +80,15 @@ const PageAddListing1: FC<PageAddListing1Props> = () => {
                 )}
                 {formData.propertyType === 'Studio' && (
                   "Open-plan apartment with separate kitchen area and private bathroom."
+                )}
+                {formData.propertyType === '1 Bedroom' && (
+                  "One bedroom unit, can be in an apartment building or standalone house."
+                )}
+                {formData.propertyType === '2 Bedroom' && (
+                  "Two bedroom unit, can be in an apartment building or standalone house."
+                )}
+                {formData.propertyType === '3 Bedroom' && (
+                  "Three bedroom unit, can be in an apartment building or standalone house."
                 )}
               </div>
             </div>

@@ -73,7 +73,6 @@ const AdminDashboard = () => {
         activeHunters: 89,
         pendingVerifications: 12,
         totalProperties: 456,
-        activeSearchRequests: 34,
         openDisputes: 5,
         monthlyRevenue: 458900,
     };
@@ -82,7 +81,6 @@ const AdminDashboard = () => {
         { id: 1, type: "user", message: "New user registered: Jane Doe", time: "5 min ago" },
         { id: 2, type: "verification", message: "Hunter verification submitted: John Smith", time: "15 min ago" },
         { id: 3, type: "property", message: "New property listed: 2BR in Westlands", time: "1 hour ago" },
-        { id: 4, type: "dispute", message: "New dispute filed for Request #SR-1234", time: "2 hours ago" },
         { id: 5, type: "payment", message: "Payment received: KES 25,000", time: "3 hours ago" },
     ];
 
@@ -160,15 +158,6 @@ const AdminDashboard = () => {
                         description="Oversee property listings"
                         count={stats.totalProperties}
                         color="#10B981"
-                        isDark={isDark}
-                        onPress={() => { }}
-                    />
-                    <ActionCard
-                        icon="search-outline"
-                        title="Search Requests"
-                        description="Monitor search requests"
-                        count={stats.activeSearchRequests}
-                        color="#F59E0B"
                         isDark={isDark}
                         onPress={() => { }}
                     />

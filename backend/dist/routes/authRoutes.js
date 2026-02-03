@@ -41,6 +41,7 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.delete('/account', authMiddleware_1.authMiddleware, authController.deleteAccount);
 router.post('/change-password', authMiddleware_1.authMiddleware, authController.changePassword);
+router.post('/reset-password', authController.resetPassword);
 // router.post('/google', authController.googleLogin);
 // router.get('/me', authMiddleware, authController.getMe);
 exports.default = router;

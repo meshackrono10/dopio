@@ -14,33 +14,14 @@ import PropertyComparisonScreen from './properties/PropertyComparisonScreen';
 const ActivityScreen = () => {
     const { isDark } = useTheme();
     const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
-    const [activeTab, setActiveTab] = useState<'bookings' | 'saved' | 'comparison' | 'searches'>('bookings');
+    const [activeTab, setActiveTab] = useState<'bookings' | 'saved' | 'comparison'>('bookings');
 
     const tabs = [
         { id: 'bookings', label: 'Bookings', icon: 'calendar' },
         { id: 'saved', label: 'Saved', icon: 'heart' },
-        { id: 'searches', label: 'Searches', icon: 'search' },
         { id: 'comparison', label: 'Compare', icon: 'git-compare' },
     ];
 
-    const activeSearchRequests = [
-        {
-            id: '1',
-            title: '2-Bedroom Apartment in Kasarani',
-            budget: '25000-35000',
-            bidsReceived: 5,
-            status: 'active',
-            deadline: '2025-01-20',
-        },
-        {
-            id: '2',
-            title: 'Spacious Bedsitter in CBD',
-            budget: '15000-20000',
-            bidsReceived: 3,
-            status: 'active',
-            deadline: '2025-01-25',
-        },
-    ];
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50] }]}>
@@ -92,50 +73,6 @@ const ActivityScreen = () => {
                 {activeTab === 'bookings' && <BookingsScreen hideHeader={true} />}
                 {activeTab === 'saved' && <SavedScreen hideHeader={true} />}
                 {activeTab === 'comparison' && <PropertyComparisonScreen navigation={navigation as any} route={{} as any} hideHeader={true} />}
-                {activeTab === 'searches' && (
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.searchesContent}>
-                        <View style={[styles.section, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={[styles.sectionTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                                    My Search Requests
-                                </Text>
-                            </View>
-                            {activeSearchRequests.map(request => (
-                                <TouchableOpacity
-                                    key={request.id}
-                                    style={styles.requestCard}
-                                    onPress={() => (navigation as any).navigate('SearchRequestDetail', { requestId: request.id })}
-                                >
-                                    <View style={styles.requestHeader}>
-                                        <Text style={[styles.requestTitle, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                                            {request.title}
-                                        </Text>
-                                        <View style={[styles.statusBadge, { backgroundColor: colors.success[500] + '20' }]}>
-                                            <Text style={[styles.statusText, { color: colors.success[500] }]}>ACTIVE</Text>
-                                        </View>
-                                    </View>
-                                    <Text style={styles.requestBudget}>Budget: KES {request.budget}</Text>
-                                    <View style={styles.requestFooter}>
-                                        <View style={styles.bidsInfo}>
-                                            <Ionicons name="people" size={14} color={colors.primary[500]} />
-                                            <Text style={styles.bidsText}>{request.bidsReceived} bids</Text>
-                                        </View>
-                                        <Text style={styles.deadlineText}>Due: {request.deadline}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                            <TouchableOpacity
-                                style={styles.createNewButton}
-                                onPress={() => (navigation as any).navigate('CreateSearchRequest' as any)}
-                            >
-                                <Ionicons name="add-circle-outline" size={20} color={colors.primary[500]} />
-                                <Text style={[styles.createNewText, { color: colors.primary[500] }]}>
-                                    Create New Search Request
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
-                )}
             </View>
         </View>
     );

@@ -18,7 +18,7 @@ export default function Analytics() {
         }
 
         fetchStats();
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, user, router]);
 
     const fetchStats = async () => {
         try {
@@ -184,8 +184,8 @@ function StatRow({
             <span className="text-sm text-neutral-600 dark:text-neutral-400">{label}</span>
             <span
                 className={`text-lg font-semibold ${highlight
-                        ? "text-orange-600 dark:text-orange-400"
-                        : "text-neutral-900 dark:text-white"
+                    ? "text-orange-600 dark:text-orange-400"
+                    : "text-neutral-900 dark:text-white"
                     }`}
             >
                 {value}

@@ -16,6 +16,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
                     }`}
             >
                 {message.type === "IMAGE" && message.fileUrl && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                         src={message.fileUrl}
                         alt="Shared"

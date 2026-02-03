@@ -48,14 +48,8 @@ export type HomeStackParamList = {
 export type SearchStackParamList = {
     Explore: undefined;
     Search: undefined;
-    SearchRequests: undefined;
     PropertyDetail: { propertyId: string };
     BookingFlow: { propertyId: string };
-    SearchRequestLanding: undefined;
-    CreateSearchRequest: undefined;
-    SearchRequestDetail: { requestId: string };
-    BidReview: { requestId: string; bids: any[] };
-    EvidenceReview: { requestId: string; evidence: any[] };
     Checkout: { propertyId: string; packageId: string };
     BookingConfirmation: { bookingId: string };
     BookingReview: { bookingId: string };
@@ -86,8 +80,6 @@ export type ProfileStackParamList = {
     HelpCenter: undefined;
     Contact: undefined;
     HowItWorks: undefined;
-    CreateSearchRequest: undefined;
-    SearchRequestDetail: { requestId: string };
     PropertyComparison: undefined;
     PropertyAnalytics: { propertyId: string; propertyTitle: string };
     AdminVerifications: undefined;

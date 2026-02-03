@@ -107,7 +107,7 @@ const HaunterReviewCard: FC<HaunterReviewCardProps> = ({
                 {review.haunterResponse && (
                     <div className="mt-4 pl-4 border-l-2 border-primary-500">
                         <div className="text-sm">
-                            <span className="font-semibold text-primary-600">House Haunter Response</span>
+                            <span className="font-semibold text-primary-600">Agent Response</span>
                             <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-2">
                                 {review.haunterResponseDate && new Date(review.haunterResponseDate).toLocaleDateString()}
                             </span>

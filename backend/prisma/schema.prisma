@@ -20,9 +20,12 @@ model User {
   idFrontUrl            String?
   idBackUrl             String?
   selfieUrl             String?
+  description           String?          @db.Text
+  workLocation          String?          @db.Text
+  averageRating         Float            @default(0)
+  reviewCount           Int              @default(0)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
-  bids                  Bid[]
   hunterBookings        Booking[]        @relation("HunterBookings")
   bookings              Booking[]        @relation("TenantBookings")
   hunterConversations   Conversation[]   @relation("HunterConversations")
@@ -35,9 +38,8 @@ model User {
   paymentHistory        PaymentHistory[] @relation("UserPayments")
   properties            Property[]
   savedProperties       SavedProperty[]
-  haunterSearchRequests SearchRequest[]  @relation("HaunterSearchRequests")
-  searchRequests        SearchRequest[]  @relation("TenantSearchRequest")
   viewingRequests       ViewingRequest[]
+  notifications         Notification[]   @relation("UserNotifications")
 }
 
 model Property {
@@ -56,13 +58,15 @@ model Property {
   adminApprovedAt         DateTime?
   rejectionReason         String?                 @db.Text
   hunterId                String
+  utilities               String?                 @db.LongText
+  packageProperties       String?                 @db.LongText
+  listingPackage          String?                 // BRONZE, SILVER, GOLD
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
   bookings                Booking[]
   disputes                Dispute[]
   hunter                  User                    @relation(fields: [hunterId], references: [id])
   savedBy                 SavedProperty[]
-  searchRequestProperties SearchRequestProperty[]
   packages                ViewingPackage[]
   requests                ViewingRequest[]
   alternativeOffers       AlternativeOffer[]
@@ -101,8 +105,12 @@ model ViewingRequest {
   counterTime     String?
   counterLocation String?       @db.LongText
   counteredBy     String?
+  bookingId       String?       @unique
+  tenantVisible   Boolean       @default(true)
+  hunterVisible   Boolean       @default(true)
   property        Property      @relation(fields: [propertyId], references: [id])
   tenant          User          @relation(fields: [tenantId], references: [id])
+  booking         Booking?      @relation("RequestToBooking", fields: [bookingId], references: [id])
 
   @@index([propertyId], map: "ViewingRequest_propertyId_fkey")
   @@index([tenantId], map: "ViewingRequest_tenantId_fkey")
@@ -131,8 +139,16 @@ model Booking {
   completedAt              DateTime?
   viewingOutcome           ViewingOutcome?
   outcomeSubmittedAt       DateTime?
+  viewingRequest           ViewingRequest?     @relation("RequestToBooking")
   tenantFeedback           String?             @db.Text
   issueEvidence            String?             @db.LongText
+  tenantDone               Boolean             @default(false)
+  hunterDone               Boolean             @default(false)
+  issueCreated             Boolean             @default(false)
+  issueReporterId          String?
+  issueStatus              String?             @default("PENDING") // PENDING, ACCEPTED, DENIED
+  tenantVisible            Boolean             @default(true)
+  hunterVisible            Boolean             @default(true)
   createdAt                DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
   hunter                   User                @relation("HunterBookings", fields: [hunterId], references: [id])
@@ -205,76 +221,6 @@ model Message {
   @@index([conversationId])
 }
 
-model SearchRequest {
-  id                  String                  @id @default(uuid())
-  tenantId            String
-  preferredAreas      String                  @db.LongText
-  minRent             Float
-  maxRent             Float
-  moveInDate          DateTime?
-  leaseDuration       String
-  propertyType        String
-  bathrooms           Int
-  furnished           String
-  petFriendly         Boolean
-  parkingRequired     Boolean
-  parkingSpaces       Int?
-  securityFeatures    String                  @db.LongText
-  utilitiesIncluded   String                  @db.LongText
-  amenities           String                  @db.LongText
-  mustHaveFeatures    String                  @db.LongText
-  niceToHaveFeatures  String                  @db.LongText
-  dealBreakers        String                  @db.LongText
-  additionalNotes     String?                 @db.Text
-  serviceTier         ServiceTier
-  numberOfOptions     Int
-  depositAmount       Float
-  status              SearchRequestStatus     @default(DRAFT)
-  selectedBidId       String?
-  haunterId           String?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  bids                Bid[]
-  haunter             User?                   @relation("HaunterSearchRequests", fields: [haunterId], references: [id])
-  tenant              User                    @relation("TenantSearchRequest", fields: [tenantId], references: [id])
-  submittedProperties SearchRequestProperty[]
-
-  @@index([haunterId], map: "SearchRequest_haunterId_fkey")
-  @@index([tenantId], map: "SearchRequest_tenantId_fkey")
-}
-
-model Bid {
-  id              String        @id @default(uuid())
-  searchRequestId String
-  haunterId       String
-  amount          Float
-  message         String?       @db.Text
-  timeframe       Int
-  bonuses         String        @db.LongText
-  status          BidStatus     @default(PENDING)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  haunter         User          @relation(fields: [haunterId], references: [id])
-  searchRequest   SearchRequest @relation(fields: [searchRequestId], references: [id])
-
-  @@index([haunterId], map: "Bid_haunterId_fkey")
-  @@index([searchRequestId], map: "Bid_searchRequestId_fkey")
-}
-
-model SearchRequestProperty {
-  id              String        @id @default(uuid())
-  searchRequestId String
-  propertyId      String
-  matchScore      Int?
-  status          String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  property        Property      @relation(fields: [propertyId], references: [id])
-  searchRequest   SearchRequest @relation(fields: [searchRequestId], references: [id])
-
-  @@index([propertyId], map: "SearchRequestProperty_propertyId_fkey")
-  @@index([searchRequestId], map: "SearchRequestProperty_searchRequestId_fkey")
-}
 
 model Dispute {
   id                  String        @id @default(uuid())
@@ -408,6 +354,20 @@ model RescheduleRequest {
   @@index([bookingId], map: "RescheduleRequest_bookingId_fkey")
 }
 
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+  user      User     @relation("UserNotifications", fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
 enum Role {
   TENANT
   HUNTER
@@ -427,6 +387,8 @@ enum RequestStatus {
   ACCEPTED
   REJECTED
   COUNTERED
+  CANCELLED
+  COMPLETED
 }
 
 enum InvoiceStatus {
@@ -439,8 +401,10 @@ enum InvoiceStatus {
 
 enum BookingStatus {
   CONFIRMED
+  IN_PROGRESS
   COMPLETED
   CANCELLED
+  DISPUTED
 }
 
 enum ReviewType {
@@ -482,28 +446,6 @@ enum MessageType {
   VIDEO_CALL
 }
 
-enum SearchRequestStatus {
-  DRAFT
-  PENDING_PAYMENT
-  PENDING_BIDS
-  IN_PROGRESS
-  PENDING_REVIEW
-  COMPLETED
-  CANCELLED
-  FORFEITED
-}
-
-enum ServiceTier {
-  STANDARD
-  PREMIUM
-  URGENT
-}
-
-enum BidStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-}
 
 enum DisputeStatus {
   OPEN

@@ -1,7 +1,7 @@
-import { PropertyListing, HouseHaunter, ViewingPackage } from "./types";
+import { PropertyListing, Agent, ViewingPackage } from "./types";
 
-// Mock House Haunters (Agents)
-export const MOCK_HAUNTERS: HouseHaunter[] = [
+// Mock Agents (Agents)
+export const MOCK_HAUNTERS: Agent[] = [
     {
         id: "haunter-1",
         name: "John Kamau",
@@ -11,7 +11,7 @@ export const MOCK_HAUNTERS: HouseHaunter[] = [
         rating: 4.8,
         reviewCount: 234,
         successfulViewings: 234,
-        bio: "Experienced House Haunter specializing in Kasarani and Roysambu areas. I help tenants find quality, affordable housing with transparent pricing.",
+        bio: "Experienced Agent specializing in Kasarani and Roysambu areas. I help tenants find quality, affordable housing with transparent pricing.",
         areasOfOperation: ["Kasarani", "Roysambu", "Githurai"],
         joinedDate: "2024-01-15",
     },
@@ -110,7 +110,7 @@ export const MOCK_PROPERTIES: PropertyListing[] = [
             "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
         ],
         videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        houseHaunter: MOCK_HAUNTERS[0],
+        agent: MOCK_HAUNTERS[0],
         viewingPackages: MOCK_PACKAGES,
         status: "approved",
         createdAt: "2024-11-01",
@@ -164,7 +164,7 @@ export const MOCK_PROPERTIES: PropertyListing[] = [
             "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800",
         ],
         videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        houseHaunter: MOCK_HAUNTERS[0],
+        agent: MOCK_HAUNTERS[0],
         viewingPackages: MOCK_PACKAGES,
         status: "approved",
         createdAt: "2024-11-05",
@@ -227,7 +227,7 @@ export const MOCK_PROPERTIES: PropertyListing[] = [
             "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=800",
         ],
         videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        houseHaunter: MOCK_HAUNTERS[1],
+        agent: MOCK_HAUNTERS[1],
         viewingPackages: [
             {
                 id: "pkg-4",
@@ -302,7 +302,7 @@ export const MOCK_PROPERTIES: PropertyListing[] = [
             "https://images.unsplash.com/photo-1560448205-8c3f3c4b9d4e?w=800",
         ],
         videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        houseHaunter: MOCK_HAUNTERS[2],
+        agent: MOCK_HAUNTERS[2],
         viewingPackages: [
             {
                 id: "pkg-6",
@@ -354,7 +354,7 @@ export const getPropertyById = (id: string | number): PropertyListing | undefine
 };
 
 // Export utility function to get haunter by ID
-export const getHaunterById = (id: string | number): HouseHaunter | undefined => {
+export const getHaunterById = (id: string | number): Agent | undefined => {
     return MOCK_HAUNTERS.find((haunter) => haunter.id === id);
 };
 
@@ -391,7 +391,7 @@ export const MOCK_REVIEWS = [
         professionalismRating: 5,
         accuracyRating: 4,
         overallRating: 4,
-        comment: "Good property overall. The house haunter was punctual and knowledgeable. The only issue was that parking is a bit tight, but everything else matches the description.",
+        comment: "Good property overall. The agent was punctual and knowledgeable. The only issue was that parking is a bit tight, but everything else matches the description.",
         createdAt: "2024-10-20",
         helpfulCount: 8,
     },
@@ -460,128 +460,3 @@ export const getReviewsByHaunterId = (haunterId: string | number) => {
     return MOCK_REVIEWS.filter((review) => review.haunterId === haunterId);
 };
 
-// Mock Search Requests Data
-export const MOCK_SEARCH_REQUESTS = [
-    {
-        id: "search-1",
-        tenantId: "tenant-1",
-        tenantName: "Jane Doe",
-        tenantPhone: "+254 712 345 678",
-        status: "pending_assignment" as const,
-
-        // Location & Budget
-        preferredAreas: ["Westlands", "Kilimani", "Parklands"],
-        minRent: 40000,
-        maxRent: 60000,
-        moveInDate: "2025-02-01",
-        leaseDuration: "yearly",
-
-        // Property Requirements
-        propertyType: "2-bedroom" as const,
-        bathrooms: 2,
-        furnished: "yes" as const,
-        petFriendly: false,
-
-        // Amenities
-        parkingRequired: true,
-        parkingSpaces: 1,
-        securityFeatures: ["CCTV", "Security Guard", "Gate"],
-        utilitiesIncluded: ["Water"],
-        amenities: ["Gym", "Swimming Pool", "Backup Generator"],
-
-        // Additional
-        mustHaveFeatures: ["Modern kitchen", "Balcony", "Natural lighting"],
-        niceToHaveFeatures: ["City view", "Elevator"],
-        dealBreakers: ["Ground floor", "Noisy area"],
-        additionalNotes: "Looking for a modern apartment with good security and amenities. Prefer buildings less than 5 years old.",
-
-        // Service
-        serviceTier: "premium",
-        numberOfOptions: 3,
-        depositAmount: 10000,
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        depositPaid: true,
-        depositPaidAt: "2024-12-18",
-        paymentReleased: false,
-
-        // Bidding
-        bidsOpen: true,
-        bidsCloseAt: "2024-12-25",
-        bids: [],
-        timeframeExtensions: [],
-        uploadedEvidence: [],
-        viewingConfirmed: false,
-        refundRequested: false,
-
-        // Timestamps
-        createdAt: "2024-12-18",
-        updatedAt: "2024-12-18",
-        submittedProperties: [],
-    },
-    {
-        id: "search-2",
-        tenantId: "tenant-2",
-        tenantName: "Michael Ochieng",
-        tenantPhone: "+254 723 456 789",
-        status: "in_progress" as const,
-
-        preferredAreas: ["Kasarani", "Roysambu"],
-        minRent: 15000,
-        maxRent: 25000,
-        leaseDuration: "monthly",
-
-        propertyType: "1-bedroom" as const,
-        bathrooms: 1,
-        furnished: "no" as const,
-        petFriendly: true,
-
-        parkingRequired: false,
-        securityFeatures: ["Gate", "Security Guard"],
-        utilitiesIncluded: ["Water"],
-        amenities: ["Parking"],
-
-        mustHaveFeatures: ["Good water pressure", "Reliable internet"],
-        niceToHaveFeatures: ["Shopping mall nearby"],
-        dealBreakers: ["Far from main road"],
-
-        serviceTier: "standard" as const,
-        depositAmount: 5000,
-        deadline: "2024-12-27",
-
-        haunterId: "haunter-1",
-        haunterName: "John Kamau",
-        claimedAt: "2024-12-19",
-
-        depositPaid: true,
-        depositPaidAt: "2024-12-19",
-        paymentReleased: false,
-
-        // Bidding
-        bidsOpen: false,
-        bidsCloseAt: "2024-12-20",
-        bids: [],
-        timeframeExtensions: [],
-        uploadedEvidence: [],
-        viewingConfirmed: false,
-        refundRequested: false,
-
-        createdAt: "2024-12-19",
-        updatedAt: "2024-12-20",
-        submittedProperties: ["prop-1", "prop-2"],
-    },
-];
-
-// Export utility function to get search requests by tenant ID
-export const getSearchRequestsByTenantId = (tenantId: string | number) => {
-    return MOCK_SEARCH_REQUESTS.filter((request) => request.tenantId === tenantId);
-};
-
-// Export utility function to get search requests by haunter ID
-export const getSearchRequestsByHaunterId = (haunterId: string | number) => {
-    return MOCK_SEARCH_REQUESTS.filter((request) => request.haunterId === haunterId);
-};
-
-// Export utility function to get available search requests
-export const getAvailableSearchRequests = () => {
-    return MOCK_SEARCH_REQUESTS.filter((request) => request.status === "pending_assignment" && request.depositPaid);
-};

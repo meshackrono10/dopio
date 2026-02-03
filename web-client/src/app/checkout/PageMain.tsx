@@ -2,7 +2,7 @@
 
 import { Tab } from "@headlessui/react";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
-import React, { FC, Fragment, useState } from "react";
+import React, { FC, Fragment, useState, useEffect } from "react";
 import visaPng from "@/images/vis.png";
 import mastercardPng from "@/images/mastercard.svg";
 import Input from "@/shared/Input";
@@ -20,6 +20,8 @@ import { useInvoices } from "@/contexts/InvoiceContext";
 import { useAuth } from "@/contexts/AuthContext";
 import mpesaPng from "@/images/mpesa.png";
 import { useToast } from "@/components/Toast";
+import api from "@/services/api";
+import { Route } from "next";
 
 export interface CheckOutPagePageMainProps {
   className?: string;
@@ -37,27 +39,57 @@ const CheckOutPagePageMain: FC<CheckOutPagePageMainProps> = ({
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const property = propertyId ? getPropertyById(propertyId) : null;
-  const selectedPackage = property?.viewingPackages?.find(p => String(p.id) === packageId);
-
   const [startDate, setStartDate] = useState<Date | null>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState("10:00");
   const [phone, setPhone] = useState(user?.phone || "");
   const [proposedLocation, setProposedLocation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [propertyData, setPropertyData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchProperty = async () => {
+      if (!propertyId) return;
+      try {
+        const response = await api.get(`/properties/${propertyId}`);
+        setPropertyData(response.data);
+      } catch (err) {
+        console.error("Failed to fetch property details", err);
+      }
+    };
+    fetchProperty();
+  }, [propertyId]);
+
+  const propertyFromContext = propertyId ? getPropertyById(propertyId) : null;
+  const liveProperty = propertyData || propertyFromContext;
+
+  const selectedPackage = liveProperty?.viewingPackages?.find((p: any) => String(p.id) === packageId) ||
+    liveProperty?.packages?.find((p: any) => String(p.id) === packageId);
+
+  // Parse package properties for multi-item display
+  let packageProperties: any[] = [];
+  try {
+    const raw = liveProperty?.packageProperties;
+    if (Array.isArray(raw)) {
+      packageProperties = raw;
+    } else if (typeof raw === 'string') {
+      packageProperties = JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error("Error parsing package properties", e);
+  }
 
   const timeSlots = [
     "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"
   ];
 
   const handleConfirmAndPay = async () => {
-    if (!property || !user || !selectedPackage) return;
+    if (loading || !liveProperty || !user || !selectedPackage) return;
     setLoading(true);
     try {
       // 1. Create viewing request with proper format
       const request = await createViewingRequest({
-        propertyId: property.id,
+        propertyId: liveProperty.id,
         proposedDates: [{
           date: startDate?.toISOString() || new Date().toISOString(),
           timeSlot: selectedTime,
@@ -85,49 +117,85 @@ const CheckOutPagePageMain: FC<CheckOutPagePageMainProps> = ({
 
   const renderSidebar = () => {
     return (
-      <div className="w-full flex flex-col sm:rounded-2xl lg:border border-neutral-200 dark:border-neutral-700 space-y-6 sm:space-y-8 px-0 sm:p-6 xl:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center">
-          <div className="flex-shrink-0 w-full sm:w-40">
-            <div className=" aspect-w-4 aspect-h-3 sm:aspect-h-4 rounded-2xl overflow-hidden">
-              <Image
-                alt=""
-                fill
-                sizes="200px"
-                src={property?.images[0] || "https://images.pexels.com/photos/6373478/pexels-photo-6373478.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"}
-              />
+      <div className="w-full flex flex-col sm:rounded-2xl lg:border border-neutral-200 dark:border-neutral-700 space-y-6 px-0 sm:p-6 xl:p-8">
+        <h3 className="text-xl font-semibold">Properties in this Viewing</h3>
+
+        <div className="space-y-6">
+          {/* Main Property */}
+          <div className="flex flex-col sm:flex-row sm:items-center">
+            <div className="flex-shrink-0 w-full sm:w-24">
+              <div className="aspect-w-4 aspect-h-3 rounded-xl overflow-hidden relative">
+                <Image
+                  alt=""
+                  fill
+                  sizes="100px"
+                  className="object-cover"
+                  src={liveProperty?.images[0] || "https://images.pexels.com/photos/6373478/pexels-photo-6373478.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"}
+                />
+              </div>
             </div>
-          </div>
-          <div className="py-5 sm:px-5 space-y-3">
-            <div>
-              <span className="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-1">
-                {property?.layout} in {property?.location.generalArea}
-              </span>
-              <span className="text-base font-medium mt-1 block">
-                {property?.title}
+            <div className="py-2 sm:px-4 space-y-1 flex-grow">
+              <div>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                  {liveProperty?.layout} in {liveProperty?.location?.generalArea}
+                </span>
+                <span className="text-sm font-medium block line-clamp-1">
+                  {liveProperty?.title}
+                </span>
+              </div>
+              <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                {liveProperty?.bathrooms} baths · {liveProperty?.amenities?.length || 0} amenities
               </span>
             </div>
-            <span className="block  text-sm text-neutral-500 dark:text-neutral-400">
-              {property?.bathrooms} baths · {property?.amenities.length} amenities
-            </span>
-            <div className="w-10 border-b border-neutral-200  dark:border-neutral-700"></div>
-            <StartRating />
-          </div>
-        </div>
-        <div className="flex flex-col space-y-4">
-          <h3 className="text-2xl font-semibold">Price detail</h3>
-          <div className="flex justify-between text-neutral-6000 dark:text-neutral-300">
-            <span>Viewing Fee ({selectedPackage?.name || "Standard"})</span>
-            <span>KES {selectedPackage?.price.toLocaleString() || "0"}</span>
-          </div>
-          <div className="flex justify-between text-neutral-6000 dark:text-neutral-300">
-            <span>Service charge</span>
-            <span>KES 0</span>
           </div>
 
-          <div className="border-b border-neutral-200 dark:border-neutral-700"></div>
-          <div className="flex justify-between font-semibold">
-            <span>Total</span>
-            <span>KES {selectedPackage?.price.toLocaleString() || "0"}</span>
+          {/* Sub Properties if any */}
+          {packageProperties.map((prop, idx) => {
+            const images = prop.images || prop.photos || [];
+            return (
+              <div key={idx} className="flex flex-col sm:flex-row sm:items-center pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="flex-shrink-0 w-full sm:w-24">
+                  <div className="aspect-w-4 aspect-h-3 rounded-xl overflow-hidden relative">
+                    <Image
+                      alt=""
+                      fill
+                      sizes="100px"
+                      className="object-cover"
+                      src={images[0] || liveProperty?.images[0] || "https://images.pexels.com/photos/6373478/pexels-photo-6373478.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"}
+                    />
+                  </div>
+                </div>
+                <div className="py-2 sm:px-4 space-y-1 flex-grow">
+                  <div>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                      {prop.layout || "Property"} in {prop.areaName || liveProperty?.location?.generalArea}
+                    </span>
+                    <span className="text-sm font-medium block line-clamp-1">
+                      {prop.title || prop.propertyName || `Property #${idx + 2}`}
+                    </span>
+                  </div>
+                  <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                    {prop.bathrooms || 1} baths · {prop.amenities?.length || 0} amenities
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-neutral-200 dark:border-neutral-700 pt-6">
+          <h3 className="text-2xl font-semibold">Price detail</h3>
+          <div className="mt-4 space-y-4">
+            <div className="flex justify-between text-neutral-6000 dark:text-neutral-300">
+              <span>Viewing Fee ({selectedPackage?.name || "Standard"})</span>
+              <span>KES {selectedPackage?.price.toLocaleString() || "0"}</span>
+            </div>
+
+            <div className="border-b border-neutral-200 dark:border-neutral-700"></div>
+            <div className="flex justify-between font-semibold">
+              <span>Total</span>
+              <span>KES {selectedPackage?.price.toLocaleString() || "0"}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -299,6 +367,14 @@ const CheckOutPagePageMain: FC<CheckOutPagePageMainProps> = ({
       </div>
     );
   };
+
+  if (!liveProperty) {
+    return (
+      <div className="container mt-11 mb-24 lg:mb-32 flex justify-center items-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-6000"></div>
+      </div>
+    );
+  }
 
   return (
     <div className={`nc-CheckOutPagePageMain ${className}`}>

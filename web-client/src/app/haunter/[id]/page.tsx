@@ -12,6 +12,11 @@ import StartRating from "@/components/StartRating";
 import StayCard2 from "@/components/StayCard2";
 import CommentListing from "@/components/CommentListing";
 import { Tab } from "@headlessui/react";
+import Link from "next/link";
+import { Route } from "@/routers/types";
+import { useSearchParams } from "next/navigation";
+import ReviewModal from "@/components/ReviewModal";
+import { useToast } from "@/components/Toast";
 
 export interface HaunterProfilePageProps {
     params: {
@@ -27,7 +32,16 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
     const [rating, setRating] = useState(0);
     const [reviewCount, setReviewCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [submittingReview, setSubmittingReview] = useState(false);
+    const [showReviewModal, setShowReviewModal] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const searchParams = useSearchParams();
+    const { showToast } = useToast();
+    const router = useRouter();
+
+    const isReviewMode = searchParams.get("review") === "true";
+    const bookingId = searchParams.get("bookingId");
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -49,6 +63,40 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
 
         fetchProfile();
     }, [id]);
+
+    useEffect(() => {
+        if (isReviewMode && bookingId) {
+            setShowReviewModal(true);
+        }
+    }, [isReviewMode, bookingId]);
+
+    const handleReviewConfirm = async (rating: number, comment: string) => {
+        if (!bookingId) return;
+
+        setSubmittingReview(true);
+        try {
+            await api.post("/reviews", {
+                bookingId,
+                rating,
+                comment,
+            });
+            showToast("success", "Review submitted successfully!");
+            setShowReviewModal(false);
+            // Refresh profile to show new rating
+            const response = await api.get(`/users/hunter/${id}`);
+            setHunter(response.data.hunter);
+            setRating(response.data.rating);
+            setReviewCount(response.data.reviewCount);
+            setReviews(response.data.reviews);
+
+            // Clean up URL
+            router.replace(`/haunter/${id}` as Route);
+        } catch (err: any) {
+            showToast("error", err.response?.data?.message || "Failed to submit review");
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -148,6 +196,32 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={1.5}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                        </svg>
+                        <span className="text-neutral-6000 dark:text-neutral-300">
+                            Works in {hunter.workLocation || "Nairobi"}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6 text-neutral-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                         </svg>
@@ -155,6 +229,19 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
                             {hunter.isVerified ? "Verified Identity" : "Unverified Identity"}
                         </span>
                     </div>
+                </div>
+
+                {/* Message Button */}
+                <div className="w-full pt-4">
+                    <Link
+                        href={`/tenant-dashboard?tab=messages&partnerId=${hunter.id}` as Route}
+                        className="w-full"
+                    >
+                        <ButtonPrimary className="w-full">
+                            <i className="las la-comment-dots mr-2 text-xl"></i>
+                            Message Agent
+                        </ButtonPrimary>
+                    </Link>
                 </div>
             </div>
         );
@@ -165,10 +252,9 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
             <div className="w-full flex flex-col space-y-8 xl:space-y-10">
                 <div className="border-b border-neutral-200 dark:border-neutral-700 pb-6">
                     <h2 className="text-2xl font-semibold">About {hunter.name}</h2>
-                    <div className="text-neutral-6000 dark:text-neutral-300 mt-4">
+                    <div className="text-neutral-6000 dark:text-neutral-300 mt-4 leading-relaxed">
                         <p>
-                            I am a professional House Haunter dedicated to finding you the perfect home.
-                            I specialize in verified listings and seamless viewing experiences.
+                            {hunter.description || `I am a professional Agent dedicated to finding you the perfect home. I specialize in verified listings and seamless viewing experiences in ${hunter.workLocation || "the area"}.`}
                         </p>
                     </div>
                 </div>
@@ -223,6 +309,14 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
                 </div>
                 <div className="flex-grow">{renderMain()}</div>
             </div>
+
+            <ReviewModal
+                isOpen={showReviewModal}
+                onClose={() => setShowReviewModal(false)}
+                onConfirm={handleReviewConfirm}
+                loading={submittingReview}
+                hunterName={hunter?.name}
+            />
         </div>
     );
 };

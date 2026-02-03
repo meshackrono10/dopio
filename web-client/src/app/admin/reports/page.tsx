@@ -9,7 +9,7 @@ export default function AdminReportsRedirect() {
 
     useEffect(() => {
         router.push("/admin/dashboard");
-    }, []);
+    }, [router]);
 
     return null;
 }

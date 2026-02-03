@@ -59,4 +59,12 @@ router.post('/:id/reschedule', authMiddleware_1.authMiddleware, bookingControlle
 router.post('/:id/reschedule/:rescheduleId/respond', authMiddleware_1.authMiddleware, bookingController.respondToReschedule);
 // Cancel booking
 router.post('/:id/cancel', authMiddleware_1.authMiddleware, bookingController.cancelBooking);
+// Mark booking as done
+router.post('/:id/done', authMiddleware_1.authMiddleware, bookingController.markBookingDone);
+// Cancel reported issue
+router.post('/:id/cancel-issue', authMiddleware_1.authMiddleware, bookingController.cancelIssue);
+// Respond to issue
+router.post('/:id/respond-issue', authMiddleware_1.authMiddleware, bookingController.respondToIssue);
+// Hide/Delete booking for current user
+router.delete('/:id', authMiddleware_1.authMiddleware, bookingController.hideBooking);
 exports.default = router;

@@ -31,6 +31,7 @@ interface PropertyFormData {
     unitNumber: string;
     coordinates: [number, number] | null;
     transportProximity: string;
+    neighborhoodType: string;
 
     // Page 3: Size & Layout
     bedrooms: number;
@@ -92,6 +93,11 @@ interface PropertyFormData {
         propertiesIncluded: number;
         features: string[];
     }>;
+
+    // Package system
+    selectedPackage?: 'BRONZE' | 'SILVER' | 'GOLD';
+    packageProperties?: PropertyFormData[];
+    currentPropertyIndex?: number;
 }
 
 interface PropertyFormContextType {
@@ -104,6 +110,14 @@ interface PropertyFormContextType {
     shouldSkipSizeDetails: () => boolean;
     getBedroomCount: () => number;
     getBathroomCount: () => number;
+
+    // Package management
+    selectPackage: (tier: 'BRONZE' | 'SILVER' | 'GOLD') => void;
+    addPropertyToPackage: () => void;
+    editPackageProperty: (index: number) => void;
+    removePackageProperty: (index: number) => void;
+    canPublishPackage: () => boolean;
+    getPackageProgress: () => { current: number; required: number };
 }
 
 const initialFormData: PropertyFormData = {
@@ -118,6 +132,7 @@ const initialFormData: PropertyFormData = {
     unitNumber: '',
     coordinates: null,
     transportProximity: '',
+    neighborhoodType: '',
     bedrooms: 1,
     bathrooms: 1,
     ensuite: false,
@@ -273,6 +288,71 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
         return formData.bathrooms;
     };
 
+    // Package management methods
+    const selectPackage = (tier: 'BRONZE' | 'SILVER' | 'GOLD') => {
+        updateFormData('selectedPackage', tier);
+        updateFormData('packageProperties', []);
+        updateFormData('currentPropertyIndex', 0);
+    };
+
+    const addPropertyToPackage = () => {
+        const currentProperties = formData.packageProperties || [];
+        const currentData = { ...formData };
+        delete currentData.packageProperties;
+        delete currentData.selectedPackage;
+        delete currentData.currentPropertyIndex;
+
+        currentProperties.push(currentData);
+        updateFormData('packageProperties', currentProperties);
+
+        // Reset form for next property
+        const newFormData = { ...initialFormData };
+        newFormData.selectedPackage = formData.selectedPackage;
+        newFormData.packageProperties = currentProperties;
+        newFormData.currentPropertyIndex = currentProperties.length;
+        setFormData(newFormData);
+    };
+
+    const editPackageProperty = (index: number) => {
+        const properties = formData.packageProperties || [];
+        if (index < properties.length) {
+            const propertyToEdit = properties[index];
+            setFormData({
+                ...propertyToEdit,
+                selectedPackage: formData.selectedPackage,
+                packageProperties: formData.packageProperties,
+                currentPropertyIndex: index
+            });
+        }
+    };
+
+    const removePackageProperty = (index: number) => {
+        const properties = formData.packageProperties || [];
+        properties.splice(index, 1);
+        updateFormData('packageProperties', properties);
+    };
+
+    const canPublishPackage = () => {
+        const tier = formData.selectedPackage;
+        const properties = formData.packageProperties || [];
+
+        if (!tier) return false;
+
+        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 3 : 4;
+        return (properties.length + 1) >= requiredCount;
+    };
+
+    const getPackageProgress = () => {
+        const tier = formData.selectedPackage;
+        const properties = formData.packageProperties || [];
+        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 3 : tier === 'GOLD' ? 4 : 0;
+
+        return {
+            current: properties.length,
+            required: requiredCount
+        };
+    };
+
     const propertyType = formData.propertyType;
 
     return (
@@ -285,7 +365,13 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
             setPropertyType,
             shouldSkipSizeDetails,
             getBedroomCount,
-            getBathroomCount
+            getBathroomCount,
+            selectPackage,
+            addPropertyToPackage,
+            editPackageProperty,
+            removePackageProperty,
+            canPublishPackage,
+            getPackageProgress
         }}>
             {children}
         </PropertyFormContext.Provider>

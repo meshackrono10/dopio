@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import api from "@/services/api";
 import { useToast } from "@/components/Toast";
@@ -32,11 +32,7 @@ export default function AlternativeOfferModal({
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        fetchHunterProperties();
-    }, []);
-
-    const fetchHunterProperties = async () => {
+    const fetchHunterProperties = useCallback(async () => {
         try {
             // Fetch properties belonging to the hunter
             const response = await api.get("/properties/my-listings");
@@ -48,7 +44,11 @@ export default function AlternativeOfferModal({
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchHunterProperties();
+    }, [fetchHunterProperties]);
 
     const handleSubmit = async () => {
         if (!selectedPropertyId) {
@@ -104,8 +104,8 @@ export default function AlternativeOfferModal({
                                     key={property.id}
                                     onClick={() => setSelectedPropertyId(property.id)}
                                     className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${selectedPropertyId === property.id
-                                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
-                                            : "border-neutral-200 dark:border-neutral-700 hover:border-primary-300"
+                                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                                        : "border-neutral-200 dark:border-neutral-700 hover:border-primary-300"
                                         }`}
                                 >
                                     <div className="w-20 h-20 relative rounded-lg overflow-hidden flex-shrink-0">
@@ -127,8 +127,8 @@ export default function AlternativeOfferModal({
                                         </p>
                                     </div>
                                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPropertyId === property.id
-                                            ? "border-primary-500 bg-primary-500"
-                                            : "border-neutral-300"
+                                        ? "border-primary-500 bg-primary-500"
+                                        : "border-neutral-300"
                                         }`}>
                                         {selectedPropertyId === property.id && (
                                             <i className="las la-check text-white text-sm"></i>
@@ -140,7 +140,7 @@ export default function AlternativeOfferModal({
                     ) : (
                         <div className="text-center py-8">
                             <i className="las la-home text-5xl text-neutral-300 mb-3"></i>
-                            <p className="text-neutral-500">You don't have any other published properties to offer.</p>
+                            <p className="text-neutral-500">You don&apos;t have any other published properties to offer.</p>
                         </div>
                     )}
 

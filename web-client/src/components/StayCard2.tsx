@@ -22,14 +22,35 @@ export interface StayCard2Props {
   sizes?: string;
 }
 
-const DEMO_DATA = DEMO_STAY_LISTINGS[0];
-
 const StayCard2: FC<StayCard2Props> = ({
   size = "default",
   className = "",
-  data = DEMO_DATA,
+  data,
   sizes = "(max-width: 1025px) 100vw, 300px",
 }) => {
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    const checkSavedStatus = async () => {
+      if (isAuthenticated && data?.id) {
+        try {
+          const response = await api.get("/users/saved-properties");
+          const savedProps = response.data;
+          const isPropertySaved = savedProps.some((p: any) => p.property.id === data.id);
+          setIsLiked(isPropertySaved);
+        } catch (error) {
+          console.error("Failed to check saved status", error);
+        }
+      }
+    };
+    checkSavedStatus();
+  }, [isAuthenticated, data?.id]);
+
+  if (!data) return null;
+
   const {
     images: galleryImgs = [],
     title,
@@ -40,27 +61,6 @@ const StayCard2: FC<StayCard2Props> = ({
     averageRating: reviewStart = 4.5,
     reviewCount = 10,
   } = data;
-
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
-  const { showToast } = useToast();
-  const [isLiked, setIsLiked] = useState(false);
-
-  useEffect(() => {
-    const checkSavedStatus = async () => {
-      if (isAuthenticated && id) {
-        try {
-          const response = await api.get("/users/saved-properties");
-          const savedProps = response.data;
-          const isPropertySaved = savedProps.some((p: any) => p.property.id === id);
-          setIsLiked(isPropertySaved);
-        } catch (error) {
-          console.error("Failed to check saved status", error);
-        }
-      }
-    };
-    checkSavedStatus();
-  }, [isAuthenticated, id]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -157,9 +157,6 @@ const StayCard2: FC<StayCard2Props> = ({
               </span>
             )}
           </span>
-          {!!reviewStart && (
-            <StartRating reviewCount={reviewCount} point={reviewStart} />
-          )}
         </div>
       </div>
     );

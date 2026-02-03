@@ -3,15 +3,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useProperties } from "@/contexts/PropertyContext";
-import { usePropertyForm, PropertyType, PropertyFormProvider } from "@/contexts/PropertyFormContext";
+import { usePropertyForm, PropertyType } from "@/contexts/PropertyFormContext";
 import { Route } from "@/routers/types";
 import { toast } from "react-toastify";
 
 export default function EditListingPage() {
     return (
-        <PropertyFormProvider>
-            <EditListingContent />
-        </PropertyFormProvider>
+        <EditListingContent />
     );
 }
 
@@ -113,7 +111,7 @@ function EditListingContent() {
             areaName: property.location.generalArea || '',
             buildingName: property.location.directions || '',
             unitNumber: '', // Not stored separately in backend
-            coordinates: extractCoordinates(),
+            coordinates: property.map ? [property.map.lng, property.map.lat] : null,
             transportProximity: '5', // Default - not stored in backend
 
             // ===== Page 3: Size & Layout =====
@@ -127,9 +125,13 @@ function EditListingContent() {
             // ===== Page 5: Utilities =====
             hasTokenMeter: property.utilities?.electricityType === 'prepaid' || true,
             waterBilling: property.utilities?.waterIncluded ? 'included' : 'separate',
-            garbageBilling: property.amenities.includes('Garbage Disposal') ? 'included' : 'separate',
+            waterBillingAmount: property.utilities?.waterCost || '',
+            garbageBilling: property.utilities?.garbageIncluded ? 'included' : 'separate',
+            garbageBillingAmount: property.utilities?.garbageCost || '',
             electricityBilling: property.utilities?.electricityType || 'prepaid',
-            securityBilling: property.amenities.includes('24/7 Security') || property.amenities.includes('Security') ? 'included' : 'separate',
+            electricityBillingAmount: property.utilities?.electricityCost || '',
+            securityBilling: property.utilities?.securityIncluded ? 'included' : 'separate',
+            securityBillingAmount: property.utilities?.securityCost || '',
 
             // ===== Page 7: Photos & Videos =====
             photos: Array.isArray(property.images) ? property.images : [],
@@ -194,7 +196,7 @@ function EditListingContent() {
             router.push("/add-listing/1" as Route);
             setInitializing(false);
         }, 100);
-    }, [id, propertiesLoading, getPropertyById]);
+    }, [id, propertiesLoading, getPropertyById, router, setFormData]);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">

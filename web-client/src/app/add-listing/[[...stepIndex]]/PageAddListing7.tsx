@@ -294,6 +294,7 @@ const PageAddListing7: FC<PageAddListing7Props> = () => {
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
               {formData.photos.map((photo: string, index: number) => (
                 <div key={index} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photo}
                     alt={`Upload ${index + 1}`}

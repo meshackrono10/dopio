@@ -42,4 +42,39 @@ export const bookingsApi = {
     cancelBooking: async (id: string, reason?: string) => {
         return apiClient.post(ENDPOINTS.BOOKINGS.CANCEL(id), { reason });
     },
+
+    /**
+     * Confirm physical meetup
+     */
+    confirmMeetup: async (id: string) => {
+        return apiClient.post(ENDPOINTS.BOOKINGS.CONFIRM_MEETING(id));
+    },
+
+    /**
+     * Mark booking as done
+     */
+    markDone: async (id: string) => {
+        return apiClient.post(ENDPOINTS.BOOKINGS.DONE(id));
+    },
+
+    /**
+     * Submit viewing outcome (Done/Issue)
+     */
+    submitOutcome: async (id: string, data: any) => {
+        return apiClient.post(ENDPOINTS.BOOKINGS.OUTCOME(id), data);
+    },
+
+    /**
+     * Cancel reported issue
+     */
+    cancelIssue: async (id: string) => {
+        return apiClient.post(ENDPOINTS.BOOKINGS.CANCEL_ISSUE(id));
+    },
+
+    /**
+     * Respond to issue
+     */
+    respondToIssue: async (id: string, action: 'accept' | 'deny') => {
+        return apiClient.post(ENDPOINTS.BOOKINGS.RESPOND_ISSUE(id), { action });
+    },
 };

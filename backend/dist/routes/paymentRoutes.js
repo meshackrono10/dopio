@@ -39,6 +39,7 @@ const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
 router.post('/stk-push', authMiddleware_1.authMiddleware, paymentController.initiateStkPush);
 router.post('/callback', paymentController.mpesaCallback);
+router.get('/summary', authMiddleware_1.authMiddleware, paymentController.getWalletSummary);
 router.get('/status', authMiddleware_1.authMiddleware, paymentController.getPaymentStatus);
 router.get('/history', authMiddleware_1.authMiddleware, paymentController.getPaymentHistory);
 router.get('/earnings', authMiddleware_1.authMiddleware, paymentController.getHunterEarnings);

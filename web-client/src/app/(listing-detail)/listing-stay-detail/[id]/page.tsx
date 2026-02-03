@@ -3,7 +3,18 @@
 import React, { FC, Fragment, useState, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { Squares2X2Icon, PlayCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import GoogleMapReact from "google-map-react";
+import dynamic from "next/dynamic";
+const ListingMap = dynamic(() => import("@/components/ListingMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+      <div className="text-center">
+        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading map...</p>
+      </div>
+    </div>
+  )
+});
 import StartRating from "@/components/StartRating";
 import Avatar from "@/shared/Avatar";
 import Badge from "@/shared/Badge";
@@ -12,21 +23,15 @@ import ButtonSecondary from "@/shared/ButtonSecondary";
 import LikeSaveBtns from "@/components/LikeSaveBtns";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Route } from "next";
+import { Route } from "@/routers/types";
 import ComparisonButton from "@/components/ComparisonButton";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
+import SectionVideos, { VideoType } from "@/components/SectionVideos";
+import StayCard from "@/components/StayCard";
+import { StayDataType } from "@/data/types";
 
-const LocationCircle = ({ lat, lng }: { lat: number; lng: number }) => {
-  return (
-    <div className="relative flex items-center justify-center">
-      <div className="w-64 h-64 bg-primary-500/20 rounded-full border-2 border-primary-500 animate-pulse"></div>
-      <div className="absolute text-primary-700 font-semibold bg-white/90 px-2 py-1 rounded shadow-sm text-xs whitespace-nowrap">
-        Approximate Location
-      </div>
-    </div>
-  );
-};
+// LocationCircle removed in favor of Leaflet Circle in ListingMap component
 
 // Amenity icon mapping
 const getAmenityIcon = (amenity: string) => {
@@ -296,8 +301,6 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         </h2>
 
         <div className="flex items-center space-x-4">
-          <StartRating point={property.rating} reviewCount={property.reviewCount} />
-          <span>·</span>
           <span>
             <i className="las la-map-marker-alt"></i>
             <span className="ml-1">{location?.generalArea}</span>
@@ -362,7 +365,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         <div>
           <h2 className="text-2xl font-semibold">Amenities</h2>
           <span className="block mt-2 text-neutral-500 dark:text-neutral-400">
-            About the property's amenities and services
+            About the property&apos;s amenities and services
           </span>
         </div>
         <div className="w-14 border-b border-neutral-200 dark:border-neutral-700"></div>
@@ -472,7 +475,68 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
     );
   };
 
+  const renderSectionUtilities = () => {
+    const utils = property.utilities || {};
+    const bills = [
+      { name: "Water", included: utils.waterIncluded, cost: utils.waterCost, icon: "la-tint" },
+      { name: "Garbage", included: utils.garbageIncluded, cost: utils.garbageCost, icon: "la-trash" },
+      { name: "Security", included: utils.securityIncluded, cost: utils.securityCost, icon: "la-shield-alt" },
+      { name: "Electricity", type: utils.electricityType, cost: utils.electricityCost, icon: "la-bolt" },
+    ];
+
+    const hasBills = bills.some(b => !b.included || b.cost);
+
+    if (!hasBills) return null;
+
+    return (
+      <div className="listingSection__wrap">
+        <h2 className="text-2xl font-semibold">Utilities & Bills</h2>
+        <div className="w-14 border-b border-neutral-200 dark:border-neutral-700"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {bills.map((bill) => (
+            <div key={bill.name} className="flex items-center justify-between p-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
+              <div className="flex items-center space-x-3">
+                <i className={`text-2xl las ${bill.icon} text-primary-600`}></i>
+                <div>
+                  <span className="block font-medium">{bill.name}</span>
+                  <span className="text-xs text-neutral-500">
+                    {bill.name === "Electricity" ? (bill.type || "Prepaid") : (bill.included ? "Included in rent" : "Charged separately")}
+                  </span>
+                </div>
+              </div>
+              {bill.cost && (
+                <div className="text-right">
+                  <span className="block font-semibold text-primary-600">KSh {bill.cost}</span>
+                  <span className="text-[10px] text-neutral-400 uppercase">per month</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSectionVideos = () => {
+    if (!videos || videos.length === 0) return null;
+
+    const videoData: VideoType[] = videos.map((url: string, index: number) => ({
+      id: url,
+      title: `${title} - Video Tour ${videos.length > 1 ? index + 1 : ""}`,
+      thumbnail: images[0] || "",
+    }));
+
+    return (
+      <div className="listingSection__wrap">
+        <SectionVideos videos={videoData} />
+      </div>
+    );
+  };
+
   const renderSection7 = () => {
+    const lat = location?.lat || -1.2921;
+    const lng = location?.lng || 36.8219;
+
     return (
       <div className="listingSection__wrap">
         <div>
@@ -483,31 +547,99 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         </div>
         <div className="w-14 border-b border-neutral-200 dark:border-neutral-700" />
 
-        <div className="aspect-w-5 aspect-h-5 sm:aspect-h-3 ring-1 ring-black/10 rounded-xl z-0">
-          <div className="rounded-xl overflow-hidden z-0 relative">
-            <GoogleMapReact
-              bootstrapURLKeys={{
-                key: "AIzaSyAGVJfZMAKYfZ71nzL_v5i3LjTTWnCYwTY",
-              }}
-              yesIWantToUseGoogleMapApiInternals
-              defaultZoom={14}
-              defaultCenter={{
-                lat: location?.lat || -1.2921,
-                lng: location?.lng || 36.8219,
-              }}
-              options={{
-                disableDefaultUI: true,
-                draggable: false,
-                zoomControl: false,
-                scrollwheel: false,
-              }}
-            >
-              <LocationCircle
-                lat={location?.lat || -1.2921}
-                lng={location?.lng || 36.8219}
-              />
-            </GoogleMapReact>
-          </div>
+        <div className="ring-1 ring-black/10 rounded-xl z-0 overflow-hidden h-[400px]">
+          <ListingMap
+            lat={lat}
+            lng={lng}
+            isExact={property.isExactLocation}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderSectionIncludedProperties = () => {
+    // Only for packages (Silver/Gold)
+    const listingPackage = property.listingPackage;
+    if (!listingPackage || (listingPackage !== 'SILVER' && listingPackage !== 'GOLD')) {
+      return null;
+    }
+
+    let packageProperties: any[] = [];
+    try {
+      const raw = property.packageProperties;
+      if (Array.isArray(raw)) {
+        packageProperties = raw;
+      } else if (typeof raw === 'string') {
+        packageProperties = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error("Error parsing package properties", e);
+    }
+
+    if (packageProperties.length === 0) return null;
+
+    // Mapper to convert PropertyFormData/BackendModel to StayDataType
+    const mapToStayData = (prop: any, index: number): StayDataType => {
+      // Determine layout string
+      let layoutStr = "1-bedroom";
+      if (prop.layout) layoutStr = prop.layout;
+      else if (prop.propertyType) {
+        if (prop.propertyType === 'Single Room') layoutStr = "bedsitter"; // Approximation
+        else if (prop.propertyType === 'Studio') layoutStr = "studio";
+        else layoutStr = prop.propertyType.toLowerCase().replace(' ', '-');
+      }
+
+      // Determine images
+      const images = prop.images || prop.photos || [];
+
+      return {
+        id: prop.id || `${property.id}_sub_${index}`,
+        title: prop.title || prop.propertyName || `Package Property #${index + 1}`,
+        description: prop.description || "",
+        rent: Number(prop.rent || prop.monthlyRent || 0),
+        deposit: Number(prop.deposit || 0),
+        layout: layoutStr as any,
+        bathrooms: Number(prop.bathrooms || 1),
+        location: {
+          generalArea: prop.areaName || prop.location?.generalArea || property.location?.generalArea || "",
+          county: prop.county || prop.location?.county || property.location?.county || "",
+          directions: ""
+        },
+        amenities: prop.amenities || [],
+        utilities: prop.utilities || (prop.waterBilling ? {
+          waterIncluded: prop.waterBilling === 'included',
+          electricityType: prop.electricityBilling || 'prepaid'
+        } : {}),
+        images: images.length > 0 ? images : property.images || [], // Fallback to main images if none
+        videoUrl: "",
+        agent: property.agent,
+        viewingPackages: [],
+        status: "available",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        viewCount: 0,
+        bookingCount: 0,
+        href: prop.id ? `/listing-stay-detail/${prop.id}` as Route : undefined, // Link if real ID exists
+        averageRating: 0, // No ratings yet
+        reviewCount: 0
+      } as StayDataType;
+    };
+
+    return (
+      <div className="listingSection__wrap">
+        <div>
+          <h2 className="text-2xl font-semibold">Included in this {listingPackage} Package</h2>
+          <span className="block mt-2 text-neutral-500 dark:text-neutral-400">
+            This listing includes {packageProperties.length} additional properties
+          </span>
+        </div>
+        <div className="w-14 border-b border-neutral-200 dark:border-neutral-700"></div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {packageProperties.map((prop, idx) => (
+            <StayCard key={idx} data={mapToStayData(prop, idx)} />
+          ))}
         </div>
       </div>
     );
@@ -523,7 +655,6 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
               /month
             </span>
           </span>
-          <StartRating point={property.rating} reviewCount={property.reviewCount} />
         </div>
 
         {selectedPackage && (
@@ -564,7 +695,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
           disabled={!selectedPackage}
           onClick={() => {
             if (!isAuthenticated) {
-              router.push("/login");
+              router.push("/login" as Route);
             } else if (selectedPackage) {
               router.push(`/checkout?propertyId=${id}&packageId=${selectedPackage.id}` as Route);
             }
@@ -574,7 +705,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         </ButtonPrimary>
 
         <ComparisonButton property={property} className="w-full" />
-        <ButtonSecondary href={`/messages?partnerId=${hunter?.id}`}>
+        <ButtonSecondary href={`/tenant-dashboard?tab=messages&partnerId=${hunter?.id}` as Route}>
           Message Haunter
         </ButtonSecondary>
       </div>
@@ -635,27 +766,19 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
             </span>
           </button>
 
-          {videos && videos.length > 0 && (
-            <button
-              className="absolute hidden md:flex md:items-center md:justify-center right-3 bottom-3 px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 z-10"
-              onClick={() => setShowVideoModal(true)}
-            >
-              <PlayCircleIcon className="w-5 h-5" />
-              <span className="ml-2 text-sm font-medium">
-                Watch Video Tour
-              </span>
-            </button>
-          )}
         </div>
       </header>
 
       <main className="relative z-10 mt-11 flex flex-col lg:flex-row">
         <div className="w-full lg:w-3/5 xl:w-2/3 space-y-8 lg:space-y-10 lg:pr-10">
           {renderSection1()}
+          {renderSection7()}
           {renderSection2()}
+          {renderSectionUtilities()}
           {renderSection3()}
           {renderSectionPackages()}
-          {renderSection7()}
+          {renderSectionIncludedProperties()}
+          {renderSectionVideos()}
         </div>
 
         <div className="hidden lg:block flex-grow mt-14 lg:mt-0">

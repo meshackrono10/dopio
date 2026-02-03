@@ -4,14 +4,19 @@ import React, { useState } from "react";
 import api from "@/services/api";
 import { useToast } from "@/components/Toast";
 import ButtonPrimary from "@/shared/ButtonPrimary";
+import { useRouter } from "next/navigation";
+import { Route } from "@/routers/types";
+import Image from "next/image";
 
 interface PostViewingModalProps {
     bookingId: string;
+    hunterId: string;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export default function PostViewingModal({ bookingId, onClose, onSuccess }: PostViewingModalProps) {
+export default function PostViewingModal({ bookingId, hunterId, onClose, onSuccess }: PostViewingModalProps) {
+    const router = useRouter();
     const { showToast } = useToast();
     const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
     const [feedback, setFeedback] = useState("");
@@ -76,7 +81,13 @@ export default function PostViewingModal({ bookingId, onClose, onSuccess }: Post
                         ? "Issue reported. Admin will review and contact you."
                         : "Alternative request submitted."
             );
+
             onSuccess();
+
+            // Redirect to hunter profile if completed successfully
+            if (selectedOutcome === "COMPLETED_SATISFIED") {
+                router.push(`/haunter/${hunterId}?review=true&bookingId=${bookingId}` as Route);
+            }
         } catch (error: any) {
             showToast("error", error.response?.data?.message || "Failed to submit outcome");
         } finally {
@@ -129,7 +140,7 @@ export default function PostViewingModal({ bookingId, onClose, onSuccess }: Post
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg">✅ Viewing Completed Successfully</h3>
                                     <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                                        The property matched the listing and I'm satisfied with the service
+                                        The property matched the listing and I&apos;m satisfied with the service
                                     </p>
                                 </div>
                             </div>
@@ -155,7 +166,7 @@ export default function PostViewingModal({ bookingId, onClose, onSuccess }: Post
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg">⚠️ Report an Issue</h3>
                                     <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                                        The property doesn't match the listing or there were problems
+                                        The property doesn&apos;t match the listing or there were problems
                                     </p>
                                 </div>
                             </div>
@@ -181,7 +192,7 @@ export default function PostViewingModal({ bookingId, onClose, onSuccess }: Post
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg">🔄 Request Alternative Property</h3>
                                     <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                                        I'd like to see a different property instead
+                                        I&apos;d like to see a different property instead
                                     </p>
                                 </div>
                             </div>
@@ -245,9 +256,10 @@ export default function PostViewingModal({ bookingId, onClose, onSuccess }: Post
                                 <div className="mt-4 grid grid-cols-3 gap-2">
                                     {evidenceUrls.map((url, index) => (
                                         <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700">
-                                            <img
+                                            <Image
                                                 src={url}
                                                 alt={`Evidence ${index + 1}`}
+                                                fill
                                                 className="w-full h-full object-cover"
                                             />
                                         </div>

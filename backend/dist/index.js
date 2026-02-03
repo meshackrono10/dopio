@@ -18,13 +18,14 @@ const bookingRoutes_1 = __importDefault(require("./routes/bookingRoutes"));
 const bookingWorkflow_1 = __importDefault(require("./routes/bookingWorkflow"));
 const rescheduleRoutes_1 = __importDefault(require("./routes/rescheduleRoutes"));
 const alternativeRoutes_1 = __importDefault(require("./routes/alternativeRoutes"));
-const searchRequestRoutes_1 = __importDefault(require("./routes/searchRequestRoutes"));
 const paymentRoutes_1 = __importDefault(require("./routes/paymentRoutes"));
 const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes"));
 const messageRoutes_1 = __importDefault(require("./routes/messageRoutes"));
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const disputeRoutes_1 = __importDefault(require("./routes/disputeRoutes"));
+const reviewRoutes_1 = __importDefault(require("./routes/reviewRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 const logger_1 = __importDefault(require("./config/logger")); // Added logger import
 const http_1 = require("http");
 const socket_1 = require("./config/socket");
@@ -66,13 +67,14 @@ app.use('/api/bookings', bookingRoutes_1.default);
 app.use('/api/bookings', bookingWorkflow_1.default);
 app.use('/api/bookings', rescheduleRoutes_1.default);
 app.use('/api/bookings', alternativeRoutes_1.default);
-app.use('/api/search-requests', searchRequestRoutes_1.default);
 app.use('/api/payments', paymentRoutes_1.default);
 app.use('/api/upload', uploadRoutes_1.default);
 app.use('/api/messages', messageRoutes_1.default);
 app.use('/api/admin', adminRoutes_1.default);
 app.use('/api/users', userRoutes_1.default);
 app.use('/api/disputes', disputeRoutes_1.default);
+app.use('/api/reviews', reviewRoutes_1.default);
+app.use('/api/notifications', notificationRoutes_1.default);
 // Routes Placeholder - Removed as per instruction's implied change
 // app.get('/', (req: Request, res: Response) => {
 //     res.json({ message: 'House Haunters API is running' });

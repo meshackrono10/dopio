@@ -158,7 +158,7 @@ export default function RescheduleRequestCard({
                     {request.proposedLocation && (
                         <p className="text-sm font-medium mt-1">
                             <i className="las la-map-marker mr-1"></i>
-                            Location: {request.proposedLocation}
+                            Location: {typeof request.proposedLocation === 'object' ? JSON.stringify(request.proposedLocation) : request.proposedLocation}
                         </p>
                     )}
                     {request.reason && (
@@ -180,7 +180,7 @@ export default function RescheduleRequestCard({
                         {request.counterLocation && (
                             <p className="text-sm font-medium mt-1">
                                 <i className="las la-map-marker mr-1"></i>
-                                Location: {request.counterLocation}
+                                Location: {typeof request.counterLocation === 'object' ? JSON.stringify(request.counterLocation) : request.counterLocation}
                             </p>
                         )}
                         {request.counterReason && (

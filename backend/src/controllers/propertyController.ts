@@ -23,12 +23,28 @@ const propertySchema = z.object({
         features: z.array(z.string()),
         description: z.string().optional(),
     })).min(1, "At least one viewing package is required"),
+    utilities: z.object({
+        waterIncluded: z.boolean(),
+        waterCost: z.string().optional(),
+        electricityType: z.enum(['prepaid', 'postpaid', 'included', 'shared']),
+        electricityCost: z.string().optional(),
+        garbageIncluded: z.boolean().optional(),
+        garbageCost: z.string().optional(),
+        securityIncluded: z.boolean().optional(),
+        securityCost: z.string().optional(),
+        otherUtilities: z.array(z.string()).optional(),
+    }).optional(),
+    packageProperties: z.array(z.any()).optional(),
+    listingPackage: z.enum(['BRONZE', 'SILVER', 'GOLD']).optional(),
 });
 
 export const getAllProperties = async (req: any, res: Response) => {
     try {
         const userId = req.user?.userId;
         const properties = await prisma.property.findMany({
+            where: {
+                status: 'AVAILABLE',
+            },
             include: {
                 hunter: {
                     select: {
@@ -45,12 +61,28 @@ export const getAllProperties = async (req: any, res: Response) => {
         });
 
         const processedProperties = properties.map(prop => {
-            const location = prop.location as any;
+            const location = typeof prop.location === 'string' ? JSON.parse(prop.location) : prop.location;
+            const amenities = typeof prop.amenities === 'string' ? JSON.parse(prop.amenities) : prop.amenities;
+            const images = typeof prop.images === 'string' ? JSON.parse(prop.images) : prop.images;
+            const videos = typeof prop.videos === 'string' ? JSON.parse(prop.videos) : prop.videos;
+            const utilities = typeof prop.utilities === 'string' ? JSON.parse(prop.utilities) : prop.utilities;
+            const packageProperties = typeof prop.packageProperties === 'string' ? JSON.parse(prop.packageProperties) : prop.packageProperties;
+
             const isOwner = userId && prop.hunterId === userId;
             const hasPaid = userId && (prop as any).bookings?.length > 0;
 
+            const responseData = {
+                ...prop,
+                location,
+                amenities,
+                images,
+                videos,
+                utilities,
+                packageProperties
+            };
+
             if (isOwner || hasPaid || prop.isExactLocation) {
-                return prop;
+                return responseData;
             }
 
             // Fuzz location (approx 500m-1km offset)
@@ -58,11 +90,11 @@ export const getAllProperties = async (req: any, res: Response) => {
             const fuzzLng = (Math.random() - 0.5) * 0.01;
 
             return {
-                ...prop,
+                ...responseData,
                 location: {
                     ...location,
-                    lat: location.lat + fuzzLat,
-                    lng: location.lng + fuzzLng,
+                    lat: (location?.lat || 0) + fuzzLat,
+                    lng: (location?.lng || 0) + fuzzLng,
                     address: 'Address hidden until booking',
                 },
                 isExactLocation: false,
@@ -123,12 +155,24 @@ export const getPropertyById = async (req: any, res: Response) => {
             ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviewCount
             : 0;
 
-        const location = property.location as any;
+        const location = typeof property.location === 'string' ? JSON.parse(property.location) : property.location;
+        const amenities = typeof property.amenities === 'string' ? JSON.parse(property.amenities) : property.amenities;
+        const images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
+        const videos = typeof property.videos === 'string' ? JSON.parse(property.videos) : property.videos;
+        const utilities = typeof property.utilities === 'string' ? JSON.parse(property.utilities) : property.utilities;
+        const packageProperties = typeof property.packageProperties === 'string' ? JSON.parse(property.packageProperties) : property.packageProperties;
+
         const isOwner = userId && property.hunterId === userId;
         const hasPaid = userId && (property as any).bookings?.length > 0;
 
         const responseData = {
             ...property,
+            location,
+            amenities,
+            images,
+            videos,
+            utilities,
+            packageProperties,
             rating: parseFloat(averageRating.toFixed(1)),
             reviewCount,
         };
@@ -145,8 +189,8 @@ export const getPropertyById = async (req: any, res: Response) => {
             ...responseData,
             location: {
                 ...location,
-                lat: location.lat + fuzzLat,
-                lng: location.lng + fuzzLng,
+                lat: (location.lat || 0) + fuzzLat,
+                lng: (location.lng || 0) + fuzzLng,
                 address: 'Address hidden until booking',
             },
             isExactLocation: false,
@@ -179,7 +223,7 @@ export const createProperty = async (req: any, res: Response) => {
 
         console.log('[PropertyController] Creating property for hunter:', user.name);
         const validatedData = propertySchema.parse(req.body);
-        const { title, description, rent, location, amenities, images, videos, packages } = validatedData;
+        const { title, description, rent, location, amenities, images, videos, packages, utilities, packageProperties, listingPackage } = validatedData;
 
         const property = await prisma.property.create({
             data: {
@@ -190,6 +234,9 @@ export const createProperty = async (req: any, res: Response) => {
                 amenities: JSON.stringify(amenities),
                 images: JSON.stringify(images),
                 videos: videos ? JSON.stringify(videos) : null,
+                utilities: utilities ? JSON.stringify(utilities) : null,
+                packageProperties: packageProperties ? JSON.stringify(packageProperties) : null,
+                listingPackage: listingPackage || null,
                 hunterId: req.user.userId,
                 status: 'PENDING_APPROVAL', // Requires admin approval
                 packages: {
@@ -227,14 +274,20 @@ export const updateProperty = async (req: any, res: Response) => {
             return res.status(403).json({ message: 'Not authorized to update this property' });
         }
 
+        if (property.status === 'RENTED') {
+            return res.status(400).json({ message: 'Cannot update a rented property' });
+        }
+
         const validatedData = propertySchema.partial().parse(req.body);
-        const { packages, location, amenities, images, videos, ...otherData } = validatedData;
+        const { packages, location, amenities, images, videos, utilities, packageProperties, ...otherData } = validatedData;
 
         const updateData: any = { ...otherData };
         if (location) updateData.location = JSON.stringify(location);
         if (amenities) updateData.amenities = JSON.stringify(amenities);
         if (images) updateData.images = JSON.stringify(images);
         if (videos) updateData.videos = JSON.stringify(videos);
+        if (utilities) updateData.utilities = JSON.stringify(utilities);
+        if (packageProperties) updateData.packageProperties = JSON.stringify(packageProperties);
 
         const updatedProperty = await prisma.$transaction(async (tx) => {
             // Update basic property data
@@ -283,7 +336,21 @@ export const updateProperty = async (req: any, res: Response) => {
 export const deleteProperty = async (req: any, res: Response) => {
     try {
         const propertyId = req.params.id;
-        const property = await prisma.property.findUnique({ where: { id: propertyId } });
+        const property = await prisma.property.findUnique({
+            where: { id: propertyId },
+            include: {
+                bookings: {
+                    where: {
+                        status: { in: ['CONFIRMED'] }
+                    }
+                },
+                requests: {
+                    where: {
+                        paymentStatus: { in: ['PAID', 'ESCROW'] }
+                    }
+                }
+            }
+        });
 
         if (!property) {
             return res.status(404).json({ message: 'Property not found' });
@@ -293,10 +360,76 @@ export const deleteProperty = async (req: any, res: Response) => {
             return res.status(403).json({ message: 'Not authorized to delete this property' });
         }
 
-        await prisma.property.delete({ where: { id: propertyId } });
+        if (property.status === 'RENTED') {
+            return res.status(400).json({ message: 'Cannot delete a rented property' });
+        }
 
-        res.json({ message: 'Property deleted successfully' });
+        // Prevent deletion if there are active bookings or paid requests
+        if (property.bookings.length > 0) {
+            return res.status(400).json({
+                message: 'Cannot delete property with active bookings. Please complete or cancel them first.'
+            });
+        }
+
+        if (property.requests.length > 0) {
+            return res.status(400).json({
+                message: 'Cannot delete property with pending paid viewing requests. Please process or refund them first.'
+            });
+        }
+
+        // Perform deletion in a transaction to handle all related records
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete viewing packages
+            await tx.viewingPackage.deleteMany({ where: { propertyId } });
+
+            // 2. Delete saved property records
+            await tx.savedProperty.deleteMany({ where: { propertyId } });
+
+            // 3. Delete alternative offers
+            await tx.alternativeOffer.deleteMany({ where: { propertyId } });
+
+            // 5. Handle viewing requests (unpaid/cancelled)
+            await tx.viewingRequest.deleteMany({ where: { propertyId } });
+
+            // 6. Handle bookings (cancelled/completed)
+            // Note: We already checked for CONFIRMED bookings above.
+            // We need to handle related records for these bookings too.
+            const bookingIds = (await tx.booking.findMany({
+                where: { propertyId },
+                select: { id: true }
+            })).map(b => b.id);
+
+            if (bookingIds.length > 0) {
+                await tx.review.deleteMany({ where: { bookingId: { in: bookingIds } } });
+                await tx.message.deleteMany({ where: { bookingId: { in: bookingIds } } });
+                await tx.rescheduleRequest.deleteMany({ where: { bookingId: { in: bookingIds } } });
+                await tx.meetingPoint.deleteMany({ where: { bookingId: { in: bookingIds } } });
+                await tx.hunterEarnings.deleteMany({ where: { bookingId: { in: bookingIds } } });
+                await tx.dispute.deleteMany({ where: { bookingId: { in: bookingIds } } });
+                await tx.booking.deleteMany({ where: { id: { in: bookingIds } } });
+            }
+
+            // 7. Handle disputes directly linked to property
+            await tx.dispute.deleteMany({ where: { propertyId } });
+
+            // 8. Update conversations and messages to remove property reference
+            await tx.conversation.updateMany({
+                where: { propertyId },
+                data: { propertyId: null }
+            });
+
+            await tx.message.updateMany({
+                where: { propertyId },
+                data: { propertyId: null }
+            });
+
+            // 9. Finally delete the property
+            await tx.property.delete({ where: { id: propertyId } });
+        });
+
+        res.json({ message: 'Property and all related records deleted successfully' });
     } catch (error: any) {
+        console.error('[PropertyController] Delete error:', error);
         res.status(500).json({ message: error.message });
     }
 };

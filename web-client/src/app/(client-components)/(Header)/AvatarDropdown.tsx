@@ -80,7 +80,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
           </svg>
         ),
         label: "Messages",
-        href: "/messages",
+        href: user.role === "HUNTER" ? "/haunter-dashboard?tab=messages" : "/tenant-dashboard?tab=messages",
       },
     ];
 

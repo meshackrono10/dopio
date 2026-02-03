@@ -38,7 +38,6 @@ const TenantDashboardScreen = ({ route }: any) => {
 
     // Mock data
     const stats = {
-        activeSearches: 2,
         scheduledViewings: 3,
         savedProperties: 12,
     };
@@ -113,13 +112,6 @@ const TenantDashboardScreen = ({ route }: any) => {
                 <View style={styles.overviewContainer}>
                     {/* Quick Stats */}
                     <View style={styles.statsGrid}>
-                        <View style={[styles.statCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
-                            <Ionicons name="search" size={24} color={colors.primary[500]} />
-                            <Text style={[styles.statValue, { color: isDark ? colors.text.dark : colors.text.light }]}>
-                                {stats.activeSearches}
-                            </Text>
-                            <Text style={styles.statLabel}>Active Searches</Text>
-                        </View>
                         <View style={[styles.statCard, { backgroundColor: isDark ? colors.neutral[800] : 'white' }]}>
                             <Ionicons name="calendar" size={24} color={colors.success[500]} />
                             <Text style={[styles.statValue, { color: isDark ? colors.text.dark : colors.text.light }]}>
@@ -388,73 +380,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     seeAllText: {
-        ...typography.bodySemiBold,
-        fontSize: 14,
-    },
-    requestCard: {
-        paddingVertical: spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.neutral[100],
-    },
-    requestHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: spacing.xs,
-    },
-    requestTitle: {
-        ...typography.bodySemiBold,
-        fontSize: 15,
-        flex: 1,
-        marginRight: spacing.sm,
-    },
-    statusBadge: {
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
-    },
-    statusText: {
-        ...typography.caption,
-        fontSize: 10,
-        fontWeight: '700',
-    },
-    requestBudget: {
-        ...typography.caption,
-        color: colors.neutral[600],
-        marginBottom: spacing.sm,
-    },
-    requestFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    bidsInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    bidsText: {
-        ...typography.caption,
-        color: colors.primary[500],
-        fontWeight: '600',
-    },
-    deadlineText: {
-        ...typography.caption,
-        color: colors.neutral[500],
-    },
-    createNewButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.xs,
-        paddingVertical: spacing.md,
-        marginTop: spacing.sm,
-        borderWidth: 1,
-        borderColor: colors.primary[500],
-        borderRadius: borderRadius.md,
-        borderStyle: 'dashed',
-    },
-    createNewText: {
         ...typography.bodySemiBold,
         fontSize: 14,
     },

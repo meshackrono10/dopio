@@ -24,7 +24,7 @@ const Logo: React.FC<LogoProps> = ({
     >
       <div className="flex items-center gap-2 font-bold text-xl md:text-2xl text-neutral-900 dark:text-neutral-100">
         <i className="las la-home text-3xl text-primary-600"></i>
-        <span>House Haunters</span>
+        <span>Dapio</span>
       </div>
     </Link>
   );

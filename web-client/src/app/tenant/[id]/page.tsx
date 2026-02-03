@@ -161,7 +161,7 @@ export default function TenantProfilePage() {
                         {tenant.reviewsWritten.length > 0 ? (
                             <div>
                                 <p className="text-neutral-600 dark:text-neutral-300 mb-6">
-                                    {tenant.name.split(" ")[0]} has written {tenant.reviewsWritten.length} {tenant.reviewsWritten.length === 1 ? "review" : "reviews"} for house haunters.
+                                    {tenant.name.split(" ")[0]} has written {tenant.reviewsWritten.length} {tenant.reviewsWritten.length === 1 ? "review" : "reviews"} for agents.
                                 </p>
                                 <div className="divide-y divide-neutral-200 dark:border-neutral-700">
                                     {tenant.reviewsWritten.map((review: HaunterReview) => (
@@ -193,7 +193,7 @@ export default function TenantProfilePage() {
                                         Verified Tenant
                                     </h3>
                                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                                        {tenant.name.split(" ")[0]}&apos;s identity has been verified by House Haunters. This includes verification of phone number and email address.
+                                        {tenant.name.split(" ")[0]}&apos;s identity has been verified by Dapio. This includes verification of phone number and email address.
                                     </p>
                                 </div>
                             </div>

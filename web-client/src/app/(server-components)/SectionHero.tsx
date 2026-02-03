@@ -19,7 +19,7 @@ const SectionHero: FC<SectionHeroProps> = ({ className = "" }) => {
             The Uber for Kenyan Rental Hunting
           </h2>
           <span className="text-base md:text-lg text-neutral-500 dark:text-neutral-400">
-            Connect with verified House Haunters to discover quality rental properties.
+            Connect with verified agents on Dapio to discover quality rental properties.
             No more wasted viewing fees. Guaranteed service, transparent pricing, and secure M-Pesa payments.
           </span>
           <ButtonPrimary href="/listing-stay-map" sizeClass="px-5 py-4 sm:px-7">
