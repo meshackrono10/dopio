@@ -164,6 +164,11 @@ export interface PropertyListing {
   // Package info
   listingPackage?: 'BRONZE' | 'SILVER' | 'GOLD' | string;
   packageProperties?: any;
+  
+  // Phase 9: Gold Package System - Package linking fields
+  packageGroupId?: string | null; // UUID shared by all properties in a Gold package
+  packagePosition?: number | null; // Position in package (1, 2, 3)
+  packageMasterId?: string | null; // ID of the master property (position 1)
 }
 
 

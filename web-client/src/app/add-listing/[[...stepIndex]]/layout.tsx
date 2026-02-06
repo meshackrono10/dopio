@@ -68,7 +68,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
   }
 
   const nextHref = (
-    index < 9 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
+    index < 8 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
   ) as Route;
   const backtHref = (
     index > 1 ? `/add-listing/${index - 1}` : `/add-listing/${1}`
@@ -87,7 +87,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
     if (isPackageComplete) {
       nextBtnText = "Publish Listing";
     } else {
-      nextBtnText = `Add Property ${progress.current + 2} of ${progress.required}`;
+      nextBtnText = `Add Property ${progress.current + 1} of ${progress.required}`;
     }
   }
 
@@ -98,8 +98,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
       if (!isPackageComplete) {
         try {
           addPropertyToPackage();
-          toast.success(`Property added to package! Please add property ${progress.current + 2} of ${progress.required}.`);
-          router.push("/add-listing/2" as Route); // Go back to Step 2 (Property Details) for next property
+          toast.success(`Property added to package! Please add property ${progress.current + 1} of ${progress.required}.`);
+          router.push("/add-listing/1" as Route); // Go back to Step 1 (Property Details) for next property
         } catch (err: any) {
           toast.error(err.message || "Failed to add property to package.");
         }
@@ -148,7 +148,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         },
         // Include package info
         listingPackage: formData.selectedPackage,
-        packageProperties: formData.packageProperties
+        packageProperties: formData.packageProperties,
+        targetPackageGroupId: formData.targetPackageGroupId
       };
 
       if (isEditing && formData.propertyId) {
@@ -179,7 +180,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         <div>
           <span className="text-4xl font-semibold">{index}</span>{" "}
           <span className="text-lg text-neutral-500 dark:text-neutral-400">
-            / 8
+            / 7
           </span>
 
           {progress.required > 1 && (
@@ -195,11 +196,11 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
         {/* --------------------- */}
         <div className="flex justify-end space-x-5">
           <ButtonSecondary href={backtHref}>Go back</ButtonSecondary>
-          {index === 8 ? (
+          {index === 7 ? (
             <ButtonPrimary onClick={handlePublish} loading={loading}>
               {nextBtnText}
             </ButtonPrimary>
-          ) : index === 9 ? (
+          ) : index === 8 ? (
             <ButtonPrimary href={"/haunter-dashboard?tab=listings" as Route}>
               Go to Dashboard
             </ButtonPrimary>
@@ -207,16 +208,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
 
             <ButtonPrimary
               onClick={() => {
-                // Step 1: Package Selection
+                // Step 1: Property Type & Name
                 if (index === 1) {
-                  if (!formData.selectedPackage) {
-                    toast.warning("Please select a listing package to continue.");
-                    return;
-                  }
-                }
-
-                // Step 2: Property Type & Name (was Step 1)
-                if (index === 2) {
                   if (!formData.propertyType) {
                     toast.warning("Please select a property type to continue.");
                     return;
@@ -227,8 +220,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 3: Location (was Step 2)
-                if (index === 3) {
+                // Step 2: Location
+                if (index === 2) {
                   if (!formData.county) {
                     toast.warning("Please select a county.");
                     return;
@@ -243,8 +236,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 4: Utilities (was Step 3)
-                if (index === 4) {
+                // Step 3: Utilities
+                if (index === 3) {
                   if (formData.waterBilling === 'separate' && (!formData.waterBillingAmount || Number(formData.waterBillingAmount) <= 0)) {
                     toast.warning("Please enter the water billing amount.");
                     return;
@@ -260,8 +253,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                 }
 
 
-                // Step 5: Photos & Videos (was Step 4)
-                if (index === 5) {
+                // Step 4: Photos & Videos
+                if (index === 4) {
                   const isEditing = !!formData.propertyId;
                   if (!isEditing && formData.photos.length < 4) {
                     toast.warning("Please upload at least 4 photos of the property to continue.");
@@ -278,8 +271,8 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 6: Price & Description (was Step 5)
-                if (index === 6) {
+                // Step 5: Price & Description
+                if (index === 5) {
                   if (!formData.monthlyRent || Number(formData.monthlyRent) <= 0) {
                     toast.warning("Please enter a valid monthly rent amount.");
                     return;
@@ -290,7 +283,7 @@ const AddListingContent: FC<CommonLayoutProps> = ({ children, params }) => {
                   }
                 }
 
-                // Step 7: Viewing Packages (was Step 6) - now optional
+                // Step 6: Viewing Packages - now internal to step
 
                 router.push(nextHref);
               }}

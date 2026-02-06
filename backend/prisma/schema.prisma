@@ -8,70 +8,82 @@ datasource db {
 }
 
 model User {
-  id                    String           @id @default(uuid())
-  email                 String           @unique
-  password              String
-  name                  String
-  phone                 String?
-  role                  Role             @default(TENANT)
-  isVerified            Boolean          @default(false)
-  verificationStatus    String           @default("UNVERIFIED")
-  avatarUrl             String?
-  idFrontUrl            String?
-  idBackUrl             String?
-  selfieUrl             String?
-  description           String?          @db.Text
-  workLocation          String?          @db.Text
-  averageRating         Float            @default(0)
-  reviewCount           Int              @default(0)
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  hunterBookings        Booking[]        @relation("HunterBookings")
-  bookings              Booking[]        @relation("TenantBookings")
-  hunterConversations   Conversation[]   @relation("HunterConversations")
-  tenantConversations   Conversation[]   @relation("TenantConversations")
-  againstDisputes       Dispute[]        @relation("AgainstDisputes")
-  reporterDisputes      Dispute[]        @relation("ReporterDisputes")
-  hunterEarnings        HunterEarnings[] @relation("HunterEarnings")
-  receivedMessages      Message[]        @relation("ReceivedMessages")
-  sentMessages          Message[]        @relation("SentMessages")
-  paymentHistory        PaymentHistory[] @relation("UserPayments")
-  properties            Property[]
-  savedProperties       SavedProperty[]
-  viewingRequests       ViewingRequest[]
-  notifications         Notification[]   @relation("UserNotifications")
+  id                  String           @id @default(uuid())
+  email               String           @unique
+  password            String
+  name                String
+  phone               String?
+  role                Role             @default(TENANT)
+  isVerified          Boolean          @default(false)
+  verificationStatus  String           @default("UNVERIFIED")
+  avatarUrl           String?
+  idFrontUrl          String?
+  idBackUrl           String?
+  selfieUrl           String?
+  description         String?          @db.Text
+  workLocation        String?          @db.Text
+  averageRating       Float            @default(0)
+  reviewCount         Int              @default(0)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  hunterBookings      Booking[]        @relation("HunterBookings")
+  bookings            Booking[]        @relation("TenantBookings")
+  hunterConversations Conversation[]   @relation("HunterConversations")
+  tenantConversations Conversation[]   @relation("TenantConversations")
+  againstDisputes     Dispute[]        @relation("AgainstDisputes")
+  reporterDisputes    Dispute[]        @relation("ReporterDisputes")
+  hunterEarnings      HunterEarnings[] @relation("HunterEarnings")
+  receivedMessages    Message[]        @relation("ReceivedMessages")
+  sentMessages        Message[]        @relation("SentMessages")
+  paymentHistory      PaymentHistory[] @relation("UserPayments")
+  properties          Property[]
+  savedProperties     SavedProperty[]
+  viewingRequests     ViewingRequest[]
+  notifications       Notification[]   @relation("UserNotifications")
 }
 
 model Property {
-  id                      String                  @id @default(uuid())
-  title                   String
-  description             String                  @db.Text
-  rent                    Float
-  location                String                  @db.LongText
-  amenities               String                  @db.LongText
-  images                  String                  @db.LongText
-  videos                  String?                 @db.LongText
-  status                  PropertyStatus          @default(PENDING_APPROVAL)
-  isExactLocation         Boolean                 @default(false)
-  isLocked                Boolean                 @default(false)
-  adminApprovedBy         String?
-  adminApprovedAt         DateTime?
-  rejectionReason         String?                 @db.Text
-  hunterId                String
-  utilities               String?                 @db.LongText
-  packageProperties       String?                 @db.LongText
-  listingPackage          String?                 // BRONZE, SILVER, GOLD
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  bookings                Booking[]
-  disputes                Dispute[]
-  hunter                  User                    @relation(fields: [hunterId], references: [id])
-  savedBy                 SavedProperty[]
-  packages                ViewingPackage[]
-  requests                ViewingRequest[]
-  alternativeOffers       AlternativeOffer[]
+  id                String         @id @default(uuid())
+  title             String
+  description       String         @db.Text
+  rent              Float
+  location          String         @db.LongText
+  amenities         String         @db.LongText
+  images            String         @db.LongText
+  videos            String?        @db.LongText
+  status            PropertyStatus @default(PENDING_APPROVAL)
+  isExactLocation   Boolean        @default(false)
+  isLocked          Boolean        @default(false)
+  adminApprovedBy   String?
+  adminApprovedAt   DateTime?
+  rejectionReason   String?        @db.Text
+  hunterId          String
+  utilities         String?        @db.LongText
+  packageProperties String?        @db.LongText
+  listingPackage    String? // BRONZE, SILVER, GOLD
+
+  // Package linking fields
+  packageGroupId  String? // UUID linking all properties in a package
+  packagePosition Int? // 1, 2, or 3 (position in package)
+  packageMasterId String? // ID of the master property (position 1)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  bookings          Booking[]
+  disputes          Dispute[]
+  hunter            User               @relation(fields: [hunterId], references: [id])
+  savedBy           SavedProperty[]
+  packages          ViewingPackage[]
+  requests          ViewingRequest[]
+  alternativeOffers AlternativeOffer[]
+
+  // Self-referential relations for package grouping
+  packageMembers Property[] @relation("PackageGroup")
+  packageMaster  Property?  @relation("PackageGroup", fields: [packageMasterId], references: [id], onDelete: SetNull)
 
   @@index([hunterId], map: "Property_hunterId_fkey")
+  @@index([packageGroupId])
+  @@index([packageMasterId])
 }
 
 model ViewingPackage {
@@ -85,32 +97,38 @@ model ViewingPackage {
   propertyId         String
   property           Property    @relation(fields: [propertyId], references: [id])
 
+  // Group linking per tier
+  packageGroupId  String?
+  packagePosition Int?
+  packageMasterId String?
+
   @@index([propertyId], map: "ViewingPackage_propertyId_fkey")
+  @@index([packageGroupId])
 }
 
 model ViewingRequest {
-  id              String        @id @default(uuid())
-  propertyId      String
-  tenantId        String
-  proposedDates      String        @db.LongText
-  proposedLocation   String?       @db.LongText
-  message            String?       @db.Text
-  status          RequestStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  amount          Float?
-  paymentStatus   InvoiceStatus @default(UNPAID)
-  packageId       String?
-  counterDate     String?
-  counterTime     String?
-  counterLocation String?       @db.LongText
-  counteredBy     String?
-  bookingId       String?       @unique
-  tenantVisible   Boolean       @default(true)
-  hunterVisible   Boolean       @default(true)
-  property        Property      @relation(fields: [propertyId], references: [id])
-  tenant          User          @relation(fields: [tenantId], references: [id])
-  booking         Booking?      @relation("RequestToBooking", fields: [bookingId], references: [id])
+  id               String        @id @default(uuid())
+  propertyId       String
+  tenantId         String
+  proposedDates    String        @db.LongText
+  proposedLocation String?       @db.LongText
+  message          String?       @db.Text
+  status           RequestStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  amount           Float?
+  paymentStatus    InvoiceStatus @default(UNPAID)
+  packageId        String?
+  counterDate      String?
+  counterTime      String?
+  counterLocation  String?       @db.LongText
+  counteredBy      String?
+  bookingId        String?       @unique
+  tenantVisible    Boolean       @default(true)
+  hunterVisible    Boolean       @default(true)
+  property         Property      @relation(fields: [propertyId], references: [id])
+  tenant           User          @relation(fields: [tenantId], references: [id])
+  booking          Booking?      @relation("RequestToBooking", fields: [bookingId], references: [id])
 
   @@index([propertyId], map: "ViewingRequest_propertyId_fkey")
   @@index([tenantId], map: "ViewingRequest_tenantId_fkey")
@@ -131,8 +149,8 @@ model Booking {
   autoReleaseAt            DateTime?
   tenantConfirmed          Boolean             @default(false)
   hunterConfirmed          Boolean             @default(false)
-  tenantMetConfirmed          Boolean             @default(false)
-  hunterMetConfirmed          Boolean             @default(false)
+  tenantMetConfirmed       Boolean             @default(false)
+  hunterMetConfirmed       Boolean             @default(false)
   physicalMeetingConfirmed Boolean             @default(false)
   status                   BookingStatus       @default(CONFIRMED)
   chatEnabled              Boolean             @default(true)
@@ -220,7 +238,6 @@ model Message {
   @@index([bookingId])
   @@index([conversationId])
 }
-
 
 model Dispute {
   id                  String        @id @default(uuid())
@@ -316,40 +333,40 @@ model HunterEarnings {
 }
 
 model MeetingPoint {
-  id             String           @id @default(uuid())
-  bookingId      String           @unique
-  type           MeetingPointType @default(LANDMARK)
-  location       String           @db.LongText
+  id             String             @id @default(uuid())
+  bookingId      String             @unique
+  type           MeetingPointType   @default(LANDMARK)
+  location       String             @db.LongText
   sharedBy       String
-  sharedAt       DateTime         @default(now())
+  sharedAt       DateTime           @default(now())
   status         MeetingPointStatus @default(PENDING)
-  tenantViewed   Boolean          @default(false)
+  tenantViewed   Boolean            @default(false)
   tenantViewedAt DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  booking        Booking          @relation(fields: [bookingId], references: [id])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  booking        Booking            @relation(fields: [bookingId], references: [id])
 }
 
 model RescheduleRequest {
-  id              String           @id @default(uuid())
-  bookingId       String
-  requestedBy     String
-  proposedDate    String
-  proposedTime    String
-  proposedEndTime String
+  id               String           @id @default(uuid())
+  bookingId        String
+  requestedBy      String
+  proposedDate     String
+  proposedTime     String
+  proposedEndTime  String
   proposedLocation String?          @db.Text
-  reason          String?          @db.Text
-  status          RescheduleStatus @default(PENDING)
-  counterDate     String?
-  counterTime     String?
-  counterEndTime  String?
-  counterLocation String?          @db.Text
-  counterReason   String?          @db.Text
-  respondedBy     String?
-  respondedAt     DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  booking         Booking          @relation(fields: [bookingId], references: [id])
+  reason           String?          @db.Text
+  status           RescheduleStatus @default(PENDING)
+  counterDate      String?
+  counterTime      String?
+  counterEndTime   String?
+  counterLocation  String?          @db.Text
+  counterReason    String?          @db.Text
+  respondedBy      String?
+  respondedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  booking          Booking          @relation(fields: [bookingId], references: [id])
 
   @@index([bookingId], map: "RescheduleRequest_bookingId_fkey")
 }
@@ -445,7 +462,6 @@ enum MessageType {
   VOICE_CALL
   VIDEO_CALL
 }
-
 
 enum DisputeStatus {
   OPEN

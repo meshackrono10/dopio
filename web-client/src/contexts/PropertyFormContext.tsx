@@ -98,6 +98,7 @@ interface PropertyFormData {
     selectedPackage?: 'BRONZE' | 'SILVER' | 'GOLD';
     packageProperties?: PropertyFormData[];
     currentPropertyIndex?: number;
+    targetPackageGroupId?: string;
 }
 
 interface PropertyFormContextType {
@@ -183,6 +184,8 @@ const PropertyFormContext = createContext<PropertyFormContextType | undefined>(u
 
 export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
     const [formData, setFormData] = useState<PropertyFormData>(initialFormData);
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const targetGroupId = searchParams?.get('targetPackageGroupId');
 
     // Load saved data from localStorage on mount
     useEffect(() => {
@@ -200,6 +203,17 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         localStorage.setItem('propertyFormData', JSON.stringify(formData));
     }, [formData]);
+
+    // Initialize from URL if targetPackageGroupId is present
+    useEffect(() => {
+        if (targetGroupId && !formData.targetPackageGroupId) {
+            setFormData(prev => ({
+                ...prev,
+                targetPackageGroupId: targetGroupId,
+                selectedPackage: 'GOLD' // Assume gold if coming from gold management
+            }));
+        }
+    }, [targetGroupId]);
 
     const updateFormData = (key: keyof PropertyFormData, value: any) => {
         setFormData(prev => {
@@ -293,6 +307,21 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
         updateFormData('selectedPackage', tier);
         updateFormData('packageProperties', []);
         updateFormData('currentPropertyIndex', 0);
+
+        // Auto-generate name for Gold packages
+        if (tier === 'GOLD') {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-KE', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+            const timeStr = now.toLocaleTimeString('en-KE', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            updateFormData('propertyName', `Gold Package - ${dateStr} ${timeStr}`);
+        }
     };
 
     const addPropertyToPackage = () => {
@@ -351,26 +380,31 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const canPublishPackage = () => {
-        const tier = formData.selectedPackage;
+        const enabledPackages = formData.viewingPackages || [];
         const properties = formData.packageProperties || [];
 
-        if (!tier) return false;
+        if (enabledPackages.length === 0) return false;
 
-        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 2 : 3;
-        return (properties.length + 1) >= requiredCount;
-
+        // Any package can be published with at least 1 property (partial fulfillment)
+        return (properties.length + 1) >= 1;
     };
 
     const getPackageProgress = () => {
-        const tier = formData.selectedPackage;
         const properties = formData.packageProperties || [];
-        const requiredCount = tier === 'BRONZE' ? 1 : tier === 'SILVER' ? 2 : tier === 'GOLD' ? 3 : 0;
+        const enabledPackages = formData.viewingPackages || [];
 
-
+        // Determine required houses based on highest tier selected
+        // Bronze = 1, Silver = 3, Gold = 5
+        let maxRequired = 1;
+        if (enabledPackages.some(p => p.tier === 'GOLD')) {
+            maxRequired = 5;
+        } else if (enabledPackages.some(p => p.tier === 'SILVER')) {
+            maxRequired = 3;
+        }
 
         return {
-            current: properties.length,
-            required: requiredCount
+            current: properties.length + 1,
+            required: maxRequired
         };
     };
 

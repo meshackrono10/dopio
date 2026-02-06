@@ -20,6 +20,7 @@ import userRoutes from './routes/userRoutes';
 import disputeRoutes from './routes/disputeRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import packageRoutes from './routes/packageRoutes';
 import logger from './config/logger'; // Added logger import
 
 import { createServer } from 'http';
@@ -74,6 +75,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/disputes', disputeRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/packages', packageRoutes);
 
 // Routes Placeholder - Removed as per instruction's implied change
 // app.get('/', (req: Request, res: Response) => {

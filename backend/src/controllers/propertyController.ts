@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../index';
 import { z } from 'zod';
+import crypto from 'crypto';
 
 const propertySchema = z.object({
     title: z.string().min(5),
@@ -37,6 +38,7 @@ const propertySchema = z.object({
     }).optional(),
     packageProperties: z.array(z.any()).optional(),
     listingPackage: z.enum(['BRONZE', 'SILVER', 'GOLD']).optional(),
+    targetPackageGroupId: z.string().uuid().optional(),
 }).refine((data) => {
     if (data.packageProperties && data.packageProperties.length > 0 && data.location) {
         const { generalArea, county } = data.location;
@@ -243,32 +245,128 @@ export const createProperty = async (req: any, res: Response) => {
 
         console.log('[PropertyController] Creating property for hunter:', user.name);
         const validatedData = propertySchema.parse(req.body);
-        const { title, description, rent, location, amenities, images, videos, packages, utilities, packageProperties, listingPackage } = validatedData;
+        const { title, description, rent, location, amenities, images, videos, packages, utilities, packageProperties, targetPackageGroupId } = validatedData;
+        const hunterId = req.user.userId;
 
-        const property = await prisma.property.create({
-            data: {
-                title,
-                description,
-                rent,
-                location: JSON.stringify(location),
-                amenities: JSON.stringify(amenities),
-                images: JSON.stringify(images),
-                videos: videos ? JSON.stringify(videos) : null,
-                utilities: utilities ? JSON.stringify(utilities) : null,
-                packageProperties: packageProperties ? JSON.stringify(packageProperties) : null,
-                listingPackage: listingPackage || null,
-                hunterId: req.user.userId,
-                status: 'PENDING_APPROVAL', // Requires admin approval
-                packages: {
-                    create: (packages || []).map(pkg => ({
-                        ...pkg,
-                        features: JSON.stringify(pkg.features)
-                    })) as any,
-                },
-            },
-            include: {
-                packages: true,
-            },
+        // Implementation of multi-tier package linking logic
+        const property = await prisma.$transaction(async (tx) => {
+            const hasBronze = (packages || []).some(pkg => pkg.tier === 'BRONZE');
+            const hasSilver = (packages || []).some(pkg => pkg.tier === 'SILVER');
+            const hasGold = (packages || []).some(pkg => pkg.tier === 'GOLD');
+
+            let bronzeGroupId = crypto.randomUUID();
+            let silverGroupId = (hasSilver && targetPackageGroupId) ? targetPackageGroupId : (hasSilver ? crypto.randomUUID() : null);
+            let goldGroupId = (hasGold && targetPackageGroupId) ? targetPackageGroupId : (hasGold ? crypto.randomUUID() : null);
+
+            // 1. Create the master property
+            const createdMaster = await tx.property.create({
+                data: {
+                    title,
+                    description,
+                    rent,
+                    location: JSON.stringify(location),
+                    amenities: JSON.stringify(amenities),
+                    images: JSON.stringify(images),
+                    videos: videos ? JSON.stringify(videos) : null,
+                    utilities: utilities ? JSON.stringify(utilities) : null,
+                    hunterId,
+                    status: 'PENDING_APPROVAL',
+                }
+            });
+
+            const masterId = createdMaster.id;
+
+            // 2. Create ViewingPackages for master
+            for (const pkg of (packages || [])) {
+                let groupId = null;
+                if (pkg.tier === 'BRONZE') groupId = bronzeGroupId;
+                if (pkg.tier === 'SILVER') groupId = silverGroupId;
+                if (pkg.tier === 'GOLD') groupId = goldGroupId;
+
+                await tx.viewingPackage.create({
+                    data: {
+                        name: pkg.name,
+                        price: pkg.price,
+                        tier: pkg.tier,
+                        propertiesIncluded: pkg.propertiesIncluded,
+                        features: JSON.stringify(pkg.features),
+                        propertyId: masterId,
+                        packageGroupId: groupId,
+                        packagePosition: 1
+                    }
+                });
+            }
+
+            // 3. Create bonus properties if any
+            if (packageProperties && packageProperties.length > 0) {
+                for (let i = 0; i < packageProperties.length; i++) {
+                    const bonusProp = packageProperties[i];
+                    const createdBonus = await tx.property.create({
+                        data: {
+                            title: bonusProp.propertyName || `${title} (Unit ${i + 2})`,
+                            description: bonusProp.description || description,
+                            rent: Number(bonusProp.monthlyRent) || rent,
+                            location: JSON.stringify(bonusProp.location || location),
+                            amenities: JSON.stringify(bonusProp.amenities || amenities),
+                            images: JSON.stringify(bonusProp.photos || images),
+                            videos: bonusProp.videos ? JSON.stringify(bonusProp.videos) : null,
+                            utilities: bonusProp.utilities ? JSON.stringify(bonusProp.utilities) : null,
+                            hunterId,
+                            status: 'PENDING_APPROVAL',
+                        }
+                    });
+
+                    // Bronze viewing for every unit
+                    await tx.viewingPackage.create({
+                        data: {
+                            name: 'Bronze Viewing Package',
+                            price: 1000,
+                            tier: 'BRONZE',
+                            propertiesIncluded: 1,
+                            features: JSON.stringify(['View this property', 'Standard showing', 'Professional agent']),
+                            propertyId: createdBonus.id,
+                            packageGroupId: crypto.randomUUID(),
+                            packagePosition: 1
+                        }
+                    });
+
+                    // Silver viewing if applicable (up to 3 total)
+                    if (hasSilver && (i + 2) <= 3) {
+                        await tx.viewingPackage.create({
+                            data: {
+                                name: 'Silver Viewing Package',
+                                price: 2000,
+                                tier: 'SILVER',
+                                propertiesIncluded: 3,
+                                features: JSON.stringify(['Up to 3 property viewings', 'Photos + videos', 'Priority response']),
+                                propertyId: createdBonus.id,
+                                packageGroupId: silverGroupId,
+                                packagePosition: i + 2,
+                                packageMasterId: masterId
+                            }
+                        });
+                    }
+
+                    // Gold viewing if applicable (up to 5 total)
+                    if (hasGold && (i + 2) <= 5) {
+                        await tx.viewingPackage.create({
+                            data: {
+                                name: 'Gold Viewing Package',
+                                price: 3500,
+                                tier: 'GOLD',
+                                propertiesIncluded: 5,
+                                features: JSON.stringify(['Up to 5 property viewings', ' inspection report', 'Immediate response']),
+                                propertyId: createdBonus.id,
+                                packageGroupId: goldGroupId,
+                                packagePosition: i + 2,
+                                packageMasterId: masterId
+                            }
+                        });
+                    }
+                }
+            }
+
+            return createdMaster;
         });
 
         res.status(201).json(property);

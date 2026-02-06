@@ -109,34 +109,6 @@ const PageAddListing1: FC<PageAddListing1Props> = () => {
         {/* MERGED SIZE & LAYOUT FIELDS */}
         {formData.propertyCategory && (
           <div className="space-y-8 pt-8 border-t border-neutral-200 dark:border-neutral-700">
-            {/* Show bedroom count only if not already specified in type */}
-            {!shouldSkipSizeDetails() && !['1 Bedroom', '2 Bedroom', '3 Bedroom', '4+ Bedroom'].includes(formData.propertyType || '') && (
-              <FormItem label="Number of Bedrooms">
-                <Select
-                  value={formData.bedrooms}
-                  onChange={(e) => updateFormData('bedrooms', Number(e.target.value))}
-                >
-                  <option value="1">1 Bedroom</option>
-                  <option value="2">2 Bedrooms</option>
-                  <option value="3">3 Bedrooms</option>
-                  <option value="4">4 Bedrooms</option>
-                  <option value="5+">5+ Bedrooms</option>
-                </Select>
-              </FormItem>
-            )}
-
-            {!shouldSkipSizeDetails() && (
-              <FormItem label="Ensuite Master Bedroom?">
-                <Select
-                  value={formData.ensuite ? 'yes' : 'no'}
-                  onChange={(e) => updateFormData('ensuite', e.target.value === 'yes')}
-                >
-                  <option value="yes">Yes - Master has private bathroom</option>
-                  <option value="no">No - Shared bathrooms only</option>
-                </Select>
-              </FormItem>
-            )}
-
             {/* Hide floor level for independent houses as it's less relevant */}
             {formData.propertyCategory !== 'Independent House / Standalone' && formData.propertyCategory !== 'House in an Estate' && (
               <FormItem label="Floor Level (for apartments)">

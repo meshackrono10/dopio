@@ -19,7 +19,7 @@ const PACKAGE_DEFAULTS: Omit<PackageConfig, "enabled" | "customPrice">[] = [
     {
         tier: "BRONZE",
         name: "Bronze Package",
-        defaultPrice: 1500,
+        defaultPrice: 1000,
         propertiesIncluded: 1,
         features: [
             "1 property viewing",
@@ -31,7 +31,7 @@ const PACKAGE_DEFAULTS: Omit<PackageConfig, "enabled" | "customPrice">[] = [
     {
         tier: "SILVER",
         name: "Silver Package",
-        defaultPrice: 2500,
+        defaultPrice: 2000,
         propertiesIncluded: 3,
         features: [
             "Up to 3 property viewings",
@@ -43,7 +43,7 @@ const PACKAGE_DEFAULTS: Omit<PackageConfig, "enabled" | "customPrice">[] = [
     {
         tier: "GOLD",
         name: "Gold Package",
-        defaultPrice: 4500,
+        defaultPrice: 3500,
         propertiesIncluded: 5,
         features: [
             "Up to 5 property viewings",
@@ -116,6 +116,15 @@ export default function PageAddListingPackages() {
             }));
 
         updateFormData("viewingPackages", enabledPackages);
+
+        // Determine primary package for legacy UI components
+        if (enabledPackages.some(p => p.tier === 'GOLD')) {
+            updateFormData("selectedPackage", 'GOLD');
+        } else if (enabledPackages.some(p => p.tier === 'SILVER')) {
+            updateFormData("selectedPackage", 'SILVER');
+        } else if (enabledPackages.some(p => p.tier === 'BRONZE')) {
+            updateFormData("selectedPackage", 'BRONZE');
+        }
     };
 
     React.useEffect(() => {

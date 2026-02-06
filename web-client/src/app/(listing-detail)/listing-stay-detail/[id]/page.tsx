@@ -30,6 +30,8 @@ import api from "@/services/api";
 import SectionVideos, { VideoType } from "@/components/SectionVideos";
 import StayCard from "@/components/StayCard";
 import { StayDataType } from "@/data/types";
+import GoldPackageCard from "@/components/GoldPackageCard";
+
 
 // LocationCircle removed in favor of Leaflet Circle in ListingMap component
 
@@ -92,6 +94,9 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [packageMembers, setPackageMembers] = useState<any[]>([]);
+  const [isLoadingPackage, setIsLoadingPackage] = useState(false);
+
 
   const thisPathname = usePathname();
   const router = useRouter();
@@ -115,6 +120,11 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         if (packages && packages.length > 0) {
           setSelectedPackage(packages[0]);
         }
+
+        // Fetch package members if this is a Gold package
+        if (response.data.packageGroupId) {
+          fetchPackageMembers(response.data.id);
+        }
       } catch (err: any) {
         console.error("Error fetching property:", err);
         setError(err.response?.data?.message || 'Failed to load property');
@@ -123,8 +133,22 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
       }
     };
 
+    const fetchPackageMembers = async (propertyId: string) => {
+      try {
+        setIsLoadingPackage(true);
+        const response = await api.get(`/packages/properties/${propertyId}/package-members`);
+        console.log("Package members:", response.data);
+        setPackageMembers(response.data.properties || []);
+      } catch (err: any) {
+        console.error("Error fetching package members:", err);
+      } finally {
+        setIsLoadingPackage(false);
+      }
+    };
+
     fetchProperty();
   }, [id]);
+
 
   if (loading) {
     return (
@@ -646,6 +670,26 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
     );
   };
 
+  const renderGoldPackageSection = () => {
+    // Only show if this is a Gold package with package members
+    if (!property?.packageGroupId || packageMembers.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="listingSection__wrap">
+        <div className="mb-6">
+          <GoldPackageCard
+            masterProperty={packageMembers.find((p: any) => p.packagePosition === 1) || property}
+            packageMembers={packageMembers}
+          />
+        </div>
+        <div className="w-14 border-b border-neutral-200 dark:border-neutral-700"></div>
+      </div>
+    );
+  };
+
+
   const renderSidebar = () => {
     return (
       <div className="listingSectionSidebar__wrap shadow-xl">
@@ -772,6 +816,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
 
       <main className="relative z-10 mt-11 flex flex-col lg:flex-row">
         <div className="w-full lg:w-3/5 xl:w-2/3 space-y-8 lg:space-y-10 lg:pr-10">
+          {renderGoldPackageSection()}
           {renderSection1()}
           {renderSection7()}
           {renderSection2()}
@@ -781,6 +826,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
           {renderSectionIncludedProperties()}
           {renderSectionVideos()}
         </div>
+
 
         <div className="hidden lg:block flex-grow mt-14 lg:mt-0">
           <div className="sticky top-28">{renderSidebar()}</div>

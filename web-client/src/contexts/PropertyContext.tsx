@@ -127,6 +127,9 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             },
             listingPackage: p.listingPackage,
             packageProperties: packageProperties,
+            packageGroupId: p.packageGroupId,
+            packagePosition: p.packagePosition,
+            packageMasterId: p.packageMasterId,
         };
     };
 

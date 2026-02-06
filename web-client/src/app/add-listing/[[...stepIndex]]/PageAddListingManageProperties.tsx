@@ -11,17 +11,22 @@ const PageAddListingManageProperties: FC<PageAddListingManagePropertiesProps> = 
     const { formData, removePackageProperty, editPackageProperty, getPackageProgress } = usePropertyForm();
     const properties = formData.packageProperties || [];
     const progress = getPackageProgress();
-    const isComplete = (properties.length + 1) >= progress.required;
+    const isComplete = progress.current >= progress.required;
+
+    // Determine tier name for display
+    let tierName = "Bronze";
+    if (formData.viewingPackages?.some(p => p.tier === 'GOLD')) tierName = "Gold";
+    else if (formData.viewingPackages?.some(p => p.tier === 'SILVER')) tierName = "Silver";
 
     return (
         <div className="space-y-8">
             <div>
                 <h2 className="text-2xl font-semibold">Manage Package Properties</h2>
                 <span className="block mt-2 text-neutral-500 dark:text-neutral-400">
-                    Review and manage all properties included in your {formData.selectedPackage} package.
+                    Review and manage all properties included in your {tierName} bundle.
                     {progress.required > 1 && !isComplete && (
                         <span className="text-primary-600 block mt-1 font-medium">
-                            You need to add {progress.required - (properties.length + 1)} more property to complete this package.
+                            You need to add {progress.required - progress.current} more house(s) to complete this bundle.
                         </span>
                     )}
                 </span>
@@ -101,7 +106,7 @@ const PageAddListingManageProperties: FC<PageAddListingManagePropertiesProps> = 
                 </div>
                 <div className="text-sm text-yellow-800 dark:text-yellow-200">
                     <p className="font-semibold mb-1">Location Requirement</p>
-                    <p>All properties in the {formData.selectedPackage} package must be located in the same area ({formData.areaName || "the location of the first property"}).</p>
+                    <p>All properties in the {tierName} bundle must be located in the same area ({formData.areaName || "the location of the first property"}).</p>
                 </div>
             </div>
         </div>

@@ -8,7 +8,6 @@ import PageAddListing7 from "./PageAddListing7";
 import PageAddListing8 from "./PageAddListing8";
 import PageAddListing10 from "./PageAddListing10";
 import PageAddListingPackages from "./PageAddListingPackages";
-import PageAddListingPackageSelect from "./PageAddListingPackageSelect";
 import PageAddListingManageProperties from "./PageAddListingManageProperties";
 
 
@@ -20,40 +19,37 @@ const Page = ({
   searchParams?: { [key: string]: string | string[] | undefined };
 }) => {
   const stepIndex = Number(params.stepIndex) || 1;
-  let ContentComponent: any = PageAddListingPackageSelect;
+  let ContentComponent: any = PageAddListing1;
 
   switch (stepIndex) {
     case 1:
-      ContentComponent = PageAddListingPackageSelect;
-      break;
-    case 2:
       ContentComponent = PageAddListing1;
       break;
-    case 3:
+    case 2:
       ContentComponent = PageAddListing2;
       break;
-    case 4:
+    case 3:
       ContentComponent = PageAddListing5;
       break;
-    case 5:
+    case 4:
       ContentComponent = PageAddListing7;
       break;
-    case 6:
+    case 5:
       ContentComponent = PageAddListing8;
       break;
-    case 7:
+    case 6:
       ContentComponent = PageAddListingPackages;
       break;
-    case 8:
+    case 7:
       ContentComponent = PageAddListingManageProperties;
       break;
-    case 9:
+    case 8:
       ContentComponent = PageAddListing10;
       break;
 
 
     default:
-      ContentComponent = PageAddListingPackageSelect;
+      ContentComponent = PageAddListing1;
       break;
   }
 

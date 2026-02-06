@@ -28,7 +28,7 @@ const StayCard: FC<StayCardProps> = ({
   data,
   sizes = "(max-width: 1025px) 100vw, 300px",
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
   const [isLiked, setIsLiked] = useState(false);
@@ -84,6 +84,9 @@ const StayCard: FC<StayCardProps> = ({
   const address = location?.generalArea || "Unknown Location";
   const bedrooms = layout === "bedsitter" || layout === "studio" ? 0 : parseInt(layout?.split("-")[0] || "0");
 
+  // Check if current user owns this property
+  const isOwner = user?.id && data.agent?.id && data.agent.id.toString() === user.id.toString();
+
   // Clean ID for fallback navigation (remove _sub_ index if present)
   const cleanId = id?.toString().split('_sub_')[0];
   const href = data.href || (`/listing-stay-detail/${cleanId}` as Route);
@@ -104,7 +107,12 @@ const StayCard: FC<StayCardProps> = ({
           galleryClass={size === "default" ? undefined : ""}
           sizes={sizes}
         />
-        <BtnLikeIcon isLiked={isLiked} className="absolute right-3 top-3 z-[1]" onClick={handleLike} />
+        {!isOwner && <BtnLikeIcon isLiked={isLiked} className="absolute right-3 top-3 z-[1]" onClick={handleLike} />}
+        {isOwner && (
+          <div className="absolute right-3 top-3 z-[1]">
+            <Badge name="Your Listing" color="blue" />
+          </div>
+        )}
         {saleOff && <SaleOffBadge className="absolute left-3 top-3" />}
       </div>
     );

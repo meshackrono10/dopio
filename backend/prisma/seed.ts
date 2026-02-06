@@ -3,39 +3,50 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// Mock Data
+// Mock Data - Fresh user accounts
 const MOCK_HAUNTERS = [
     {
-        email: "john.kamau@househaunters.com",
-        name: "John Kamau",
-        phone: "+254 712 345 678",
-        avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
-        bio: "Experienced Agent specializing in Kasarani and Roysambu areas. I help tenants find quality, affordable housing with transparent pricing.",
+        email: "sarah.mwangi@househaunters.com",
+        name: "Sarah Mwangi",
+        phone: "+254 798 123 456",
+        avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
+        bio: "Professional real estate agent with 5+ years experience. Specializing in Westlands, Kilimani, and Lavington premium properties.",
         role: Role.HUNTER,
         isVerified: true,
         verificationStatus: 'APPROVED'
     },
     {
-        email: "mary.njeri@househaunters.com",
-        name: "Mary Njeri",
-        phone: "+254 723 456 789",
-        avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
-        bio: "Expert in luxury and mid-range properties in Westlands and Kilimani. Over 3 years experience in the rental market.",
+        email: "james.omondi@househaunters.com",
+        name: "James Omondi",
+        phone: "+254 711 987 654",
+        avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
+        bio: "Expert in budget-friendly housing in Kasarani, Roysambu, and Ruiru. Helping young professionals find their ideal home.",
         role: Role.HUNTER,
         isVerified: true,
         verificationStatus: 'APPROVED'
     },
     {
-        email: "david.ochieng@househaunters.com",
-        name: "David Ochieng",
-        phone: "+254 734 567 890",
-        avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
-        bio: "Focused on affordable housing in Embakasi and Umoja. I ensure every viewing is worth your time and money.",
+        email: "grace.wanjiru@househaunters.com",
+        name: "Grace Wanjiru",
+        phone: "+254 722 456 789",
+        avatarUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400",
+        bio: "Trusted agent for South B, South C, and Langata areas. Focused on family-friendly neighborhoods with great amenities.",
+        role: Role.HUNTER,
+        isVerified: true,
+        verificationStatus: 'APPROVED'
+    },
+    {
+        email: "michael.kariuki@househaunters.com",
+        name: "Michael Kariuki",
+        phone: "+254 733 222 111",
+        avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400",
+        bio: "Specialist in Embakasi and Industrial Area properties. 4 years helping tenants find quality, affordable housing.",
         role: Role.HUNTER,
         isVerified: true,
         verificationStatus: 'APPROVED'
     }
 ];
+
 
 const LOCATIONS = [
     { area: "Kasarani", address: "Seasons Road", lat: -1.2189, lng: 36.8885 },
@@ -66,8 +77,9 @@ function generateProperties(count: number) {
     const properties: any[] = [];
     for (let i = 0; i < count; i++) {
         const loc = LOCATIONS[i % LOCATIONS.length];
-        const isPremium = i % 3 === 0;
-        const rent = isPremium ? 45000 + (i * 1000) : 15000 + (i * 500);
+        // Most properties are Bronze (standard), some are Silver (premium)
+        const isSilver = i % 5 === 0; // Every 5th property is Silver
+        const rent = isSilver ? 35000 + (i * 1000) : 18000 + (i * 800);
 
         // Random amenities (3 to 6)
         const numAmenities = 3 + Math.floor(Math.random() * 4);
@@ -77,10 +89,10 @@ function generateProperties(count: number) {
         const hunterIndex = i % 3; // Cycle through 3 hunters
 
         properties.push({
-            title: `${isPremium ? 'Premium' : 'Cozy'} ${i % 2 === 0 ? '2-Bedroom' : '1-Bedroom'} in ${loc.area}`,
+            title: `${isSilver ? 'Premium' : 'Modern'} ${i % 2 === 0 ? '2-Bedroom' : '1-Bedroom'} in ${loc.area}`,
             description: `A lovely unit located in ${loc.area}. Features modern finishing and great security. Perfect for professionals.`,
             rent: rent,
-            hunterEmail: i % 3 === 0 ? "john.kamau@househaunters.com" : (i % 3 === 1 ? "mary.njeri@househaunters.com" : "david.ochieng@househaunters.com"),
+            hunterEmail: i % 3 === 0 ? "sarah.mwangi@househaunters.com" : (i % 3 === 1 ? "james.omondi@househaunters.com" : "grace.wanjiru@househaunters.com"),
             location: {
                 generalArea: loc.area,
                 county: "Nairobi",
@@ -95,19 +107,10 @@ function generateProperties(count: number) {
                 waterIncluded: Math.random() > 0.5,
                 electricityType: Math.random() > 0.5 ? "prepaid" : "postpaid",
             },
-            listingPackage: isPremium ? "GOLD" : null,
-            packageProperties: isPremium ? [
-                {
-                    propertyName: `Bonus ${loc.area} Unit A`,
-                    monthlyRent: rent - 5000,
-                    images: [IMAGES_POOL[0]]
-                },
-                {
-                    propertyName: `Bonus ${loc.area} Unit B`,
-                    monthlyRent: rent - 3000,
-                    images: [IMAGES_POOL[1]]
-                }
-            ] : null,
+            listingPackage: isSilver ? "SILVER" : "BRONZE", // Most are Bronze, some Silver
+
+            packageProperties: null, // No package properties for standalone listings
+
             packages: [
                 {
                     name: "Bronze Package",
@@ -117,21 +120,23 @@ function generateProperties(count: number) {
                     propertiesIncluded: 1,
                     features: ["1 hour viewing"]
                 },
-                ...(isPremium ? [{
-                    name: "Gold Package",
-                    description: "View this plus 2 similar units",
-                    price: 2500,
-                    tier: PackageTier.GOLD,
-                    propertiesIncluded: 3,
-                    features: ["3 hour viewing", "Area tour"]
+                ...(isSilver ? [{
+                    name: "Silver Package",
+                    description: "Extended viewing with area tour",
+                    price: 1500,
+                    tier: PackageTier.SILVER,
+                    propertiesIncluded: 1,
+                    features: ["2 hour viewing", "Area tour", "Transport assistance"]
                 }] : [])
             ]
+
         });
     }
     return properties;
 }
 
-const MOCK_PROPERTIES = generateProperties(25); // Create 25 properties
+const MOCK_PROPERTIES = generateProperties(20); // Create 20 standalone Bronze/Silver properties
+
 
 async function main() {
     console.log('🌱 Starting database seed with MANY houses...');
@@ -163,30 +168,58 @@ async function main() {
     // Passwords
     const password = await bcrypt.hash('password123', 10);
 
-    // Create Admin
-    const admin = await prisma.user.create({
+    // Create Admins
+    const admin1 = await prisma.user.create({
         data: {
-            email: 'admin@househaunters.com',
+            email: 'admin@dapio.com',
             password,
-            name: 'Admin User',
+            name: 'Peter Muthoni',
             role: Role.ADMIN,
-            phone: '0700000000',
-            isVerified: true
+            phone: '+254 700 111 222',
+            isVerified: true,
+            avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'
         },
     });
-    console.log(`👤 Created Admin: ${admin.name}`);
+    console.log(`👤 Created Admin: ${admin1.name}`);
 
-    // Create Tenant
-    const tenant = await prisma.user.create({
+    const admin2 = await prisma.user.create({
         data: {
-            email: 'tenant@househaunters.com',
+            email: 'superadmin@dapio.com',
             password,
-            name: 'Jane Tenant',
-            role: Role.TENANT,
-            phone: '0722222222',
+            name: 'Alice Kimani',
+            role: Role.ADMIN,
+            phone: '+254 700 333 444',
+            isVerified: true,
+            avatarUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'
         },
     });
-    console.log(`👤 Created Tenant: ${tenant.name}`);
+    console.log(`👤 Created Super Admin: ${admin2.name}`);
+
+    // Create Tenants
+    const tenant1 = await prisma.user.create({
+        data: {
+            email: 'brian.ndung@gmail.com',
+            password,
+            name: 'Brian Ndungu',
+            role: Role.TENANT,
+            phone: '+254 722 555 666',
+            avatarUrl: 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400'
+        },
+    });
+    console.log(`👤 Created Tenant: ${tenant1.name}`);
+
+    const tenant2 = await prisma.user.create({
+        data: {
+            email: 'lucy.achieng@gmail.com',
+            password,
+            name: 'Lucy Achieng',
+            role: Role.TENANT,
+            phone: '+254 733 777 888',
+            avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'
+        },
+    });
+    console.log(`👤 Created Tenant: ${tenant2.name}`);
+
 
     // Create Hunters
     const createdHunters: Record<string, string> = {}; // email -> id
