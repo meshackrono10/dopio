@@ -42,6 +42,11 @@ export default function GoldPackageManagementCard({
         (a.packagePosition || 0) - (b.packagePosition || 0)
     );
 
+    const firstMemberPkg = packageMembers[0] as any;
+    // Try to find the tier from the member's packages list or default to GOLD
+    const currentTier = firstMemberPkg?.packages?.find((p: any) => p.packageGroupId === packageGroupId)?.tier || 'GOLD';
+    const isGold = currentTier === 'GOLD';
+
     // Fetch available properties when modal opens
     useEffect(() => {
         if (showAddPropertyModal) {
@@ -57,13 +62,12 @@ export default function GoldPackageManagementCard({
             const allProperties = response.data;
 
             // Filter to only show this hunter's properties that are:
-            // 1. Not already in a package (packageGroupId is null)
-            // 2. Bronze or Silver listings
-            const available = allProperties.filter((p: any) =>
-                p.hunter?.id === user?.id &&
-                !p.packageGroupId &&
-                (p.listingPackage === 'BRONZE' || p.listingPackage === 'SILVER' || !p.listingPackage)
-            );
+            // 1. Not already in a package of THIS TIER
+            const available = allProperties.filter((p: any) => {
+                const isOwner = p.hunter?.id === user?.id;
+                const inSameTierGroup = p.packages?.some((pkg: any) => pkg.tier === currentTier && pkg.packageGroupId);
+                return isOwner && !inSameTierGroup;
+            });
 
             setAvailableProperties(available);
         } catch (error: any) {
@@ -84,7 +88,7 @@ export default function GoldPackageManagementCard({
             await api.post(`/packages/${packageGroupId}/add-property`, {
                 propertyIds: selectedPropertyIds
             });
-            showToast("success", `${selectedPropertyIds.length} properties added to Gold package`);
+            showToast("success", `${selectedPropertyIds.length} properties added to ${currentTier.toLowerCase()} bundle`);
             setShowAddPropertyModal(false);
             setSelectedPropertyIds([]);
             onPackageUpdate();
@@ -98,9 +102,10 @@ export default function GoldPackageManagementCard({
     const handleRemoveProperty = async (propertyId: string | number) => {
         setIsLoading(true);
         try {
-            // If only 3 properties left, warn about breaking the package
-            if (packageMembers.length <= 3) {
-                showToast("warning", "Removing this property will break the Gold package. Use 'Break Package' instead.");
+            // Requirements: Silver (3), Gold (5)
+            const requiredCount = isGold ? 5 : 3;
+            if (packageMembers.length <= requiredCount) {
+                showToast("warning", `Removing this property will break the ${currentTier} bundle. Use 'Break Bundle' instead.`);
                 setShowRemoveConfirm(null);
                 return;
             }
@@ -120,7 +125,7 @@ export default function GoldPackageManagementCard({
         setIsLoading(true);
         try {
             await api.post('/packages/break-package', { packageGroupId });
-            showToast("success", "Gold package broken into individual Bronze listings");
+            showToast("success", `${currentTier} bundle broken into individual Bronze listings`);
             setShowBreakConfirm(false);
             onPackageUpdate();
         } catch (error: any) {
@@ -131,7 +136,10 @@ export default function GoldPackageManagementCard({
     };
 
     return (
-        <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-2xl border-2 border-yellow-400 dark:border-yellow-600 overflow-hidden">
+        <div className={`rounded-2xl border-2 overflow-hidden ${isGold
+                ? "bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-400 dark:border-yellow-600"
+                : "bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 border-gray-300 dark:border-gray-700"
+            }`}>
             {/* Header - Always Visible */}
             <div
                 className="p-6 cursor-pointer hover:bg-yellow-100/50 dark:hover:bg-yellow-900/30 transition-colors"
@@ -139,13 +147,16 @@ export default function GoldPackageManagementCard({
             >
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                            <span className="text-3xl">🏆</span>
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 ${isGold ? "bg-gradient-to-br from-yellow-400 to-yellow-600" : "bg-gradient-to-br from-gray-300 to-gray-500"
+                            }`}>
+                            <span className="text-3xl">{isGold ? "🏆" : "🥈"}</span>
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">Gold Package</h3>
-                                <span className="px-3 py-1 bg-yellow-600 text-white text-sm font-semibold rounded-full">
+                                <h3 className={`text-2xl font-bold ${isGold ? "text-yellow-900 dark:text-yellow-100" : "text-gray-900 dark:text-gray-100"}`}>
+                                    {isGold ? "Gold" : "Silver"} Bundle
+                                </h3>
+                                <span className={`px-3 py-1 text-white text-sm font-semibold rounded-full ${isGold ? "bg-yellow-600" : "bg-gray-600"}`}>
                                     {packageMembers.length} Properties
                                 </span>
                             </div>
@@ -179,7 +190,8 @@ export default function GoldPackageManagementCard({
                     <div className="flex gap-3">
                         <button
                             onClick={() => setShowAddPropertyModal(true)}
-                            className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            className={`flex-1 px-4 py-2 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${isGold ? "bg-yellow-600 hover:bg-yellow-700" : "bg-gray-600 hover:bg-gray-700"
+                                }`}
                         >
                             <i className="las la-plus"></i>
                             Add Property
@@ -189,7 +201,7 @@ export default function GoldPackageManagementCard({
                             className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             <i className="las la-unlink"></i>
-                            Break Package
+                            Break Bundle
                         </button>
                     </div>
 
@@ -317,7 +329,7 @@ export default function GoldPackageManagementCard({
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-semibold">Add Properties to Gold Package</h3>
+                            <h3 className="text-xl font-semibold">Add Properties to {isGold ? 'Gold' : 'Silver'} Bundle</h3>
                             <button
                                 onClick={() => {
                                     setShowAddPropertyModal(false);

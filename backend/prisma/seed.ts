@@ -225,8 +225,10 @@ async function main() {
     const createdHunters: Record<string, string> = {}; // email -> id
 
     for (const hunterData of MOCK_HAUNTERS) {
+        const isSarah = hunterData.email === "sarah.mwangi@househaunters.com";
         const hunter = await prisma.user.create({
             data: {
+                id: isSarah ? "00000000-0000-0000-0000-000000000001" : undefined,
                 email: hunterData.email,
                 password, // same password for all
                 name: hunterData.name,
@@ -239,7 +241,7 @@ async function main() {
             }
         });
         createdHunters[hunter.email] = hunter.id;
-        console.log(`👤 Created Hunter: ${hunter.name}`);
+        console.log(`👤 Created Hunter: ${hunter.name} (${hunter.id})`);
     }
 
     // Create Properties
@@ -250,7 +252,7 @@ async function main() {
             continue;
         }
 
-        const property = await prisma.property.create({
+        await prisma.property.create({
             data: {
                 title: prop.title,
                 description: prop.description,
@@ -261,7 +263,6 @@ async function main() {
                 amenities: JSON.stringify(prop.amenities),
                 images: JSON.stringify(prop.images),
                 utilities: JSON.stringify(prop.utilities),
-                // Add the new fields
                 packageProperties: prop.packageProperties ? JSON.stringify(prop.packageProperties) : null,
                 listingPackage: prop.listingPackage || null,
                 packages: {
@@ -277,6 +278,115 @@ async function main() {
             }
         });
         console.log(`🏠 Created Property: ${prop.title}`);
+    }
+
+    // --- ADDED: Explicitly seed a Gold Bundle for Sarah Mwangi ---
+    const sarahId = createdHunters["sarah.mwangi@househaunters.com"];
+    if (sarahId) {
+        console.log('💎 Seeding explicit bundles for Sarah Mwangi...');
+
+        // 1. GOLD BUNDLE (5 properties)
+        const goldGroupId = crypto.randomUUID();
+        for (let i = 1; i <= 5; i++) {
+            const loc = LOCATIONS[i % LOCATIONS.length];
+            const title = `Gold Member ${i}: Luxury Apartment in ${loc.area}`;
+
+            await prisma.property.create({
+                data: {
+                    title,
+                    description: `Premium unit part of a Gold bundle. Exceptional quality in ${loc.area}.`,
+                    rent: 55000 + (i * 2000),
+                    hunterId: sarahId,
+                    status: PropertyStatus.AVAILABLE,
+                    location: JSON.stringify({
+                        generalArea: loc.area,
+                        county: "Nairobi",
+                        address: loc.address,
+                        lat: loc.lat + (Math.random() * 0.002),
+                        lng: loc.lng + (Math.random() * 0.002)
+                    }),
+                    amenities: JSON.stringify(["WiFi", "Gym", "Pool", "CCTV", "Parking"]),
+                    images: JSON.stringify([IMAGES_POOL[0], IMAGES_POOL[1]]),
+                    videos: JSON.stringify(DEFAULT_VIDEO),
+                    listingPackage: 'GOLD',
+                    packageGroupId: goldGroupId,
+                    packagePosition: i,
+                    packageMasterId: i === 1 ? undefined : undefined, // Handled if needed, but grouping relies on groupId
+                    packages: {
+                        create: [
+                            {
+                                name: "Bronze Package",
+                                price: 1000,
+                                tier: PackageTier.BRONZE,
+                                propertiesIncluded: 1,
+                                features: JSON.stringify(["1 hour viewing"])
+                            },
+                            {
+                                name: "Gold Package",
+                                price: 3500,
+                                tier: PackageTier.GOLD,
+                                propertiesIncluded: 5,
+                                features: JSON.stringify(["5 properties tour", "Lunch included", "Transport"]),
+                                packageGroupId: goldGroupId,
+                                packagePosition: i
+                            }
+                        ]
+                    }
+                }
+            });
+        }
+        console.log(`🏆 Created Gold Bundle for Sarah Mwangi (5 houses)`);
+
+        // 2. SILVER BUNDLE (3 properties)
+        const silverGroupId = crypto.randomUUID();
+        for (let i = 1; i <= 3; i++) {
+            const loc = LOCATIONS[(i + 3) % LOCATIONS.length];
+            const title = `Silver Member ${i}: Modern Flat in ${loc.area}`;
+
+            await prisma.property.create({
+                data: {
+                    title,
+                    description: `Quality unit part of a Silver bundle in ${loc.area}.`,
+                    rent: 32000 + (i * 1500),
+                    hunterId: sarahId,
+                    status: PropertyStatus.AVAILABLE,
+                    location: JSON.stringify({
+                        generalArea: loc.area,
+                        county: "Nairobi",
+                        address: loc.address,
+                        lat: loc.lat + (Math.random() * 0.002),
+                        lng: loc.lng + (Math.random() * 0.002)
+                    }),
+                    amenities: JSON.stringify(["WiFi", "Borehole", "Elevator", "Security"]),
+                    images: JSON.stringify([IMAGES_POOL[2], IMAGES_POOL[3]]),
+                    videos: JSON.stringify(DEFAULT_VIDEO),
+                    listingPackage: 'SILVER',
+                    packageGroupId: silverGroupId,
+                    packagePosition: i,
+                    packages: {
+                        create: [
+                            {
+                                name: "Bronze Package",
+                                price: 1000,
+                                tier: PackageTier.BRONZE,
+                                propertiesIncluded: 1,
+                                features: JSON.stringify(["1 hour viewing"])
+                            },
+                            {
+                                name: "Silver Package",
+                                price: 2000,
+                                tier: PackageTier.SILVER,
+                                propertiesIncluded: 3,
+                                features: JSON.stringify(["3 properties tour", "Area guide"]),
+                                packageGroupId: silverGroupId,
+                                packagePosition: i
+                            }
+                        ]
+                    }
+                }
+            });
+        }
+        console.log(`🥈 Created Silver Bundle for Sarah Mwangi (3 houses)`);
     }
 
     console.log('✅ Seeding completed successfully.');

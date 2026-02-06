@@ -178,6 +178,10 @@ const initialFormData: PropertyFormData = {
     photos: [],
     videos: [],
     viewingPackages: [],
+    selectedPackage: undefined,
+    packageProperties: [],
+    currentPropertyIndex: 0,
+    targetPackageGroupId: undefined
 };
 
 const PropertyFormContext = createContext<PropertyFormContextType | undefined>(undefined);
@@ -307,6 +311,7 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
         updateFormData('selectedPackage', tier);
         updateFormData('packageProperties', []);
         updateFormData('currentPropertyIndex', 0);
+        updateFormData('targetPackageGroupId', undefined); // Clear target group when selecting a new package
 
         // Auto-generate name for Gold packages
         if (tier === 'GOLD') {
@@ -332,6 +337,7 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
         delete currentData.packageProperties;
         delete currentData.selectedPackage;
         delete currentData.currentPropertyIndex;
+        delete currentData.targetPackageGroupId; // Ensure this is not carried over to individual properties
 
         // Validation: Ensure same location as the first property
         if (currentProperties.length > 0) {
@@ -350,6 +356,7 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
         newFormData.selectedPackage = formData.selectedPackage;
         newFormData.packageProperties = currentProperties;
         newFormData.currentPropertyIndex = currentProperties.length;
+        newFormData.targetPackageGroupId = formData.targetPackageGroupId; // Preserve target group ID
 
         // Preserve location for the next property in the package
         newFormData.county = formData.county;
@@ -368,7 +375,8 @@ export const PropertyFormProvider = ({ children }: { children: ReactNode }) => {
                 ...propertyToEdit,
                 selectedPackage: formData.selectedPackage,
                 packageProperties: formData.packageProperties,
-                currentPropertyIndex: index
+                currentPropertyIndex: index,
+                targetPackageGroupId: formData.targetPackageGroupId // Preserve target group ID
             });
         }
     };

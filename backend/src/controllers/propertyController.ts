@@ -64,8 +64,13 @@ export const getAllProperties = async (req: any, res: Response) => {
     try {
         const userId = req.user?.userId;
         const properties = await prisma.property.findMany({
-            where: {
-                status: 'AVAILABLE',
+            where: userId ? {
+                OR: [
+                    { status: 'AVAILABLE' },
+                    { hunterId: userId }
+                ]
+            } : {
+                status: 'AVAILABLE'
             },
             include: {
                 hunter: {
@@ -248,7 +253,7 @@ export const createProperty = async (req: any, res: Response) => {
         const { title, description, rent, location, amenities, images, videos, packages, utilities, packageProperties, targetPackageGroupId } = validatedData;
         const hunterId = req.user.userId;
 
-        // Implementation of multi-tier package linking logic
+        // Create the property and its packages in a transaction
         const property = await prisma.$transaction(async (tx) => {
             const hasBronze = (packages || []).some(pkg => pkg.tier === 'BRONZE');
             const hasSilver = (packages || []).some(pkg => pkg.tier === 'SILVER');
@@ -257,6 +262,19 @@ export const createProperty = async (req: any, res: Response) => {
             let bronzeGroupId = crypto.randomUUID();
             let silverGroupId = (hasSilver && targetPackageGroupId) ? targetPackageGroupId : (hasSilver ? crypto.randomUUID() : null);
             let goldGroupId = (hasGold && targetPackageGroupId) ? targetPackageGroupId : (hasGold ? crypto.randomUUID() : null);
+
+            // Determine positions if targeting existing groups
+            let silverPosition = 1;
+            let goldPosition = 1;
+
+            if (silverGroupId && targetPackageGroupId === silverGroupId) {
+                const silverMembers = await tx.viewingPackage.findMany({ where: { packageGroupId: silverGroupId } });
+                silverPosition = silverMembers.length + 1;
+            }
+            if (goldGroupId && targetPackageGroupId === goldGroupId) {
+                const goldMembers = await tx.viewingPackage.findMany({ where: { packageGroupId: goldGroupId } });
+                goldPosition = goldMembers.length + 1;
+            }
 
             // 1. Create the master property
             const createdMaster = await tx.property.create({
@@ -278,10 +296,11 @@ export const createProperty = async (req: any, res: Response) => {
 
             // 2. Create ViewingPackages for master
             for (const pkg of (packages || [])) {
-                let groupId = null;
+                let groupId: string | null = null;
+                let position = 1;
                 if (pkg.tier === 'BRONZE') groupId = bronzeGroupId;
-                if (pkg.tier === 'SILVER') groupId = silverGroupId;
-                if (pkg.tier === 'GOLD') groupId = goldGroupId;
+                if (pkg.tier === 'SILVER') { groupId = silverGroupId; position = silverPosition; }
+                if (pkg.tier === 'GOLD') { groupId = goldGroupId; position = goldPosition; }
 
                 await tx.viewingPackage.create({
                     data: {
@@ -292,7 +311,8 @@ export const createProperty = async (req: any, res: Response) => {
                         features: JSON.stringify(pkg.features),
                         propertyId: masterId,
                         packageGroupId: groupId,
-                        packagePosition: 1
+                        packagePosition: position,
+                        packageMasterId: (position > 1 && groupId === targetPackageGroupId) ? undefined : undefined
                     }
                 });
             }
@@ -330,8 +350,9 @@ export const createProperty = async (req: any, res: Response) => {
                         }
                     });
 
-                    // Silver viewing if applicable (up to 3 total)
-                    if (hasSilver && (i + 2) <= 3) {
+                    // Silver viewing if applicable
+                    if (hasSilver && silverGroupId) {
+                        const pos = silverPosition + i + (targetPackageGroupId === silverGroupId ? 0 : 1);
                         await tx.viewingPackage.create({
                             data: {
                                 name: 'Silver Viewing Package',
@@ -341,14 +362,15 @@ export const createProperty = async (req: any, res: Response) => {
                                 features: JSON.stringify(['Up to 3 property viewings', 'Photos + videos', 'Priority response']),
                                 propertyId: createdBonus.id,
                                 packageGroupId: silverGroupId,
-                                packagePosition: i + 2,
+                                packagePosition: pos,
                                 packageMasterId: masterId
                             }
                         });
                     }
 
-                    // Gold viewing if applicable (up to 5 total)
-                    if (hasGold && (i + 2) <= 5) {
+                    // Gold viewing if applicable
+                    if (hasGold && goldGroupId) {
+                        const pos = goldPosition + i + (targetPackageGroupId === goldGroupId ? 0 : 1);
                         await tx.viewingPackage.create({
                             data: {
                                 name: 'Gold Viewing Package',
@@ -358,12 +380,21 @@ export const createProperty = async (req: any, res: Response) => {
                                 features: JSON.stringify(['Up to 5 property viewings', ' inspection report', 'Immediate response']),
                                 propertyId: createdBonus.id,
                                 packageGroupId: goldGroupId,
-                                packagePosition: i + 2,
+                                packagePosition: pos,
                                 packageMasterId: masterId
                             }
                         });
                     }
                 }
+            }
+
+            // 4. Sync property counts for targeting groups
+            if (targetPackageGroupId) {
+                const members = await tx.viewingPackage.findMany({ where: { packageGroupId: targetPackageGroupId } });
+                await tx.viewingPackage.updateMany({
+                    where: { packageGroupId: targetPackageGroupId },
+                    data: { propertiesIncluded: members.length }
+                });
             }
 
             return createdMaster;
