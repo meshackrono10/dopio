@@ -3,6 +3,19 @@ import { prisma } from '../index';
 import { z } from 'zod';
 import { NotificationService } from '../services/notificationService';
 
+// Safe JSON parse helper - returns value as-is if it's not valid JSON
+const safeParse = (value: any) => {
+    if (!value) return value;
+    if (typeof value !== 'string') return value;
+
+    try {
+        return JSON.parse(value);
+    } catch (error) {
+        // If it's not valid JSON, return the string as-is
+        return value;
+    }
+};
+
 const viewingRequestSchema = z.object({
     propertyId: z.string(),
     proposedDates: z.array(z.object({
@@ -143,16 +156,16 @@ export const getRequests = async (req: any, res: Response) => {
         const processedRequests = requests.map(req => {
             const property = req.property;
             if (property) {
-                property.images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
-                property.location = typeof property.location === 'string' ? JSON.parse(property.location) : property.location;
-                property.amenities = typeof property.amenities === 'string' ? JSON.parse(property.amenities) : property.amenities;
-                property.videos = typeof property.videos === 'string' ? JSON.parse(property.videos) : property.videos;
+                property.images = safeParse(property.images);
+                property.location = safeParse(property.location);
+                property.amenities = safeParse(property.amenities);
+                property.videos = safeParse(property.videos);
             }
             return {
                 ...req,
-                proposedDates: typeof req.proposedDates === 'string' ? JSON.parse(req.proposedDates) : req.proposedDates,
-                counterLocation: typeof req.counterLocation === 'string' ? JSON.parse(req.counterLocation) : req.counterLocation,
-                proposedLocation: typeof req.proposedLocation === 'string' ? JSON.parse(req.proposedLocation) : req.proposedLocation,
+                proposedDates: safeParse(req.proposedDates),
+                counterLocation: safeParse(req.counterLocation),
+                proposedLocation: safeParse(req.proposedLocation),
             };
         });
 
@@ -204,17 +217,17 @@ export const getRequestById = async (req: any, res: Response) => {
 
         const property = request.property;
         if (property) {
-            property.images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
-            property.location = typeof property.location === 'string' ? JSON.parse(property.location) : property.location;
-            property.amenities = typeof property.amenities === 'string' ? JSON.parse(property.amenities) : property.amenities;
-            property.videos = typeof property.videos === 'string' ? JSON.parse(property.videos) : property.videos;
+            property.images = safeParse(property.images);
+            property.location = safeParse(property.location);
+            property.amenities = safeParse(property.amenities);
+            property.videos = safeParse(property.videos);
         }
 
         const responseData = {
             ...request,
-            proposedDates: typeof request.proposedDates === 'string' ? JSON.parse(request.proposedDates) : request.proposedDates,
-            counterLocation: typeof request.counterLocation === 'string' ? JSON.parse(request.counterLocation) : request.counterLocation,
-            proposedLocation: typeof request.proposedLocation === 'string' ? JSON.parse(request.proposedLocation) : request.proposedLocation,
+            proposedDates: safeParse(request.proposedDates),
+            counterLocation: safeParse(request.counterLocation),
+            proposedLocation: safeParse(request.proposedLocation),
         };
 
         res.json(responseData);

@@ -7,25 +7,20 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
 
-interface Property {
-    id: string | number;
-    title: string;
-    rent: number;
-    images: string[];
-    packagePosition: number;
-    location: any;
-}
+import { PropertyListing } from "@/data/types";
 
 interface GoldPackageManagementCardProps {
     packageGroupId: string;
-    packageMembers: Property[];
+    packageMembers: PropertyListing[];
     onPackageUpdate: () => void;
+    isCompact?: boolean;
 }
 
 export default function GoldPackageManagementCard({
     packageGroupId,
     packageMembers,
-    onPackageUpdate
+    onPackageUpdate,
+    isCompact = false
 }: GoldPackageManagementCardProps) {
     const { showToast } = useToast();
     const { user } = useAuth();
@@ -34,7 +29,7 @@ export default function GoldPackageManagementCard({
     const [showRemoveConfirm, setShowRemoveConfirm] = useState<string | null>(null);
     const [showBreakConfirm, setShowBreakConfirm] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
+    const [availableProperties, setAvailableProperties] = useState<PropertyListing[]>([]);
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
     const [loadingProperties, setLoadingProperties] = useState(false);
 
@@ -43,8 +38,7 @@ export default function GoldPackageManagementCard({
     );
 
     const firstMemberPkg = packageMembers[0] as any;
-    // Try to find the tier from the member's packages list or default to GOLD
-    const currentTier = firstMemberPkg?.packages?.find((p: any) => p.packageGroupId === packageGroupId)?.tier || 'GOLD';
+    const currentTier = firstMemberPkg?.listingPackage || firstMemberPkg?.packages?.find((p: any) => p.packageGroupId === packageGroupId)?.tier || 'GOLD';
     const isGold = currentTier === 'GOLD';
 
     // Fetch available properties when modal opens
@@ -57,18 +51,13 @@ export default function GoldPackageManagementCard({
     const fetchAvailableProperties = async () => {
         setLoadingProperties(true);
         try {
-            // Fetch all hunter's properties
             const response = await api.get('/properties');
             const allProperties = response.data;
-
-            // Filter to only show this hunter's properties that are:
-            // 1. Not already in a package of THIS TIER
             const available = allProperties.filter((p: any) => {
-                const isOwner = p.hunter?.id === user?.id;
-                const inSameTierGroup = p.packages?.some((pkg: any) => pkg.tier === currentTier && pkg.packageGroupId);
+                const isOwner = p.agent?.id === user?.id; // Fixed to p.agent?.id to match backend response structure
+                const inSameTierGroup = p.packageGroupId; // If it has a group ID, it's already in a bundle
                 return isOwner && !inSameTierGroup;
             });
-
             setAvailableProperties(available);
         } catch (error: any) {
             showToast("error", "Failed to fetch available properties");
@@ -88,7 +77,7 @@ export default function GoldPackageManagementCard({
             await api.post(`/packages/${packageGroupId}/add-property`, {
                 propertyIds: selectedPropertyIds
             });
-            showToast("success", `${selectedPropertyIds.length} properties added to ${currentTier.toLowerCase()} bundle`);
+            showToast("success", `${selectedPropertyIds.length} properties added to bundle`);
             setShowAddPropertyModal(false);
             setSelectedPropertyIds([]);
             onPackageUpdate();
@@ -102,7 +91,6 @@ export default function GoldPackageManagementCard({
     const handleRemoveProperty = async (propertyId: string | number) => {
         setIsLoading(true);
         try {
-            // Requirements: Silver (3), Gold (5)
             const requiredCount = isGold ? 5 : 3;
             if (packageMembers.length <= requiredCount) {
                 showToast("warning", `Removing this property will break the ${currentTier} bundle. Use 'Break Bundle' instead.`);
@@ -125,7 +113,7 @@ export default function GoldPackageManagementCard({
         setIsLoading(true);
         try {
             await api.post('/packages/break-package', { packageGroupId });
-            showToast("success", `${currentTier} bundle broken into individual Bronze listings`);
+            showToast("success", `${currentTier} bundle broken into individual listings`);
             setShowBreakConfirm(false);
             onPackageUpdate();
         } catch (error: any) {
@@ -135,14 +123,74 @@ export default function GoldPackageManagementCard({
         }
     };
 
-    return (
-        <div className={`rounded-2xl border-2 overflow-hidden ${isGold
-                ? "bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-400 dark:border-yellow-600"
-                : "bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 border-gray-300 dark:border-gray-700"
-            }`}>
-            {/* Header - Always Visible */}
+    if (isCompact && !isExpanded) {
+        return (
             <div
-                className="p-6 cursor-pointer hover:bg-yellow-100/50 dark:hover:bg-yellow-900/30 transition-colors"
+                className={`bg-white dark:bg-neutral-800 rounded-2xl overflow-hidden border-2 transition-all hover:shadow-xl cursor-pointer group flex flex-col h-full ${isGold ? 'border-yellow-400 dark:border-yellow-600' : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                onClick={() => setIsExpanded(true)}
+            >
+                <div className="h-40 relative">
+                    <Image
+                        fill
+                        src={sortedMembers[0]?.images[0] || "/placeholder.jpg"}
+                        alt="Bundle preview"
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${isGold ? "bg-gradient-to-br from-yellow-400 to-yellow-600" : "bg-gradient-to-br from-gray-300 to-gray-500"
+                                }`}>
+                                <span className="text-xl">{isGold ? "🏆" : "🥈"}</span>
+                            </div>
+                            <div>
+                                <h4 className="text-white font-black uppercase tracking-widest text-[10px] opacity-80">{isGold ? "Gold" : "Silver"} Bundle</h4>
+                                <p className="text-white font-bold text-xs">{packageMembers.length} Houses</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="absolute top-3 right-3">
+                        <span className="px-2 py-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm rounded-lg text-[10px] font-black uppercase tracking-wider text-primary-600 shadow-sm">
+                            Manage
+                        </span>
+                    </div>
+                </div>
+                <div className="p-4 flex-grow flex flex-col justify-between">
+                    <div>
+                        <h3 className="font-bold text-neutral-900 dark:text-white line-clamp-1">{sortedMembers[0]?.title} & More</h3>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-1">
+                            <i className="las la-map-marker text-primary-500"></i>
+                            {sortedMembers[0]?.location?.generalArea || 'Nairobi'}
+                        </p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
+                        <span className="text-xs font-bold text-neutral-400">ID: {packageGroupId.substring(0, 8)}</span>
+                        <div className="flex -space-x-2">
+                            {sortedMembers.slice(0, 3).map((m, idx) => (
+                                <div key={idx} className="w-6 h-6 rounded-full border-2 border-white dark:border-neutral-800 overflow-hidden relative">
+                                    <Image fill src={m.images[0] || "/placeholder.jpg"} alt="thumb" className="object-cover" />
+                                </div>
+                            ))}
+                            {packageMembers.length > 3 && (
+                                <div className="w-6 h-6 rounded-full border-2 border-white dark:border-neutral-800 bg-neutral-100 flex items-center justify-center text-[8px] font-bold">
+                                    +{packageMembers.length - 3}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`rounded-3xl border-2 overflow-hidden transition-all duration-300 shadow-xl ${isGold
+            ? "bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 border-yellow-400 dark:border-yellow-600"
+            : "bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/10 dark:to-slate-900/10 border-gray-300 dark:border-gray-700"
+            } ${isExpanded ? 'col-span-full' : ''}`}>
+            {/* Header */}
+            <div
+                className="p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 <div className="flex items-start justify-between">
