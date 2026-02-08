@@ -18,6 +18,16 @@ const calculateAutoRelease = (date: string, time: string): Date => {
     return releaseDate;
 };
 
+const safeParse = (value: any) => {
+    if (!value) return value;
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch (error) {
+        return value;
+    }
+};
+
 export const getBookingById = async (req: any, res: Response) => {
     try {
         const { userId, role } = req.user;
@@ -230,23 +240,26 @@ export const confirmPhysicalMeeting = async (req: any, res: Response) => {
         }
 
         if (booking.status !== 'CONFIRMED' && booking.status !== 'IN_PROGRESS') {
+            console.error(`[ConfirmMeeting] ERROR: Booking ${bookingId} has status "${booking.status}" but needs CONFIRMED or IN_PROGRESS`);
             return res.status(400).json({ message: 'Can only confirm meeting for confirmed or in-progress bookings' });
         }
 
-        // Check if today is the scheduled day
-        const today = new Date().toISOString().split('T')[0];
+        // Check if the current time is within ±12 hours of the scheduled slot
         const scheduledDateStr = booking.scheduledDate.includes('T') ? booking.scheduledDate.split('T')[0] : booking.scheduledDate;
+        const scheduledDateTime = new Date(`${scheduledDateStr}T${booking.scheduledTime}`);
+        const now = new Date();
+        const diffHours = Math.abs(now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
 
-        console.log(`DEBUG: confirmPhysicalMeeting date check:`, {
-            bookingScheduledRaw: booking.scheduledDate,
-            scheduledDateStr,
-            today
+        console.log(`[ConfirmMeeting] Time Check:`, {
+            scheduled: scheduledDateTime.toISOString(),
+            now: now.toISOString(),
+            diffHours
         });
 
-        if (scheduledDateStr !== today) {
+        if (diffHours > 12) {
             return res.status(400).json({
-                message: 'Meeting can only be confirmed on the scheduled day',
-                debug: { today, scheduledDate: booking.scheduledDate, normalized: scheduledDateStr }
+                message: 'Meeting can only be confirmed within 12 hours of the scheduled time',
+                debug: { now: now.toISOString(), scheduled: scheduledDateTime.toISOString(), diffHours }
             });
         }
 
@@ -323,52 +336,55 @@ export const submitViewingOutcome = async (req: any, res: Response) => {
             return res.status(400).json({ message: 'Meeting must be confirmed by both parties before submitting outcome' });
         }
 
-        if (booking.status !== 'CONFIRMED' && booking.status !== 'IN_PROGRESS') {
-            return res.status(400).json({ message: 'Outcome already submitted or booking cancelled' });
+        if (booking.status !== 'IN_PROGRESS') {
+            return res.status(400).json({ message: 'Viewing must be currently in progress to submit an outcome' });
         }
 
         if (outcome === 'COMPLETED_SATISFIED') {
-            // Mark as completed and release payment
-            await prisma.booking.update({
-                where: { id: bookingId },
-                data: {
-                    status: 'COMPLETED',
-                    tenantConfirmed: true,
-                    viewingOutcome: 'COMPLETED_SATISFIED',
-                    outcomeSubmittedAt: new Date(),
-                    completedAt: new Date(),
-                    paymentStatus: 'RELEASED',
-                    tenantFeedback: feedback,
-                },
-            });
+            await prisma.$transaction(async (tx) => {
+                // Mark as completed and release payment
+                await tx.booking.update({
+                    where: { id: bookingId },
+                    data: {
+                        status: 'COMPLETED',
+                        tenantConfirmed: true,
+                        viewingOutcome: 'COMPLETED_SATISFIED',
+                        outcomeSubmittedAt: new Date(),
+                        completedAt: new Date(),
+                        paymentStatus: 'RELEASED',
+                        tenantFeedback: feedback,
+                    },
+                });
 
-            // Mark ViewingRequest as COMPLETED
-            await prisma.viewingRequest.updateMany({
-                where: { bookingId },
-                data: { status: 'COMPLETED' as any }
-            });
+                // Mark ViewingRequest as COMPLETED
+                await tx.viewingRequest.updateMany({
+                    where: { bookingId },
+                    data: { status: 'COMPLETED' as any }
+                });
 
-            // Create hunter earnings
-            const hunterAmount = booking.amount * 0.85;
-            await prisma.hunterEarnings.create({
-                data: {
-                    hunterId: booking.hunterId,
-                    amount: hunterAmount,
-                    bookingId: booking.id,
-                    status: 'PENDING',
-                },
-            });
+                // Create hunter earnings
+                const hunterAmount = booking.amount * 0.85;
+                await tx.hunterEarnings.create({
+                    data: {
+                        hunterId: booking.hunterId,
+                        amount: hunterAmount,
+                        bookingId: booking.id,
+                        status: 'PENDING',
+                    },
+                });
 
-            // Unlock property
-            await prisma.property.update({
-                where: { id: booking.propertyId },
-                data: { isLocked: false },
-            });
+                // Unlock property
+                await tx.property.update({
+                    where: { id: booking.propertyId },
+                    data: { isLocked: false },
+                });
 
-            await NotificationService.notifyPaymentReleased(booking.hunterId, hunterAmount);
+                await NotificationService.notifyPaymentReleased(booking.hunterId, hunterAmount);
+            });
 
             return res.json({ success: true, message: 'Viewing marked as completed. Payment released.' });
-        } else if (outcome === 'ISSUE_REPORTED') {
+        }
+        else if (outcome === 'ISSUE_REPORTED') {
             await prisma.booking.update({
                 where: { id: bookingId },
                 data: {
@@ -426,25 +442,27 @@ export const respondToIssue = async (req: any, res: Response) => {
         }
 
         if (action === 'ACCEPT') {
-            // Cancel everything and refund
-            await prisma.booking.update({
-                where: { id: bookingId },
-                data: {
-                    status: 'CANCELLED',
-                    issueStatus: 'ACCEPTED',
-                    paymentStatus: 'REFUNDED',
-                }
-            });
+            await prisma.$transaction(async (tx) => {
+                // Cancel everything and refund
+                await tx.booking.update({
+                    where: { id: bookingId },
+                    data: {
+                        status: 'CANCELLED',
+                        issueStatus: 'ACCEPTED',
+                        paymentStatus: 'REFUNDED',
+                    }
+                });
 
-            await prisma.viewingRequest.updateMany({
-                where: { bookingId },
-                data: { status: 'CANCELLED' as any }
-            });
+                await tx.viewingRequest.updateMany({
+                    where: { bookingId },
+                    data: { status: 'CANCELLED' as any }
+                });
 
-            // Unlock property
-            await prisma.property.update({
-                where: { id: booking.propertyId },
-                data: { isLocked: false },
+                // Unlock property
+                await tx.property.update({
+                    where: { id: booking.propertyId },
+                    data: { isLocked: false },
+                });
             });
 
             await NotificationService.sendNotification(
@@ -855,6 +873,12 @@ export const hideBooking = async (req: any, res: Response) => {
             data
         });
 
+        // Also hide linked viewing request if it exists
+        await prisma.viewingRequest.updateMany({
+            where: { bookingId: bookingId },
+            data
+        });
+
         res.json({ success: true, message: 'Booking hidden successfully' });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -997,9 +1021,22 @@ export const markBookingDone = async (req: any, res: Response) => {
             return res.status(400).json({ message: 'Can only mark confirmed or in-progress bookings as done' });
         }
 
+        const { pickedPropertyIds } = req.body;
+
         const updateData: any = {};
         if (role === 'HUNTER' && booking.hunterId === userId) {
             updateData.hunterDone = true;
+            // Store the picked properties in a hidden field or just process them on completion
+            // For now, we'll store them in metadata if we had it, but since we don't, 
+            // we'll just apply them when isBothDone becomes true.
+            // Let's store them in the database temporarily if needed, but the prompt implies
+            // it happens when they mark as done.
+            if (pickedPropertyIds && Array.isArray(pickedPropertyIds)) {
+                updateData.tenantFeedback = JSON.stringify({
+                    ...safeParse(booking.tenantFeedback || '{}'),
+                    pickedPropertyIds
+                });
+            }
         } else if (role === 'TENANT' && booking.tenantId === userId) {
             updateData.tenantDone = true;
         } else {
@@ -1014,19 +1051,41 @@ export const markBookingDone = async (req: any, res: Response) => {
             updateData.status = 'COMPLETED';
             updateData.completedAt = new Date();
             updateData.paymentStatus = 'RELEASED';
+            // updateData.tenantVisible = false; // Keep visible for tenant history
         }
 
         const updatedBooking = await prisma.booking.update({
             where: { id: bookingId },
             data: updateData,
+            include: { property: { include: { hunter: true } } }
         });
 
         if (isBothDone) {
-            // Mark property as RENTED (or similar)
-            await prisma.property.update({
-                where: { id: booking.propertyId },
+            // Mark primary property as RENTED if no other properties selected
+            // or if it was explicitly selected
+            const feedback = safeParse(updatedBooking.tenantFeedback || '{}');
+            const pickedPropertyIds = feedback.pickedPropertyIds || [];
+
+            const propertyIdsToMarkRented = pickedPropertyIds.length > 0
+                ? pickedPropertyIds
+                : [booking.propertyId];
+
+            await prisma.property.updateMany({
+                where: { id: { in: propertyIdsToMarkRented } },
                 data: { status: 'RENTED', isLocked: false },
             });
+
+            // Unlock other properties in the same package group if they weren't picked
+            if (updatedBooking.property.packageGroupId) {
+                await prisma.property.updateMany({
+                    where: {
+                        packageGroupId: updatedBooking.property.packageGroupId,
+                        id: { notIn: propertyIdsToMarkRented },
+                        status: 'PENDING_APPROVAL' // Or whatever its state was
+                    },
+                    data: { isLocked: false }
+                });
+            }
 
             // Create hunter earnings
             const hunterAmount = booking.amount * 0.85;
@@ -1041,10 +1100,20 @@ export const markBookingDone = async (req: any, res: Response) => {
 
             await NotificationService.notifyPaymentReleased(booking.hunterId, hunterAmount);
 
-            // Mark ViewingRequest as COMPLETED
+            // Notify tenant to review
+            await NotificationService.notifyReviewPrompt(
+                booking.tenantId,
+                booking.id,
+                updatedBooking.property.hunter.name
+            );
+
+            // Mark ViewingRequest as COMPLETED (keep visible for history)
             await prisma.viewingRequest.updateMany({
                 where: { bookingId },
-                data: { status: 'COMPLETED' as any }
+                data: {
+                    status: 'COMPLETED' as any,
+                    // tenantVisible: false // Keep visible for tenant history
+                }
             });
         }
 

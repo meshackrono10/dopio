@@ -25,7 +25,7 @@ import { useProperties } from "@/contexts/PropertyContext";
 export interface SectionGridHasMapProps { }
 
 const SectionGridHasMap: FC<SectionGridHasMapProps> = () => {
-  const { filteredProperties, loading } = useProperties();
+  const { filteredProperties, loading, pagination, setPage } = useProperties();
   const [currentHoverID, setCurrentHoverID] = useState<string | number>(-1);
   const [showFullMapFixed, setShowFullMapFixed] = useState(false);
 
@@ -58,22 +58,28 @@ const SectionGridHasMap: FC<SectionGridHasMapProps> = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 2xl:gap-x-6 gap-y-8">
-              {stays.map((item) => (
-                <div
-                  key={item.id}
-                  onMouseEnter={() => setCurrentHoverID((_) => item.id)}
-                  onMouseLeave={() => setCurrentHoverID((_) => -1)}
-                >
-                  <StayCard2 data={item} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
-                </div>
-              ))}
-            </div>
-          )}
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 2xl:gap-x-6 gap-y-8">
+                {stays.map((item) => (
+                  <div
+                    key={item.id}
+                    onMouseEnter={() => setCurrentHoverID((_) => item.id)}
+                    onMouseLeave={() => setCurrentHoverID((_) => -1)}
+                  >
+                    <StayCard2 data={item} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+                  </div>
+                ))}
+              </div>
 
-          <div className="flex mt-16 justify-center items-center">
-            <Pagination />
-          </div>
+              <div className="flex mt-16 justify-center items-center">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setPage}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {!showFullMapFixed && (

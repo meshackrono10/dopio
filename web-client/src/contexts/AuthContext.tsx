@@ -37,20 +37,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Load user from localStorage on mount
+    // Load user from localStorage and validate session on mount
     useEffect(() => {
-        const storedUser = localStorage.getItem("house_haunters_user");
-        const token = localStorage.getItem("house_haunters_token");
-        if (storedUser && token) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch (error) {
-                console.error("Failed to parse stored user:", error);
-                localStorage.removeItem("house_haunters_user");
-                localStorage.removeItem("house_haunters_token");
+        const validateSession = async () => {
+            const storedUser = localStorage.getItem("house_haunters_user");
+            const token = localStorage.getItem("house_haunters_token");
+
+            if (storedUser && token) {
+                try {
+                    // Set user from storage immediately for fast initial render
+                    setUser(JSON.parse(storedUser));
+
+                    // Verify session with backend
+                    const response = await api.get("/auth/validate");
+                    const { user: validatedUser } = response.data;
+
+                    setUser(validatedUser);
+                    localStorage.setItem("house_haunters_user", JSON.stringify(validatedUser));
+                } catch (error) {
+                    console.error("Session validation failed:", error);
+                    // Clear local storage and user state if validation fails
+                    setUser(null);
+                    localStorage.removeItem("house_haunters_user");
+                    localStorage.removeItem("house_haunters_token");
+                }
             }
-        }
-        setLoading(false);
+            setLoading(false);
+        };
+
+        validateSession();
     }, []);
 
     const login = async (email: string, password: string): Promise<boolean> => {

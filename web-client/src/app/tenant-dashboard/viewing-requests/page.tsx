@@ -71,7 +71,7 @@ export default function ViewingRequestsPage() {
             return r.status === "PENDING" || r.status === "COUNTERED";
         }
         if (filter === "completed") {
-            return r.status === "ACCEPTED" || r.status === "REJECTED";
+            return r.status === "ACCEPTED" || r.status === "REJECTED" || r.status === "CANCELLED" || r.status === "COMPLETED";
         }
         return true;
     });

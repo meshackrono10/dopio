@@ -24,7 +24,7 @@ export default function ListingsPage() {
     const { showToast } = useToast();
 
     // UI State
-    const [activeTab, setActiveTab] = useState<"ALL" | "GOLD" | "SILVER" | "BRONZE">("ALL");
+    const [activeTab, setActiveTab] = useState<"ALL" | "GOLD" | "SILVER" | "BRONZE" | "RENTED">("ALL");
     const [searchQuery, setSearchQuery] = useState("");
     const [areaFilter, setAreaFilter] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
@@ -40,7 +40,7 @@ export default function ListingsPage() {
         refreshProperties();
     }, [refreshProperties]);
 
-    const haunterProperties = allProperties.filter((p) => p.agent.id === user?.id && p.status !== 'rented');
+    const haunterProperties = allProperties.filter((p) => p.agent.id === user?.id);
 
     // Extract unique areas for filtering
     const areas = Array.from(new Set(haunterProperties.map(p => p.location.generalArea))).sort();
@@ -104,7 +104,24 @@ export default function ListingsPage() {
 
         // 2. Apply Filters
         return allEntities.filter(entity => {
-            const matchesTab = activeTab === "ALL" || entity.tier === activeTab;
+            let matchesTab = activeTab === "ALL" || entity.tier === activeTab;
+
+            // Special handling for RENTED tab
+            if (activeTab === "RENTED") {
+                if (entity.isBundle) {
+                    matchesTab = entity.members.every(m => m.status === 'rented');
+                } else {
+                    matchesTab = entity.property.status === 'rented';
+                }
+            } else if (activeTab === "ALL") {
+                // In "ALL", show everything
+                matchesTab = true;
+            } else {
+                // For Tier tabs (GOLD/SILVER/BRONZE), don't show rented by default unless it's the RENTED tab
+                const isRented = entity.isBundle ? entity.members.every(m => m.status === 'rented') : entity.property.status === 'rented';
+                matchesTab = (entity.tier === activeTab) && !isRented;
+            }
+
             const matchesSearch = entity.searchString.includes(searchQuery.toLowerCase());
             const matchesArea = areaFilter === "all" || entity.area === areaFilter;
             return matchesTab && matchesSearch && matchesArea;
@@ -175,12 +192,12 @@ export default function ListingsPage() {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex items-center gap-2 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-2xl w-fit">
-                {["ALL", "GOLD", "SILVER", "BRONZE"].map((tab) => (
+            <div className="flex items-center gap-2 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-2xl w-fit overflow-x-auto">
+                {["ALL", "GOLD", "SILVER", "BRONZE", "RENTED"].map((tab) => (
                     <button
                         key={tab}
                         onClick={() => { setActiveTab(tab as any); setCurrentPage(1); }}
-                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab
+                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab
                             ? "bg-white dark:bg-neutral-800 text-primary-600 shadow-sm"
                             : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
                             }`}

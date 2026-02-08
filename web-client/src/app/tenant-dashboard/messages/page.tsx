@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessaging } from "@/contexts/MessagingContext";
 import { useToast } from "@/components/Toast";
+import { useSearchParams } from "next/navigation";
 import MessageBubble from "@/components/MessageBubble";
 import Image from "next/image";
 import Skeleton from "@/shared/Skeleton";
+import { Suspense } from "react";
 
-export default function MessagesPage() {
+function MessagesContent() {
     const { user } = useAuth();
     const {
         conversations,
@@ -16,13 +18,35 @@ export default function MessagesPage() {
         sendMessage: firebaseSendMessage,
         loading: messagesLoading,
         selectConversation,
+        startConversation,
         selectedPartnerId: selectedConversation
     } = useMessaging();
 
     const { showToast } = useToast();
+    const searchParams = useSearchParams();
     const [newMessage, setNewMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Handle property link auto-injection
+    useEffect(() => {
+        const propertyId = searchParams.get("propertyId");
+        const propertyTitle = searchParams.get("propertyTitle");
+        const partnerId = searchParams.get("partnerId");
+
+        if (propertyId && propertyTitle && partnerId) {
+            const propertyLink = `Hi! I'm interested in this house: [${propertyTitle}](https://dapio.co.ke/listing-stay-detail/${propertyId})`;
+            setNewMessage(propertyLink);
+
+            // Check if conversation exists, if not create it
+            const exists = conversations.find(c => c.partnerId === partnerId);
+            if (exists) {
+                selectConversation(partnerId);
+            } else {
+                startConversation(partnerId);
+            }
+        }
+    }, [searchParams, conversations, selectConversation, startConversation]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -192,5 +216,17 @@ export default function MessagesPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function MessagesPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        }>
+            <MessagesContent />
+        </Suspense>
     );
 }

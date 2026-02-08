@@ -175,6 +175,38 @@ export const getHunterProfile = async (req: any, res: Response) => {
     }
 };
 
+// Get public profile (any role)
+export const getPublicProfile = async (req: any, res: Response) => {
+    try {
+        const userId = req.params.id;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+                role: true,
+                isVerified: true,
+                createdAt: true,
+                description: true,
+                workLocation: true,
+                averageRating: true,
+                reviewCount: true,
+            },
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json(user);
+    } catch (error: any) {
+        console.error('Get public profile error:', error);
+        res.status(500).json({ message: 'Failed to get public profile', error: error.message });
+    }
+};
+
 // Toggle saved property
 export const toggleSavedProperty = async (req: any, res: Response) => {
     try {

@@ -9,6 +9,7 @@ router.post('/login', authController.login);
 router.delete('/account', authMiddleware, authController.deleteAccount);
 router.post('/change-password', authMiddleware, authController.changePassword);
 router.post('/reset-password', authController.resetPassword);
+router.get('/validate', authMiddleware, authController.validateSession);
 // router.post('/google', authController.googleLogin);
 // router.get('/me', authMiddleware, authController.getMe);
 

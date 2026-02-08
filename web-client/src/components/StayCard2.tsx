@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import api from "@/services/api";
 import { useToast } from "@/components/Toast";
+import Avatar from "@/shared/Avatar";
 
 export interface StayCard2Props {
   className?: string;
@@ -158,6 +159,26 @@ const StayCard2: FC<StayCard2Props> = ({
             )}
           </span>
         </div>
+
+        {/* House Hunter Info */}
+        {data.agent && (
+          <div className="flex items-center gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <Avatar
+              imgUrl={data.agent.profilePhoto}
+              sizeClass="h-7 w-7"
+              radius="rounded-full"
+            />
+            <div className="flex- 1 min-w-0">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Listed by</p>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                {data.agent.name || "House Hunter"}
+              </p>
+            </div>
+            {data.agent.isVerified && (
+              <i className="las la-check-circle text-primary-600 text-base ml-auto" title="Verified Hunter"></i>
+            )}
+          </div>
+        )}
       </div>
     );
   };

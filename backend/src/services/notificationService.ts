@@ -53,4 +53,14 @@ export class NotificationService {
             '/wallet'
         );
     }
+
+    static async notifyReviewPrompt(tenantId: string, bookingId: string, hunterName: string) {
+        await this.sendNotification(
+            tenantId,
+            'Rate Your Experience',
+            `Your viewing with ${hunterName} is complete. Please take a moment to rate them!`,
+            'REVIEW_PROMPT',
+            `/bookings/${bookingId}`
+        );
+    }
 }

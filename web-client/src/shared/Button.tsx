@@ -17,6 +17,7 @@ export interface ButtonProps {
   targetBlank?: boolean;
   onClick?: () => void;
   children?: React.ReactNode;
+  "aria-label"?: string;
 }
 
 const Button: FC<ButtonProps> = ({
@@ -30,7 +31,9 @@ const Button: FC<ButtonProps> = ({
   targetBlank,
   type,
   loading,
-  onClick = () => {},
+  onClick = () => { },
+  "aria-label": ariaLabel,
+  ...args
 }) => {
   const CLASSES = `nc-Button relative h-auto inline-flex items-center justify-center rounded-full transition-colors ${fontSize} ${sizeClass} ${translate} ${className} `;
 
@@ -67,6 +70,8 @@ const Button: FC<ButtonProps> = ({
         className={`${CLASSES} `}
         onClick={onClick}
         rel={targetBlank ? "noopener noreferrer" : undefined}
+        aria-label={ariaLabel}
+        {...(args as any)}
       >
         {children || `This is Link`}
       </Link>
@@ -76,9 +81,12 @@ const Button: FC<ButtonProps> = ({
   return (
     <button
       disabled={disabled || loading}
-      className={`${CLASSES}`}
+      className={`${CLASSES} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-6000`}
       onClick={onClick}
       type={type}
+      aria-label={ariaLabel}
+      aria-busy={loading}
+      {...(args as any)}
     >
       {loading && _renderLoading()}
       {children || `This is Button`}

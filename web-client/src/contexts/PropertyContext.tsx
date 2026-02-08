@@ -17,6 +17,13 @@ interface PropertyContextType {
     loading: boolean;
     error: string | null;
     clearError: () => void;
+    pagination: {
+        page: number;
+        totalPages: number;
+        totalResults: number;
+        limit: number;
+    };
+    setPage: (page: number) => void;
 }
 
 interface PropertyFilters {
@@ -40,6 +47,12 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<PropertyFilters>({});
+    const [pagination, setPagination] = useState({
+        page: 1,
+        totalPages: 1,
+        totalResults: 0,
+        limit: 12
+    });
 
     const clearError = useCallback(() => setError(null), []);
 
@@ -133,13 +146,16 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
     };
 
-    const fetchProperties = useCallback(async () => {
+    const fetchProperties = useCallback(async (page = 1, limit = 12) => {
         try {
             setLoading(true);
-            const response = await api.get('/properties');
-            const mapped = response.data.map(mapBackendToFrontend);
+            const response = await api.get(`/properties?page=${page}&limit=${limit}`);
+            const { properties: backendProperties, pagination: backendPagination } = response.data;
+
+            const mapped = backendProperties.map(mapBackendToFrontend);
             setProperties(mapped);
             setFilteredProperties(mapped);
+            setPagination(backendPagination);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to fetch properties');
         } finally {
@@ -147,8 +163,12 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, []);
 
+    const setPage = useCallback((page: number) => {
+        fetchProperties(page, pagination.limit);
+    }, [fetchProperties, pagination.limit]);
+
     useEffect(() => {
-        fetchProperties();
+        fetchProperties(1, pagination.limit);
     }, [fetchProperties]);
 
 
@@ -285,6 +305,8 @@ export const PropertyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             loading,
             error,
             clearError,
+            pagination,
+            setPage,
         }}>
             {children}
         </PropertyContext.Provider>

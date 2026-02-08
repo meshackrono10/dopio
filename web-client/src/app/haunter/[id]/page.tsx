@@ -80,14 +80,10 @@ const HaunterProfilePage: FC<HaunterProfilePageProps> = ({ params }) => {
                 rating,
                 comment,
             });
-            showToast("success", "Review submitted successfully!");
-            setShowReviewModal(false);
-            // Refresh profile to show new rating
-            const response = await api.get(`/users/hunter/${id}`);
-            setHunter(response.data.hunter);
-            setRating(response.data.rating);
-            setReviewCount(response.data.reviewCount);
             setReviews(response.data.reviews);
+
+            showToast("success", "Review submitted successfully!");
+            router.push("/tenant-dashboard/bookings" as Route);
 
             // Clean up URL
             router.replace(`/haunter/${id}` as Route);

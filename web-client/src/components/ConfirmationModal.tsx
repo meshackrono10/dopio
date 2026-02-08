@@ -11,6 +11,7 @@ export interface ConfirmationModalProps {
     onConfirm: () => void;
     title: string;
     description: string;
+    children?: React.ReactNode;
     confirmText?: string;
     cancelText?: string;
     loading?: boolean;
@@ -23,6 +24,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
     onConfirm,
     title,
     description,
+    children,
     confirmText = "Confirm",
     cancelText = "Cancel",
     loading = false,
@@ -34,6 +36,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
                 <p className="text-neutral-600 dark:text-neutral-400">
                     {description}
                 </p>
+                {children && <div className="mt-4">{children}</div>}
                 <div className="flex justify-end space-x-3">
                     <ButtonSecondary onClick={onClose}>{cancelText}</ButtonSecondary>
                     <ButtonPrimary
@@ -53,6 +56,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
             isOpenProp={isOpen}
             onCloseModal={onClose}
             renderContent={renderContent}
+            renderTrigger={() => null}
             modalTitle={title}
             contentExtraClass="max-w-md"
         />

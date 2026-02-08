@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../index';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { getAvailablePackagesForProperty } from '../services/packageAvailabilityService';
 
 const propertySchema = z.object({
     title: z.string().min(5),
@@ -63,29 +64,43 @@ const propertySchema = z.object({
 export const getAllProperties = async (req: any, res: Response) => {
     try {
         const userId = req.user?.userId;
-        const properties = await prisma.property.findMany({
-            where: userId ? {
-                OR: [
-                    { status: 'AVAILABLE' },
-                    { hunterId: userId }
-                ]
-            } : {
-                status: 'AVAILABLE'
-            },
-            include: {
-                hunter: {
-                    select: {
-                        id: true,
-                        name: true,
-                        avatarUrl: true,
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 12;
+        const skip = (page - 1) * limit;
+
+        const where: any = userId ? {
+            OR: [
+                { status: 'AVAILABLE' as const, isDeleted: false, hunter: { isDeleted: false } },
+                { hunterId: userId, isDeleted: false }
+            ]
+        } : {
+            status: 'AVAILABLE' as const,
+            isDeleted: false,
+            hunter: { isDeleted: false }
+        };
+
+        const [properties, totalCount] = await Promise.all([
+            prisma.property.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    hunter: {
+                        select: {
+                            id: true,
+                            name: true,
+                            avatarUrl: true,
+                        },
                     },
+                    packages: true,
+                    bookings: userId ? {
+                        where: { tenantId: userId },
+                    } : false,
                 },
-                packages: true,
-                bookings: userId ? {
-                    where: { tenantId: userId },
-                } : false,
-            },
-        });
+            }),
+            prisma.property.count({ where })
+        ]);
 
         const processedProperties = properties.map(prop => {
             const location = typeof prop.location === 'string' ? JSON.parse(prop.location) : prop.location;
@@ -112,9 +127,10 @@ export const getAllProperties = async (req: any, res: Response) => {
                 return responseData;
             }
 
-            // Fuzz location (approx 500m-1km offset)
-            const fuzzLat = (Math.random() - 0.5) * 0.01;
-            const fuzzLng = (Math.random() - 0.5) * 0.01;
+            // Deterministic fuzzing based on property ID
+            const seed = prop.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const fuzzLat = (((seed % 100) / 100) - 0.5) * 0.01;
+            const fuzzLng = ((((seed * 13) % 100) / 100) - 0.5) * 0.01;
 
             return {
                 ...responseData,
@@ -128,7 +144,15 @@ export const getAllProperties = async (req: any, res: Response) => {
             };
         });
 
-        res.json(processedProperties);
+        res.json({
+            properties: processedProperties,
+            pagination: {
+                total: totalCount,
+                page,
+                limit,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -151,6 +175,8 @@ export const getPropertyById = async (req: any, res: Response) => {
                         avatarUrl: true,
                         isVerified: true,
                         verificationStatus: true,
+                        averageRating: true,
+                        reviewCount: true,
                         createdAt: true,
                     },
                 },
@@ -165,22 +191,8 @@ export const getPropertyById = async (req: any, res: Response) => {
             return res.status(404).json({ message: 'Property not found' });
         }
 
-        // Calculate average rating and review count for the HUNTER
-        const reviews = await prisma.review.findMany({
-            where: {
-                booking: {
-                    hunterId: property.hunterId,
-                },
-            },
-            select: {
-                rating: true,
-            },
-        });
-
-        const reviewCount = reviews.length;
-        const averageRating = reviewCount > 0
-            ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviewCount
-            : 0;
+        const reviewCount = property.hunter.reviewCount || 0;
+        const averageRating = property.hunter.averageRating || 0;
 
         const location = typeof property.location === 'string' ? JSON.parse(property.location) : property.location;
         const amenities = typeof property.amenities === 'string' ? JSON.parse(property.amenities) : property.amenities;
@@ -192,6 +204,9 @@ export const getPropertyById = async (req: any, res: Response) => {
         const isOwner = userId && property.hunterId === userId;
         const hasPaid = userId && (property as any).bookings?.length > 0;
 
+        // Filter packages based on availability
+        const availablePackages = await getAvailablePackagesForProperty(propertyId);
+
         const responseData = {
             ...property,
             location,
@@ -200,6 +215,8 @@ export const getPropertyById = async (req: any, res: Response) => {
             videos,
             utilities,
             packageProperties,
+            packages: availablePackages,
+            viewingPackages: availablePackages, // For compatibility
             rating: parseFloat(averageRating.toFixed(1)),
             reviewCount,
         };
@@ -208,9 +225,10 @@ export const getPropertyById = async (req: any, res: Response) => {
             return res.json(responseData);
         }
 
-        // Fuzz location
-        const fuzzLat = (Math.random() - 0.5) * 0.01;
-        const fuzzLng = (Math.random() - 0.5) * 0.01;
+        // Deterministic fuzzing
+        const seed = property.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const fuzzLat = (((seed % 100) / 100) - 0.5) * 0.01;
+        const fuzzLng = ((((seed * 13) % 100) / 100) - 0.5) * 0.01;
 
         res.json({
             ...responseData,
@@ -446,25 +464,34 @@ export const updateProperty = async (req: any, res: Response) => {
                 include: { packages: true },
             });
 
-            // If packages are provided, update them
+            // If packages are provided, update them selectively
             if (packages) {
-                // Delete existing packages
-                await tx.viewingPackage.deleteMany({
+                const existingPackages = await tx.viewingPackage.findMany({
                     where: { propertyId },
                 });
 
-                // Create new packages
-                await tx.property.update({
-                    where: { id: propertyId },
-                    data: {
-                        packages: {
-                            create: packages.map(pkg => ({
+                for (const pkg of packages) {
+                    const existing = existingPackages.find(p => p.tier === pkg.tier);
+                    if (existing) {
+                        await tx.viewingPackage.update({
+                            where: { id: existing.id },
+                            data: {
+                                name: pkg.name,
+                                price: pkg.price,
+                                propertiesIncluded: pkg.propertiesIncluded,
+                                features: JSON.stringify(pkg.features),
+                            },
+                        });
+                    } else {
+                        await tx.viewingPackage.create({
+                            data: {
                                 ...pkg,
-                                features: JSON.stringify(pkg.features)
-                            })) as any,
-                        },
-                    },
-                });
+                                features: JSON.stringify(pkg.features),
+                                propertyId,
+                            },
+                        });
+                    }
+                }
             }
 
             return tx.property.findUnique({
@@ -482,6 +509,7 @@ export const updateProperty = async (req: any, res: Response) => {
     }
 };
 
+// Soft delete property to preserve audit trails
 export const deleteProperty = async (req: any, res: Response) => {
     try {
         const propertyId = req.params.id;
@@ -490,12 +518,8 @@ export const deleteProperty = async (req: any, res: Response) => {
             include: {
                 bookings: {
                     where: {
-                        status: { in: ['CONFIRMED'] }
-                    }
-                },
-                requests: {
-                    where: {
-                        paymentStatus: { in: ['PAID', 'ESCROW'] }
+                        status: { in: ['CONFIRMED', 'IN_PROGRESS', 'DISPUTED'] },
+                        paymentStatus: 'ESCROW'
                     }
                 }
             }
@@ -509,74 +533,24 @@ export const deleteProperty = async (req: any, res: Response) => {
             return res.status(403).json({ message: 'Not authorized to delete this property' });
         }
 
-        if (property.status === 'RENTED') {
-            return res.status(400).json({ message: 'Cannot delete a rented property' });
-        }
-
-        // Prevent deletion if there are active bookings or paid requests
+        // Prevent deletion if there are active bookings with money in escrow
         if (property.bookings.length > 0) {
             return res.status(400).json({
-                message: 'Cannot delete property with active bookings. Please complete or cancel them first.'
+                message: 'Cannot delete property with active escrow bookings. Please complete or refund them first.'
             });
         }
 
-        if (property.requests.length > 0) {
-            return res.status(400).json({
-                message: 'Cannot delete property with pending paid viewing requests. Please process or refund them first.'
-            });
-        }
-
-        // Perform deletion in a transaction to handle all related records
-        await prisma.$transaction(async (tx) => {
-            // 1. Delete viewing packages
-            await tx.viewingPackage.deleteMany({ where: { propertyId } });
-
-            // 2. Delete saved property records
-            await tx.savedProperty.deleteMany({ where: { propertyId } });
-
-            // 3. Delete alternative offers
-            await tx.alternativeOffer.deleteMany({ where: { propertyId } });
-
-            // 5. Handle viewing requests (unpaid/cancelled)
-            await tx.viewingRequest.deleteMany({ where: { propertyId } });
-
-            // 6. Handle bookings (cancelled/completed)
-            // Note: We already checked for CONFIRMED bookings above.
-            // We need to handle related records for these bookings too.
-            const bookingIds = (await tx.booking.findMany({
-                where: { propertyId },
-                select: { id: true }
-            })).map(b => b.id);
-
-            if (bookingIds.length > 0) {
-                await tx.review.deleteMany({ where: { bookingId: { in: bookingIds } } });
-                await tx.message.deleteMany({ where: { bookingId: { in: bookingIds } } });
-                await tx.rescheduleRequest.deleteMany({ where: { bookingId: { in: bookingIds } } });
-                await tx.meetingPoint.deleteMany({ where: { bookingId: { in: bookingIds } } });
-                await tx.hunterEarnings.deleteMany({ where: { bookingId: { in: bookingIds } } });
-                await tx.dispute.deleteMany({ where: { bookingId: { in: bookingIds } } });
-                await tx.booking.deleteMany({ where: { id: { in: bookingIds } } });
+        // Perform soft delete
+        await prisma.property.update({
+            where: { id: propertyId },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date(),
+                status: 'RENTED', // Hide from search
             }
-
-            // 7. Handle disputes directly linked to property
-            await tx.dispute.deleteMany({ where: { propertyId } });
-
-            // 8. Update conversations and messages to remove property reference
-            await tx.conversation.updateMany({
-                where: { propertyId },
-                data: { propertyId: null }
-            });
-
-            await tx.message.updateMany({
-                where: { propertyId },
-                data: { propertyId: null }
-            });
-
-            // 9. Finally delete the property
-            await tx.property.delete({ where: { id: propertyId } });
         });
 
-        res.json({ message: 'Property and all related records deleted successfully' });
+        res.json({ message: 'Property archived successfully. Historical records preserved.' });
     } catch (error: any) {
         console.error('[PropertyController] Delete error:', error);
         res.status(500).json({ message: error.message });

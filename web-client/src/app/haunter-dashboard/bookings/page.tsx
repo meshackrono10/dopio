@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBookings } from "@/contexts/BookingContext";
 import Image from "next/image";
@@ -13,6 +13,11 @@ export default function BookingsPage() {
     const { user } = useAuth();
     const { bookings: allBookings, loading: bookingsLoading, confirmMeetup, markDone } = useBookings();
     const { showToast } = useToast();
+    const { fetchBookings } = useBookings();
+
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
 
     const haunterBookings = allBookings.filter(b => b.haunterId === user?.id);
 
@@ -103,7 +108,7 @@ export default function BookingsPage() {
                                             </p>
                                         </div>
                                         <span
-                                            className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${booking.status === "confirmed"
+                                            className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${booking.status === "confirmed" || booking.status === "in_progress"
                                                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                                 : booking.status === "pending"
                                                     ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
@@ -144,7 +149,7 @@ export default function BookingsPage() {
                                             View Details
                                         </Link>
 
-                                        {booking.status === "confirmed" && !booking.physicalMeetingConfirmed && (
+                                        {(booking.status === "confirmed" || booking.status === "in_progress") && !booking.physicalMeetingConfirmed && (
                                             <button
                                                 onClick={() => handleConfirmMeetup(booking.id)}
                                                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"

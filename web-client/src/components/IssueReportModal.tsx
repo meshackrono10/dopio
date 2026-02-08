@@ -53,6 +53,7 @@ const IssueReportModal: FC<IssueReportModalProps> = ({
             isOpenProp={isOpen}
             onCloseModal={onClose}
             renderContent={renderContent}
+            renderTrigger={() => null}
             modalTitle="Report Viewing Issue"
             contentExtraClass="max-w-md"
         />

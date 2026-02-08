@@ -583,9 +583,14 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
   };
 
   const renderSectionIncludedProperties = () => {
-    // Only for packages (Silver/Gold)
+    // Only show for Gold/Silver packages when selected
     const listingPackage = property.listingPackage;
     if (!listingPackage || (listingPackage !== 'SILVER' && listingPackage !== 'GOLD')) {
+      return null;
+    }
+
+    // Hide if Bronze is selected
+    if (selectedPackage?.tier === "BRONZE") {
       return null;
     }
 
@@ -671,8 +676,13 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
   };
 
   const renderGoldPackageSection = () => {
-    // Only show if this is a Gold package with package members
+    // Only show if this is a Gold/Silver package with members AND not selecting Bronze
     if (!property?.packageGroupId || packageMembers.length === 0) {
+      return null;
+    }
+
+    // Hide if Bronze is selected
+    if (selectedPackage?.tier === "BRONZE") {
       return null;
     }
 
@@ -716,6 +726,22 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
             <div className="text-xs text-neutral-500 mt-1">
               {selectedPackage.propertiesIncluded} viewing(s) included
             </div>
+
+            {/* Package Recommendation Alert */}
+            {selectedPackage.tier === "BRONZE" && (property.listingPackage === "GOLD" || property.listingPackage === "SILVER") && (
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                <div className="flex gap-2">
+                  <i className="las la-lightbulb text-amber-600 text-lg"></i>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
+                    This house is part of a {property.listingPackage.toLowerCase()} bundle.
+                    Choose the <button onClick={() => {
+                      const pkg = packages.find((p: any) => p.tier === property.listingPackage);
+                      if (pkg) setSelectedPackage(pkg);
+                    }} className="underline font-bold hover:text-amber-600">{property.listingPackage}</button> package to view all {packageMembers.length + 1} related properties at a discount.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -750,7 +776,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({ params }) => {
         </ButtonPrimary>
 
         <ComparisonButton property={property} className="w-full" />
-        <ButtonSecondary href={`/tenant-dashboard?tab=messages&partnerId=${hunter?.id}` as Route}>
+        <ButtonSecondary href={`/tenant-dashboard/messages?partnerId=${hunter?.id}&propertyId=${property.id}&propertyTitle=${encodeURIComponent(property.title)}` as Route}>
           Message Haunter
         </ButtonSecondary>
       </div>

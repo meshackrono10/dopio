@@ -60,14 +60,14 @@ export default function TenantDashboardOverview() {
         {
             icon: "la-calendar-check",
             label: "Upcoming Viewings",
-            value: tenantBookings.filter((b: any) => b.status !== "COMPLETED" && b.status !== "CANCELLED").length,
+            value: tenantBookings.filter((b: any) => b.status === "confirmed" || b.status === "in_progress").length,
             href: "/tenant-dashboard/viewing-requests",
             color: "green"
         },
         {
             icon: "la-check-circle",
             label: "Completed",
-            value: tenantBookings.filter((b: any) => b.status === "COMPLETED").length,
+            value: tenantBookings.filter((b: any) => b.status === "completed").length,
             href: "/tenant-dashboard/bookings",
             color: "blue"
         },
@@ -183,10 +183,10 @@ export default function TenantDashboardOverview() {
                             View All
                         </Link>
                     </div>
-                    {tenantBookings.filter((b: any) => b.status === "CONFIRMED").length > 0 ? (
+                    {tenantBookings.filter((b: any) => b.status === "confirmed" || b.status === "in_progress").length > 0 ? (
                         <div className="space-y-3">
                             {tenantBookings
-                                .filter((b: any) => b.status === "CONFIRMED")
+                                .filter((b: any) => b.status === "confirmed" || b.status === "in_progress")
                                 .slice(0, 3)
                                 .map((booking: any) => (
                                     <div key={booking.id} className="p-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
@@ -225,6 +225,59 @@ export default function TenantDashboardOverview() {
                         <p className="text-neutral-500 dark:text-neutral-400 text-sm">No messages yet</p>
                     )}
                 </div>
+            </div>
+
+            {/* Recently Completed */}
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 className="text-lg font-semibold">Recently Completed</h3>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Your successful viewings and history</p>
+                    </div>
+                    <Link href={"/tenant-dashboard/bookings" as Route} className="text-sm text-primary-600 hover:underline">
+                        View All History
+                    </Link>
+                </div>
+
+                {tenantBookings.filter((b: any) => b.status === "completed").length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {tenantBookings
+                            .filter((b: any) => b.status === "completed")
+                            .sort((a, b) => new Date(b.completedAt || b.updatedAt).getTime() - new Date(a.completedAt || a.updatedAt).getTime())
+                            .slice(0, 3)
+                            .map((booking: any) => (
+                                <div key={booking.id} className="p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-xl border border-neutral-100 dark:border-neutral-600">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <Badge name="Completed" color="green" />
+                                        <span className="text-[10px] text-neutral-400 uppercase font-medium">
+                                            {new Date(booking.completedAt || booking.updatedAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <p className="font-semibold text-neutral-900 dark:text-neutral-100 line-clamp-1">{booking.propertyTitle}</p>
+                                    <div className="flex items-center gap-2 mt-3 p-2 bg-white dark:bg-neutral-800 rounded-lg">
+                                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                                            <i className="las la-user-tie text-primary-600"></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Haunter</p>
+                                            <p className="text-sm font-medium truncate">{booking.hunterName}</p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href={`/tenant-dashboard/reviews` as Route}
+                                        className="mt-4 block w-full py-2 px-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-lg text-center text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                                    >
+                                        Share Feedback
+                                    </Link>
+                                </div>
+                            ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700">
+                        <i className="las la-history text-4xl text-neutral-300 dark:text-neutral-600"></i>
+                        <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-sm">No completed bookings yet</p>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -27,12 +27,25 @@ export default function MessagesPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { showToast } = useToast();
 
-    // Set selected conversation from URL param if available
+    // Set selected conversation and property context from URL param if available
     useEffect(() => {
-        if (partnerIdParam) {
-            startConversation(partnerIdParam);
+        const propertyId = searchParams.get('propertyId');
+        const propertyTitle = searchParams.get('propertyTitle');
+        const partnerId = partnerIdParam;
+
+        if (propertyId && propertyTitle && partnerId) {
+            const propertyLink = `Hi! I'm interested in this house: [${propertyTitle}](https://dapio.co.ke/listing-stay-detail/${propertyId})`;
+            setNewMessage(propertyLink);
+
+            // Check if conversation exists, if not create it
+            const exists = conversations.find(c => c.partnerId === partnerId);
+            if (exists) {
+                selectConversation(partnerId);
+            } else {
+                startConversation(partnerId);
+            }
         }
-    }, [partnerIdParam, startConversation]);
+    }, [partnerIdParam, searchParams, conversations, selectConversation, startConversation]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

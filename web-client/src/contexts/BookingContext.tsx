@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { BookingStatus } from '../data/types';
 import api from '../services/api';
+import { useAuth } from './AuthContext';
 
 export interface Booking {
     id: string;
@@ -33,6 +34,7 @@ export interface Booking {
     tenantDone?: boolean;
     createdAt: string;
     completedAt?: string;
+    updatedAt: string;
     reviews?: any[];
 }
 
@@ -54,6 +56,7 @@ interface BookingContextType {
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export function BookingProvider({ children }: { children: ReactNode }) {
+    const { isAuthenticated } = useAuth();
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -66,6 +69,12 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             status = 'cancelled';
         } else if (b.status === 'CONFIRMED') {
             status = 'confirmed';
+        } else if (b.status === 'IN_PROGRESS') {
+            status = 'in_progress';
+        } else if (b.status === 'DISPUTED') {
+            status = 'disputed';
+        } else if (b.status === 'PENDING_PAYMENT') {
+            status = 'pending_payment';
         }
 
         const property = b.property || {};
@@ -101,6 +110,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             tenantDone: b.tenantDone,
             createdAt: b.createdAt,
             completedAt: b.completedAt,
+            updatedAt: b.updatedAt,
             reviews: b.reviews || [],
         };
     };
@@ -119,8 +129,13 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
-        fetchBookings();
-    }, [fetchBookings]);
+        if (isAuthenticated) {
+            fetchBookings();
+        } else {
+            setBookings([]);
+            setLoading(false);
+        }
+    }, [fetchBookings, isAuthenticated]);
 
     const updateBooking = async (id: string, updates: Partial<Booking>) => {
         try {

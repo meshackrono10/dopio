@@ -207,58 +207,91 @@ export const getHunterEarnings = async (req: any, res: Response) => {
     }
 };
 
-// Request withdrawal (hunter)
+// Request withdrawal (hunter) - ATOMIC TRANSACTION
 export const requestWithdrawal = async (req: any, res: Response) => {
     try {
         const hunterId = req.user.userId;
         const { amount, phoneNumber } = req.body;
 
-        const pendingEarnings = await prisma.hunterEarnings.findMany({
-            where: {
-                hunterId,
-                status: 'PENDING',
-            }
-        });
-
-        const totalPending = pendingEarnings.reduce((sum: number, e: any) => sum + e.amount, 0);
-
-        if (totalPending < amount) {
-            return res.status(400).json({ message: 'Insufficient balance' });
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ message: 'Invalid amount' });
         }
 
-        let remaining = amount;
-        for (const earning of pendingEarnings) {
-            if (remaining <= 0) break;
+        const withdrawal = await prisma.$transaction(async (tx) => {
+            const pendingEarnings = await tx.hunterEarnings.findMany({
+                where: {
+                    hunterId,
+                    status: 'PENDING',
+                },
+                orderBy: { createdAt: 'asc' }
+            });
 
-            if (earning.amount <= remaining) {
-                await prisma.hunterEarnings.update({
-                    where: { id: earning.id },
-                    data: { status: 'WITHDRAWN' }
-                });
-                remaining -= earning.amount;
-            }
-        }
+            const totalPending = pendingEarnings.reduce((sum: number, e: any) => sum + e.amount, 0);
 
-        const withdrawal = await prisma.paymentHistory.create({
-            data: {
-                userId: hunterId,
-                amount: amount,
-                type: 'WITHDRAWAL',
-                mpesaReceiptNumber: `WD${Date.now().toString().slice(-8)}`,
-                phoneNumber: phoneNumber,
-                status: 'COMPLETED',
-                description: 'Hunter earnings withdrawal',
+            if (totalPending < amount) {
+                throw new Error('Insufficient balance');
             }
+
+            let remaining = amount;
+            const updatedEarningIds: string[] = [];
+
+            for (const earning of pendingEarnings) {
+                if (remaining <= 0) break;
+
+                // We only mark as withdrawn if the earning is less than or equal to the remaining requested amount
+                // In a production system, you'd handle partial withdrawals of a single earning record,
+                // but for this MVP, we'll consume earnings records sequentially.
+                if (earning.amount <= remaining) {
+                    await tx.hunterEarnings.update({
+                        where: { id: earning.id },
+                        data: { status: 'WITHDRAWN' }
+                    });
+                    updatedEarningIds.push(earning.id);
+                    remaining -= earning.amount;
+                } else {
+                    // Handle partial consumption of an earning record
+                    await tx.hunterEarnings.update({
+                        where: { id: earning.id },
+                        data: { amount: earning.amount - remaining, status: 'PENDING' }
+                    });
+
+                    // Create a mirror record for the withdrawn portion to keep audit trail clean
+                    await tx.hunterEarnings.create({
+                        data: {
+                            hunterId: earning.hunterId,
+                            amount: remaining,
+                            bookingId: earning.bookingId,
+                            status: 'WITHDRAWN',
+                        }
+                    });
+
+                    remaining = 0;
+                }
+            }
+
+            // Record the withdrawal as PENDING
+            // In production, this would trigger an actual B2C Mpesa API call.
+            return await tx.paymentHistory.create({
+                data: {
+                    userId: hunterId,
+                    amount: amount,
+                    type: 'WITHDRAWAL',
+                    mpesaReceiptNumber: `pending_${Date.now()}`,
+                    phoneNumber: phoneNumber,
+                    status: 'PENDING', // MUST BE PENDING until actual gateway success
+                    description: `Hunter withdrawal request of KES ${amount}`,
+                }
+            });
         });
 
         res.json({
             success: true,
-            message: 'Withdrawal completed successfully',
+            message: 'Withdrawal request submitted successfully. It will be processed shortly.',
             withdrawal,
         });
     } catch (error: any) {
         console.error('Withdrawal error:', error);
-        res.status(500).json({ message: 'Failed to process withdrawal' });
+        res.status(400).json({ message: error.message || 'Failed to process withdrawal' });
     }
 };
 // Get consolidated wallet summary
@@ -313,7 +346,7 @@ export const getWalletSummary = async (req: any, res: Response) => {
             });
 
             const bookingsEscrow = await prisma.booking.findMany({
-                where: { tenantId: userId, paymentStatus: 'ESCROW' }
+                where: { tenantId: userId, paymentStatus: 'ESCROW', property: { isDeleted: false } }
             });
 
             const available = history

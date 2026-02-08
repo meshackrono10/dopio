@@ -72,9 +72,11 @@ export const login = async (req: Request, res: Response) => {
         const validatedData = loginSchema.parse(req.body);
         const { email, password } = validatedData;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findFirst({
+            where: { email, isDeleted: false }
+        });
         if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Invalid credentials or account deactivated' });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -109,25 +111,63 @@ export const login = async (req: Request, res: Response) => {
     }
 };
 
-// Delete account
+// Soft delete account with transaction and safety checks
 export const deleteAccount = async (req: any, res: Response) => {
     try {
         const userId = req.user.userId;
 
-        // Delete all related data first
-        await prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } });
-        await prisma.review.deleteMany({ where: { booking: { OR: [{ tenantId: userId }, { hunterId: userId }] } } });
-        await prisma.viewingRequest.deleteMany({ where: { OR: [{ tenantId: userId }, { property: { hunterId: userId } }] } });
-        await prisma.booking.deleteMany({ where: { OR: [{ tenantId: userId }, { hunterId: userId }] } });
-        await prisma.property.deleteMany({ where: { hunterId: userId } });
+        await prisma.$transaction(async (tx) => {
+            // 1. Check for active escrow funds or confirmed bookings
+            const activeBookings = await tx.booking.findMany({
+                where: {
+                    OR: [
+                        { tenantId: userId },
+                        { hunterId: userId }
+                    ],
+                    status: { in: ['CONFIRMED', 'IN_PROGRESS', 'DISPUTED'] },
+                    paymentStatus: 'ESCROW'
+                }
+            });
 
-        // Finally delete the user
-        await prisma.user.delete({ where: { id: userId } });
+            if (activeBookings.length > 0) {
+                throw new Error('Cannot delete account with active bookings or funds in escrow. Please complete or dispute these first.');
+            }
 
-        res.json({ message: 'Account deleted successfully' });
+            // 2. Clear sensitive PII but keep the record for audit/ledger
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    isDeleted: true,
+                    deletedAt: new Date(),
+                    email: `deleted_${userId}@dapio.com`, // Avoid email reuse/conflicts and protect PII
+                    phone: null,
+                    password: 'DELETED',
+                    name: 'Deleted User',
+                    avatarUrl: null,
+                    idFrontUrl: null,
+                    idBackUrl: null,
+                    selfieUrl: null,
+                },
+            });
+
+            // 3. Deactivate their properties
+            await tx.property.updateMany({
+                where: { hunterId: userId },
+                data: {
+                    status: 'RENTED', //effectively hides it
+                    isDeleted: true,
+                    deletedAt: new Date()
+                }
+            });
+
+            // Note: We DO NOT delete messages, reviews, or earnings. 
+            // These must remain for the other party's history and legal compliance.
+        });
+
+        res.json({ message: 'Account deactivated successfully. Your data has been anonymized.' });
     } catch (error: any) {
         console.error('Delete account error:', error);
-        res.status(500).json({ message: 'Failed to delete account', error: error.message });
+        res.status(400).json({ message: error.message || 'Failed to delete account' });
     }
 };
 // Change password
@@ -196,5 +236,36 @@ export const resetPassword = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Reset password error:', error);
         res.status(500).json({ message: 'Failed to reset password', error: error.message });
+    }
+};
+
+// Validate session and return user profile
+export const validateSession = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.userId;
+        const user = await prisma.user.findFirst({
+            where: { id: userId, isDeleted: false },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                avatarUrl: true,
+                phone: true,
+                isVerified: true,
+                verificationStatus: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ user });
+    } catch (error: any) {
+        console.error('Validate session error:', error);
+        res.status(500).json({ message: 'Failed to validate session', error: error.message });
     }
 };

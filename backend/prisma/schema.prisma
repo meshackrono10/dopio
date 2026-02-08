@@ -26,6 +26,8 @@ model User {
   reviewCount         Int              @default(0)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+  isDeleted           Boolean          @default(false)
+  deletedAt           DateTime?
   hunterBookings      Booking[]        @relation("HunterBookings")
   bookings            Booking[]        @relation("TenantBookings")
   hunterConversations Conversation[]   @relation("HunterConversations")
@@ -69,6 +71,8 @@ model Property {
 
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  isDeleted         Boolean            @default(false)
+  deletedAt         DateTime?
   bookings          Booking[]
   disputes          Dispute[]
   hunter            User               @relation(fields: [hunterId], references: [id])
@@ -96,6 +100,7 @@ model ViewingPackage {
   features           String      @db.LongText
   propertyId         String
   property           Property    @relation(fields: [propertyId], references: [id])
+  requests           ViewingRequest[]
 
   // Group linking per tier
   packageGroupId  String?
@@ -126,6 +131,7 @@ model ViewingRequest {
   bookingId        String?       @unique
   tenantVisible    Boolean       @default(true)
   hunterVisible    Boolean       @default(true)
+  package          ViewingPackage? @relation(fields: [packageId], references: [id])
   property         Property      @relation(fields: [propertyId], references: [id])
   tenant           User          @relation(fields: [tenantId], references: [id])
   booking          Booking?      @relation("RequestToBooking", fields: [bookingId], references: [id])

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import api from "@/services/api";
 import { useToast } from "@/components/Toast";
 import { Route } from "@/routers/types";
@@ -39,6 +40,7 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
     console.log(`DEBUG: Date check for Card ${request.id}:`, { today: todayStr, scheduled: bDateStr, isToday });
 
     const { showToast } = useToast();
+    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [showCounterForm, setShowCounterForm] = useState(false);
     const [showAcceptForm, setShowAcceptForm] = useState(false);
@@ -47,11 +49,17 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
     const [showReportIssueModal, setShowReportIssueModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
 
+    // Multi-property selection (Silver/Gold)
+    const [packageProperties, setPackageProperties] = useState<any[]>([]);
+    const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+    const [fetchingPackage, setFetchingPackage] = useState(false);
+
     // Unified confirm modal state
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         title: string;
         description: string;
+        children?: React.ReactNode;
         confirmText?: string;
         onConfirm: () => void;
         confirmButtonClass?: string;
@@ -112,9 +120,41 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
     const displayLocation = getDisplayLocation();
 
     const booking = request.booking;
-    const isMeetingInProgress = booking?.status === 'IN_PROGRESS' || booking?.physicalMeetingConfirmed;
+    const isMeetingInProgress = !!(booking?.physicalMeetingConfirmed || (booking?.hunterMetConfirmed && booking?.tenantMetConfirmed));
     const myId = userRole === "HUNTER" ? request.property?.hunterId : request.tenantId;
     const status = (request.status || "PENDING").toUpperCase();
+
+    // Fetch package properties for Silver/Gold
+    React.useEffect(() => {
+        const fetchPackageProperties = async () => {
+            if (userRole === "HUNTER" && request.property?.packageGroupId) {
+                setFetchingPackage(true);
+                try {
+                    const response = await api.get(`/properties?packageGroupId=${request.property.packageGroupId}`);
+                    // Ensure the primary property is in the list
+                    const props = response.data.filter((p: any) => p.packageGroupId === request.property.packageGroupId);
+                    setPackageProperties(props);
+                    // Default select the primary property
+                    setSelectedPropertyIds([request.propertyId]);
+                } catch (error) {
+                    console.error("Failed to fetch package properties:", error);
+                } finally {
+                    setFetchingPackage(false);
+                }
+            }
+        };
+
+        if (status === "ACCEPTED" || isMeetingInProgress) {
+            fetchPackageProperties();
+        }
+    }, [request.property?.packageGroupId, userRole, status, isMeetingInProgress, request.propertyId]);
+
+    const handleToggleProperty = (id: string) => {
+        setSelectedPropertyIds(prev =>
+            prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+        );
+    };
+
     const otherRoleLabel = userRole === "HUNTER" ? "TENANT" : "HUNTER";
     const partnerId = userRole === "HUNTER" ? request.tenantId : request.property?.agentId || request.property?.hunterId;
 
@@ -122,36 +162,49 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
     const canEdit = !isMeetingInProgress && ((status === "PENDING" && userRole === "TENANT") || (status === "COUNTERED" && request.counteredBy === myId) || (status === "ACCEPTED"));
     const canCancel = (status === "PENDING" || status === "COUNTERED" || status === "ACCEPTED") && (!isMeetingInProgress || userRole === "HUNTER");
     const paymentStatus = (request.paymentStatus || "").toUpperCase();
-    const canAccept = isMyTurn && paymentStatus === "ESCROW" && status !== "ACCEPTED";
-    const canCounter = isMyTurn || canEdit || status === "ACCEPTED";
+    const canAccept = isMyTurn && status !== "ACCEPTED";
+    const needsDeposit = paymentStatus !== "ESCROW" && paymentStatus !== "PAID";
+    const canCounter = !isMeetingInProgress && (isMyTurn || canEdit || status === "ACCEPTED");
+    const canDelete = status === "REJECTED" || status === "CANCELLED" || status === "COMPLETED";
+
+    const [selectedProposedDate, setSelectedProposedDate] = useState<any>(null);
+
+    React.useEffect(() => {
+        if (proposedDates.length > 0 && !selectedProposedDate) {
+            setSelectedProposedDate(proposedDates[0]);
+        }
+    }, [proposedDates, selectedProposedDate]);
 
     // Hunter Actions
     const handleAccept = async () => {
         setLoading(true);
         try {
-            // When accepting, send the scheduled details (especially important for countered requests)
             const payload: any = {};
 
-            // If this is a countered request, use the counter values
             if (request.status === 'COUNTERED') {
-                payload.scheduledDate = request.counterDate;
-                payload.scheduledTime = request.counterTime;
+                payload.scheduledDate = request.counterDate || firstDate.date;
+                payload.scheduledTime = request.counterTime || firstDate.timeSlot;
                 payload.location = request.counterLocation;
             } else {
-                // For pending requests, use the proposed values and optional acceptLocation
-                payload.scheduledDate = firstDate.date;
-                payload.scheduledTime = firstDate.timeSlot;
-                if (acceptLocation) {
-                    payload.location = JSON.stringify({
+                // Use selected proposed date if available, otherwise first one
+                const dateToUse = selectedProposedDate || firstDate;
+                payload.scheduledDate = dateToUse.date;
+                payload.scheduledTime = dateToUse.timeSlot;
+
+                // Use acceptLocation if specified, otherwise fallback to proposedLocation or property location
+                const loc = acceptLocation || request.proposedLocation || request.property?.location?.generalArea;
+                if (loc) {
+                    payload.location = typeof loc === 'string' && loc.startsWith('{') ? loc : JSON.stringify({
                         type: "LANDMARK",
-                        name: acceptLocation,
-                        location: acceptLocation
+                        name: loc,
+                        location: loc
                     });
                 }
             }
 
-            await api.post(`/viewing-requests/${request.id}/accept`, payload);
+            const response = await api.post(`/viewing-requests/${request.id}/accept`, payload);
             showToast("success", "Viewing request accepted! Booking created.");
+            router.push("/haunter-dashboard/bookings" as Route);
             onUpdate();
         } catch (error: any) {
             showToast("error", error.response?.data?.message || "Failed to accept request");
@@ -268,8 +321,9 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 setLoading(true);
                 try {
-                    // Decide which endpoint to use based on whether it's a booking or just a request
-                    const endpoint = request.bookingId ? `/bookings/${request.bookingId}` : `/viewing-requests/${request.id}`;
+                    // Always target the viewing request ID when deleting from this card
+                    // My backend logic now ensures that hiding the request also hides the linked booking
+                    const endpoint = `/viewing-requests/${request.id}`;
                     await api.delete(endpoint);
                     showToast("success", "Item removed from your view");
                     onUpdate();
@@ -282,37 +336,61 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
     };
 
     const getStatusBadge = () => {
-        const statusColors = {
-            REJECTED: "bg-red-100 text-red-800",
-            COUNTERED: "bg-blue-100 text-blue-800",
-            CANCELLED: "bg-neutral-100 text-neutral-800",
+        const statusColors: Record<string, { bg: string, text: string, icon: string, label?: string }> = {
+            PENDING: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", icon: "la-clock" },
+            ACCEPTED: { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-400", icon: "la-check-circle", label: "CONFIRMED" },
+            COUNTERED: { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-700 dark:text-indigo-400", icon: "la-reply" },
+            REJECTED: { bg: "bg-rose-100 dark:bg-rose-900/30", text: "text-rose-700 dark:text-rose-400", icon: "la-times-circle" },
+            CANCELLED: { bg: "bg-neutral-100 dark:bg-neutral-800", text: "text-neutral-600 dark:text-neutral-400", icon: "la-ban", label: "CANCELED" },
+            COMPLETED: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: "la-flag-checkered" },
         };
 
-        const displayStatus = status === "CANCELLED" ? "CANCELED" : status;
+        const config = statusColors[status] || { bg: "bg-gray-100", text: "text-gray-600", icon: "la-info-circle" };
+        const label = config.label || status;
 
         return (
-            <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}`}>
-                    {displayStatus}
+            <div className="flex items-center gap-3">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider ${config.bg} ${config.text} transition-all duration-300 shadow-sm border border-black/5 dark:border-white/5`}>
+                    <i className={`las ${config.icon} text-sm`}></i>
+                    {label}
                 </span>
                 {(status === "REJECTED" || status === "CANCELLED" || status === "COMPLETED") && (
                     <button
                         onClick={handleDelete}
-                        className="p-1.5 text-neutral-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                        title="Delete from my view"
+                        className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-300 rounded-full"
+                        title="Remove from view"
                     >
-                        <i className="las la-trash-alt text-lg"></i>
+                        <i className="las la-trash-alt text-xl"></i>
                     </button>
                 )}
             </div>
         );
     };
 
+    const confirmArrived = async () => {
+        setLoading(true);
+        try {
+            await api.post(`/bookings/${booking.id}/confirm-meeting`);
+            showToast("success", "Presence confirmed!");
+            onUpdate();
+        } catch (error: any) {
+            showToast("error", error.response?.data?.message || "Failed to confirm meeting");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6">
-            <div className="flex flex-col lg:flex-row gap-6">
+        <div className="group bg-white dark:bg-neutral-800/80 backdrop-blur-sm rounded-[2rem] border border-neutral-200 dark:border-neutral-700/50 p-5 sm:p-7 hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500 relative overflow-hidden">
+            {/* Aesthetic accent gradient */}
+            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary-500/5 to-transparent rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700`}></div>
+
+            <div className="flex flex-col lg:flex-row gap-6 relative z-10">
                 {/* Property Image */}
-                <div className="lg:w-48 h-32 relative rounded-xl overflow-hidden flex-shrink-0">
+                <Link
+                    href={`/listing-stay-detail/${request.propertyId || request.property?.id}` as Route}
+                    className="lg:w-48 h-32 relative rounded-xl overflow-hidden flex-shrink-0 cursor-pointer block"
+                >
                     <Image
                         fill
                         src={(() => {
@@ -329,15 +407,19 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                             return "/placeholder.jpg";
                         })()}
                         alt={request.property?.title || "Property"}
-                        className="object-cover"
+                        className="object-cover hover:scale-105 transition-transform duration-300"
                     />
-                </div>
+                </Link>
 
                 {/* Content */}
                 <div className="flex-1">
                     <div className="flex items-start justify-between mb-4">
                         <div>
-                            <h3 className="text-lg font-semibold">{request.property?.title || "Property"}</h3>
+                            <Link href={`/listing-stay-detail/${request.propertyId || request.property?.id}` as Route}>
+                                <h3 className="text-lg font-semibold hover:text-primary-600 transition-colors cursor-pointer">
+                                    {request.property?.title || "Property"}
+                                </h3>
+                            </Link>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">
                                 {(() => {
                                     const loc = request.property?.location;
@@ -356,64 +438,168 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                         {getStatusBadge()}
                     </div>
 
-                    {/* Details */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {/* Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4 mb-8">
+                        <div className="space-y-1">
+                            <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-neutral-400 dark:text-neutral-500">
+                                <i className="las la-user text-xs"></i>
                                 {userRole === "HUNTER" ? "Tenant" : "House Hunter"}
                             </p>
-                            <p className="font-medium">
+                            <p className="font-semibold text-sm sm:text-base truncate">
                                 {userRole === "HUNTER" ? request.tenant?.name : request.property?.hunter?.name}
                             </p>
                         </div>
-                        <div>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Date & Time</p>
-                            <p className="font-medium">{displayDate} at {displayTime}</p>
+                        <div className="space-y-1">
+                            <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-neutral-400 dark:text-neutral-500">
+                                <i className="las la-calendar text-xs"></i>
+                                Scheduled
+                            </p>
+                            <p className="font-semibold text-sm sm:text-base">
+                                {displayDate} <span className="text-neutral-400 font-normal">at</span> {displayTime}
+                            </p>
                         </div>
-                        <div>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Meeting Location</p>
-                            <p className="font-medium">
+                        {/* Package Info Slot */}
+                        <div className="space-y-1">
+                            <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-neutral-400 dark:text-neutral-500">
+                                <i className="las la-box text-xs"></i>
+                                Viewing Tier
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <p className={`font-bold text-sm sm:text-base uppercase tracking-tight ${request.package?.tier === "GOLD" ? "text-yellow-600 dark:text-yellow-400" :
+                                    request.package?.tier === "SILVER" ? "text-neutral-500 underline decoration-neutral-300" :
+                                        "text-orange-600 dark:text-orange-500"
+                                    }`}>
+                                    {request.package?.tier || (request.amount > 3000 ? "GOLD" : request.amount > 1500 ? "SILVER" : "BRONZE")}
+                                </p>
+                                {(request.package?.tier !== "BRONZE" || (!request.package && request.amount > 1500)) && (
+                                    <span className="px-1.5 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-[10px] font-bold text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                                        {request.package?.propertiesIncluded || (request.amount > 3000 ? 5 : 2)} HOUSES
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="space-y-1 col-span-2 md:col-span-1">
+                            <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-neutral-400 dark:text-neutral-500">
+                                <i className="las la-map-marker text-xs"></i>
+                                Meeting Point
+                            </p>
+                            <p className="font-semibold text-sm sm:text-base truncate" title={displayLocation}>
                                 {displayLocation}
                             </p>
                         </div>
-                        <div>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Amount</p>
-                            <p className="font-medium text-primary-600">KES {request.amount?.toLocaleString()}</p>
+                        <div className="space-y-1">
+                            <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-neutral-400 dark:text-neutral-500">
+                                <i className="las la-wallet text-xs"></i>
+                                Service Fee
+                            </p>
+                            <p className="font-bold text-sm sm:text-base text-primary-600 dark:text-primary-400">
+                                KES {request.amount?.toLocaleString()}
+                            </p>
                         </div>
-                        <div>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Payment Status</p>
-                            <p className="font-medium">{paymentStatus === "ESCROW" ? "In Escrow" : paymentStatus}</p>
+                        <div className="space-y-1">
+                            <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-neutral-400 dark:text-neutral-500">
+                                <i className="las la-shield-alt text-xs"></i>
+                                Payment
+                            </p>
+                            <p className="font-semibold text-xs sm:text-sm inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-990/20 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                {paymentStatus === "ESCROW" ? "In Escrow" : paymentStatus}
+                            </p>
                         </div>
                     </div>
 
+                    {/* Bundle Members Display - Only for explicit Gold/Silver packages */}
+                    {(request.package?.tier === "GOLD" || request.package?.tier === "SILVER") &&
+                        request.property?.packageMembers?.length > 0 && (
+                            <div className="mb-8 p-5 bg-neutral-50 dark:bg-neutral-900/40 rounded-3xl border border-neutral-100 dark:border-neutral-800/60 shadow-inner">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                                            <i className="las la-layer-group text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">Bundle Viewing Schedule</h4>
+                                            <p className="text-[10px] text-neutral-500 font-medium">This request covers all houses in this package</p>
+                                        </div>
+                                    </div>
+                                    <span className="px-2 py-1 rounded-md bg-primary-50 dark:bg-primary-900/20 text-[10px] font-bold text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-800/50">
+                                        {request.property.packageMembers.length + 1} TOTAL PROPERTIES
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                                    {/* The main property first */}
+                                    <div className="relative aspect-square rounded-xl overflow-hidden ring-2 ring-primary-500/20 ring-offset-2 ring-offset-white dark:ring-offset-neutral-900">
+                                        <Image
+                                            fill
+                                            src={(() => {
+                                                const images = request.property?.images;
+                                                if (Array.isArray(images) && images.length > 0) return images[0];
+                                                return "/placeholder.jpg";
+                                            })()}
+                                            alt="Main"
+                                            className="object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-primary-600/10 flex items-center justify-center">
+                                            <span className="px-1.5 py-0.5 bg-primary-600 text-white text-[8px] font-bold rounded uppercase tracking-tighter">Current</span>
+                                        </div>
+                                    </div>
+
+                                    {request.property.packageMembers.map((member: any) => (
+                                        <Link
+                                            key={member.id}
+                                            href={`/listing-stay-detail/${member.id}` as Route}
+                                            className="group/house relative aspect-square rounded-xl overflow-hidden hover:ring-2 hover:ring-primary-500/30 transition-all"
+                                        >
+                                            <Image
+                                                fill
+                                                src={Array.isArray(member.images) ? member.images[0] : (typeof member.images === 'string' ? JSON.parse(member.images)[0] : "/placeholder.jpg")}
+                                                alt={member.title}
+                                                className="object-cover group-hover/house:scale-110 transition-transform duration-300"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2 opacity-0 group-hover/house:opacity-100 transition-opacity">
+                                                <span className="text-[8px] text-white font-bold truncate leading-none">{member.title}</span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                     {/* Actions */}
-                    {(status === "PENDING" || status === "COUNTERED" || status === "ACCEPTED") && (
-                        <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+                    {(status === "PENDING" || status === "COUNTERED" || status === "ACCEPTED" || canDelete) && (
+                        <div className="border-t border-neutral-100 dark:border-neutral-700/50 pt-6">
                             {!showCounterForm ? (
-                                <div className="flex flex-wrap gap-2 w-full">
+                                <div className="flex flex-wrap gap-3 w-full">
                                     {canAccept && !showAcceptForm && (
-                                        <ButtonPrimary
+                                        <button
                                             onClick={() => {
+                                                if (needsDeposit) {
+                                                    showToast("info", "Please wait for the tenant to complete the deposit before accepting.");
+                                                    return;
+                                                }
                                                 if (userRole === "HUNTER" && status === "PENDING") {
                                                     setShowAcceptForm(true);
                                                 } else {
                                                     handleAccept();
                                                 }
                                             }}
-                                            loading={loading}
-                                            className="flex-1 sm:flex-none"
+                                            disabled={loading}
+                                            className={`flex-1 sm:flex-none px-8 py-3.5 text-white rounded-2xl transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 group/btn active:scale-95 disabled:opacity-50 ${needsDeposit
+                                                ? "bg-neutral-400 cursor-not-allowed"
+                                                : "bg-gradient-to-r from-primary-600 to-primary-500 hover:shadow-lg hover:shadow-primary-500/30"
+                                                }`}
                                         >
-                                            <i className="las la-check-circle mr-2"></i>
-                                            Accept Proposal
-                                        </ButtonPrimary>
+                                            <i className="las la-check-circle text-lg group-hover/btn:scale-110 transition-transform"></i>
+                                            {needsDeposit ? "Waiting for Tenant Deposit" : "Accept Proposal"}
+                                        </button>
                                     )}
                                     {canEdit && (
                                         <button
                                             onClick={() => setShowCounterForm(true)}
                                             disabled={loading}
-                                            className="flex-1 sm:flex-none px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-sm font-medium disabled:opacity-50 flex items-center justify-center"
+                                            className="flex-1 sm:flex-none px-8 py-3.5 bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-400 rounded-2xl hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95 disabled:opacity-50"
                                         >
-                                            <i className="las la-edit mr-2"></i>
+                                            <i className="las la-edit text-lg"></i>
                                             Edit Proposal
                                         </button>
                                     )}
@@ -421,9 +607,9 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                         <button
                                             onClick={() => setShowCounterForm(true)}
                                             disabled={loading}
-                                            className="flex-1 sm:flex-none px-6 py-3 bg-neutral-800 text-white rounded-full hover:bg-neutral-900 transition-colors shadow-sm font-medium disabled:opacity-50 flex items-center justify-center"
+                                            className="flex-1 sm:flex-none px-8 py-3.5 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 rounded-2xl hover:bg-neutral-800 dark:hover:bg-white transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg active:scale-95 disabled:opacity-50"
                                         >
-                                            <i className="las la-history mr-2"></i>
+                                            <i className="las la-history text-lg"></i>
                                             Edit Proposal
                                         </button>
                                     )}
@@ -431,57 +617,112 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                         <button
                                             onClick={() => setShowCancelModal(true)}
                                             disabled={loading}
-                                            className="flex-1 sm:flex-none px-6 py-3 border-2 border-red-500 text-red-500 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50 font-medium flex items-center justify-center"
+                                            className="flex-1 sm:flex-none px-8 py-3.5 border-2 border-rose-100 text-rose-600 hover:border-rose-200 hover:bg-rose-50 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/20 rounded-2xl transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                         >
-                                            <i className="las la-times-circle mr-2"></i>
-                                            Cancel Request
+                                            <i className="las la-times-circle text-lg"></i>
+                                            {isMeetingInProgress ? "Cancel Viewing" : "Cancel Request"}
+                                        </button>
+                                    )}
+
+                                    {/* Messaging button - Unified for Hunter and Tenant */}
+                                    {partnerId && (
+                                        <Link
+                                            href={(userRole === "HUNTER"
+                                                ? `/haunter-dashboard/messages?partnerId=${partnerId}&propertyId=${request.propertyId}&propertyTitle=${encodeURIComponent(request.property?.title || "")}`
+                                                : `/tenant-dashboard/messages?partnerId=${partnerId}&propertyId=${request.propertyId}&propertyTitle=${encodeURIComponent(request.property?.title || "")}`) as Route}
+                                            className="flex-1 sm:flex-none px-8 py-3.5 border-2 border-primary-100 text-primary-600 hover:border-primary-200 hover:bg-primary-50 dark:border-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/20 rounded-2xl transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 active:scale-95"
+                                        >
+                                            <i className="las la-comment-dots text-lg"></i>
+                                            {userRole === "HUNTER" ? "Message Tenant" : "Message Hunter"}
+                                        </Link>
+                                    )}
+                                    {canDelete && (
+                                        <button
+                                            onClick={handleDelete}
+                                            disabled={loading}
+                                            className="flex-1 sm:flex-none px-8 py-3.5 border-2 border-neutral-100 text-neutral-500 hover:border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/50 rounded-2xl transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                                        >
+                                            <i className="las la-trash-alt text-lg"></i>
+                                            Delete Request
                                         </button>
                                     )}
                                 </div>
                             ) : showAcceptForm ? (
-                                <div className="space-y-3">
-                                    <p className="text-sm font-medium">Set Meeting Location (Optional):</p>
+                                <div className="space-y-4 bg-neutral-50 dark:bg-neutral-900/40 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <i className="las la-map-marker text-primary-600"></i>
+                                        <p className="text-sm font-bold uppercase tracking-tight">Set Meeting Point</p>
+                                    </div>
                                     <input
                                         type="text"
                                         value={acceptLocation}
                                         onChange={(e) => setAcceptLocation(e.target.value)}
-                                        placeholder="e.g., Meet at Shell Petrol Station"
-                                        className="w-full rounded-lg border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
+                                        placeholder="e.g., Meet at Junction Mall Entrance"
+                                        className="w-full rounded-xl border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:border-primary-500 focus:ring-primary-500 text-sm py-3"
                                     />
+
+                                    {userRole === "HUNTER" && proposedDates.length > 0 && (
+                                        <div className="space-y-2 mt-4">
+                                            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider ml-1">Select one of the proposed dates</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {proposedDates.map((dateObj: any, idx: number) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => setSelectedProposedDate(dateObj)}
+                                                        className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${selectedProposedDate === dateObj
+                                                            ? "bg-primary-600 text-white shadow-md scale-105"
+                                                            : "bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-primary-300"
+                                                            }`}
+                                                    >
+                                                        {new Date(dateObj.date).toLocaleDateString()} at {dateObj.timeSlot}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="flex gap-2">
-                                        <ButtonPrimary onClick={handleAccept} loading={loading} className="flex-1">
+                                        <button
+                                            onClick={handleAccept}
+                                            disabled={loading}
+                                            className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-bold text-sm shadow-md active:scale-95 disabled:opacity-50"
+                                        >
                                             Confirm & Accept
-                                        </ButtonPrimary>
+                                        </button>
                                         <button
                                             onClick={() => setShowAcceptForm(false)}
-                                            className="px-4 py-2 border border-neutral-300 rounded-full hover:bg-neutral-50"
+                                            className="px-6 py-3 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-sm font-medium"
                                         >
                                             Cancel
                                         </button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
-                                    <p className="text-sm font-medium">
-                                        {canEdit ? "Edit Your Proposal:" : "Propose Alternative Details:"}
-                                    </p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs text-neutral-500 mb-1">Date</label>
+                                <div className="space-y-6 bg-neutral-50 dark:bg-neutral-900/40 p-6 rounded-2xl border border-neutral-100 dark:border-neutral-800 mt-4">
+                                    <div className="flex items-center gap-2">
+                                        <i className="las la-history text-indigo-600"></i>
+                                        <p className="text-sm font-bold uppercase tracking-tight">
+                                            {canEdit ? "Update Your Proposal" : "Propose Alternative"}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider ml-1">Preferred Date</label>
                                             <input
                                                 type="date"
                                                 value={counterDate}
                                                 onChange={(e) => setCounterDate(e.target.value)}
                                                 min={new Date().toISOString().split('T')[0]}
-                                                className="w-full rounded-lg border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
+                                                className="w-full rounded-xl border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:border-primary-500 focus:ring-primary-500 text-sm"
                                             />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs text-neutral-500 mb-1">Time</label>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider ml-1">Preferred Time</label>
                                             <select
                                                 value={counterTime}
                                                 onChange={(e) => setCounterTime(e.target.value)}
-                                                className="w-full rounded-lg border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
+                                                className="w-full rounded-xl border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:border-primary-500 focus:ring-primary-500 text-sm"
                                             >
                                                 {["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map(time => (
                                                     <option key={time} value={time}>{time}</option>
@@ -489,23 +730,27 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                             </select>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-neutral-500 mb-1">Meeting Location</label>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider ml-1">Specific Meeting Location</label>
                                         <input
                                             type="text"
                                             value={counterLocation}
                                             onChange={(e) => setCounterLocation(e.target.value)}
-                                            placeholder="e.g., Meet at Shell Petrol Station"
-                                            className="w-full rounded-lg border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
+                                            placeholder="e.g., Outside TRM Main Entrance"
+                                            className="w-full rounded-xl border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:border-primary-500 focus:ring-primary-500 text-sm"
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <ButtonPrimary onClick={handleCounter} loading={loading} className="flex-1">
+                                        <button
+                                            onClick={handleCounter}
+                                            disabled={loading}
+                                            className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-md active:scale-95 disabled:opacity-50"
+                                        >
                                             {canEdit ? "Update Request" : "Send Counter-Proposal"}
-                                        </ButtonPrimary>
+                                        </button>
                                         <button
                                             onClick={() => setShowCounterForm(false)}
-                                            className="px-4 py-2 border border-neutral-300 rounded-full hover:bg-neutral-50"
+                                            className="px-6 py-3 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-sm font-medium"
                                         >
                                             Cancel
                                         </button>
@@ -533,17 +778,25 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                     )}
 
                     {status === "ACCEPTED" && (
-                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg space-y-4">
-                            <p className="text-sm text-green-900 dark:text-green-100 font-medium">
-                                ✅ Viewing confirmed! {isToday ? (
-                                    request.booking?.status === 'IN_PROGRESS'
-                                        ? "The viewing is currently in progress."
-                                        : "The viewing is scheduled for today."
-                                ) : "Check your bookings tab for details."}
-                            </p>
+                        <div className="bg-emerald-50 dark:bg-emerald-990/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800/50 space-y-5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <i className="las la-calendar-check text-xl"></i>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-tight">Viewing Confirmed</p>
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                                        {isMeetingInProgress ? (
+                                            "Your viewing session is currently active."
+                                        ) : isToday ? (
+                                            "Get ready! The viewing is scheduled for today."
+                                        ) : `Scheduled for ${displayDate} at ${displayTime}`}
+                                    </p>
+                                </div>
+                            </div>
 
-                            {isToday && (
-                                <div className="space-y-3">
+                            {(isToday || isMeetingInProgress) && (
+                                <div className="space-y-4 pt-4 border-t border-emerald-100 dark:border-emerald-800/40">
                                     {(() => {
                                         const booking = request.booking;
                                         if (!booking) return null;
@@ -558,22 +811,26 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
 
                                             return (
                                                 <div className="space-y-4">
-                                                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-bold bg-green-100 dark:bg-green-800/40 p-3 rounded-lg animate-pulse">
-                                                        <i className="las la-users text-xl"></i>
-                                                        MEETUP CONFIRMED - VIEWING IN PROGRESS
+                                                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm bg-emerald-100/50 dark:bg-emerald-900/30 p-3 rounded-xl">
+                                                        <i className="las la-handshake text-lg text-emerald-500"></i>
+                                                        SESSION ACTIVE
                                                     </div>
 
                                                     {hasPendingIssue ? (
-                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-200 dark:border-orange-800">
-                                                            <h4 className="font-bold text-orange-800 dark:text-orange-200 flex items-center gap-2 mb-2">
-                                                                <i className="las la-exclamation-circle text-xl"></i>
-                                                                {isIssueReporter ? "You reported an issue" : `${otherRoleLabel} reported an issue`}
-                                                            </h4>
-                                                            <p className="text-sm text-orange-700 dark:text-orange-300 mb-4 italic">
+                                                        <div className="bg-amber-50 dark:bg-amber-900/20 p-5 rounded-2xl border border-amber-200 dark:border-amber-800/50 shadow-sm">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-800/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                                                    <i className="las la-exclamation-triangle text-lg"></i>
+                                                                </div>
+                                                                <h4 className="font-bold text-sm text-amber-800 dark:text-amber-300 uppercase tracking-tight">
+                                                                    {isIssueReporter ? "You reported an issue" : `${otherRoleLabel} reported an issue`}
+                                                                </h4>
+                                                            </div>
+                                                            <p className="text-sm text-amber-700 dark:text-amber-400 mb-5 italic line-clamp-2">
                                                                 &quot;{booking.tenantFeedback}&quot;
                                                             </p>
 
-                                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                            <div className="flex flex-col sm:flex-row gap-3">
                                                                 {userRole === "HUNTER" ? (
                                                                     <>
                                                                         <button
@@ -582,7 +839,7 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                                                                 title: "Accept Issue",
                                                                                 description: "Are you sure you want to ACCEPT this issue? This will cancel the viewing and refund the tenant.",
                                                                                 confirmText: "Accept Issue",
-                                                                                confirmButtonClass: "!bg-green-600 hover:!bg-green-700 text-white",
+                                                                                confirmButtonClass: "!bg-emerald-600 hover:!bg-emerald-700 text-white",
                                                                                 onConfirm: async () => {
                                                                                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                                                                     setLoading(true);
@@ -598,7 +855,7 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                                                                 }
                                                                             })}
                                                                             disabled={loading}
-                                                                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm flex items-center justify-center gap-2"
+                                                                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-bold text-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                                                         >
                                                                             <i className="las la-check"></i>
                                                                             ACCEPT ISSUE
@@ -609,7 +866,7 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                                                                 title: "Deny Issue",
                                                                                 description: "Are you sure you want to DENY this issue? This will open an admin dispute.",
                                                                                 confirmText: "Deny Issue",
-                                                                                confirmButtonClass: "!bg-red-600 hover:!bg-red-700 text-white",
+                                                                                confirmButtonClass: "!bg-rose-600 hover:!bg-rose-700 text-white",
                                                                                 onConfirm: async () => {
                                                                                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                                                                     setLoading(true);
@@ -625,7 +882,7 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                                                                 }
                                                                             })}
                                                                             disabled={loading}
-                                                                            className="flex-1 px-4 py-2 border-2 border-red-500 text-red-500 rounded-lg hover:bg-red-50 font-bold text-sm flex items-center justify-center gap-2"
+                                                                            className="flex-1 px-4 py-2.5 bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all font-bold text-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                                                         >
                                                                             <i className="las la-times"></i>
                                                                             DENY ISSUE
@@ -654,40 +911,68 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                                                             }
                                                                         })}
                                                                         disabled={loading}
-                                                                        className="w-full px-4 py-2 border-2 border-neutral-400 text-neutral-600 rounded-lg hover:bg-neutral-50 font-bold text-sm flex items-center justify-center gap-2"
+                                                                        className="w-full px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all font-bold text-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                                                     >
-                                                                        <i className="las la-undo"></i>
-                                                                        CANCEL/WITHDRAW ISSUE
+                                                                        <i className="las la-undo text-base"></i>
+                                                                        WITHDRAW ISSUE
                                                                     </button>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     ) : booking.issueStatus === 'DENIED' ? (
-                                                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800 text-center">
-                                                            <p className="text-sm font-bold text-red-700 dark:text-red-300">
-                                                                🚨 ISSUE DISPUTED - WAITING FOR ADMIN RESOLUTION
+                                                        <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-100 dark:border-rose-800/50 flex justify-center items-center gap-3 shadow-inner">
+                                                            <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                                                <i className="las la-gavel text-lg animate-pulse"></i>
+                                                            </div>
+                                                            <p className="text-xs font-bold text-rose-800 dark:text-rose-300 uppercase tracking-tight">
+                                                                Issue Disputed - Waiting for Admin Resolution
                                                             </p>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex flex-col sm:flex-row gap-2">
+                                                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
                                                             {!(userRole === "HUNTER" ? booking.hunterDone : booking.tenantDone) ? (
                                                                 <button
                                                                     onClick={() => setConfirmModal({
                                                                         isOpen: true,
                                                                         title: "Complete Viewing",
-                                                                        description: "Are you satisfied with the viewing? This will release payment once both parties confirm.",
+                                                                        description: userRole === "HUNTER" && packageProperties.length > 1
+                                                                            ? "Which property (or properties) did the tenant end up picking? Selecting a property will mark it as RENTED."
+                                                                            : "Are you satisfied with the viewing? This will release payment once both parties confirm.",
+                                                                        children: userRole === "HUNTER" && packageProperties.length > 1 ? (
+                                                                            <div className="space-y-3 max-h-60 overflow-y-auto p-1">
+                                                                                {packageProperties.map((prop) => (
+                                                                                    <label key={prop.id} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-neutral-50 cursor-pointer transition-colors">
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            checked={selectedPropertyIds.includes(prop.id)}
+                                                                                            onChange={() => handleToggleProperty(prop.id)}
+                                                                                            className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500 border-neutral-300"
+                                                                                        />
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <p className="font-medium text-sm truncate">{prop.title}</p>
+                                                                                            <p className="text-xs text-neutral-500 truncate">{prop.location?.address || prop.location?.generalArea}</p>
+                                                                                        </div>
+                                                                                        <span className="text-sm font-bold text-primary-600">KES {prop.rent.toLocaleString()}</span>
+                                                                                    </label>
+                                                                                ))}
+                                                                            </div>
+                                                                        ) : null,
                                                                         confirmText: "Mark as Done",
                                                                         confirmButtonClass: "!bg-primary-600 hover:!bg-primary-700 text-white",
                                                                         onConfirm: async () => {
                                                                             setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                                                             setLoading(true);
                                                                             try {
-                                                                                await api.post(`/bookings/${booking.id}/done`);
+                                                                                await api.post(`/bookings/${booking.id}/done`, {
+                                                                                    pickedPropertyIds: userRole === "HUNTER" ? selectedPropertyIds : undefined
+                                                                                });
                                                                                 showToast("success", "Marked as completed!");
                                                                                 if (userRole === "TENANT") {
                                                                                     setShowReviewModal(true);
+                                                                                    // onUpdate will be called after review or if they close the modal
+                                                                                } else {
+                                                                                    onUpdate();
                                                                                 }
-                                                                                onUpdate();
                                                                             } catch (error: any) {
                                                                                 showToast("error", error.response?.data?.message || "Failed to mark done");
                                                                             } finally {
@@ -696,35 +981,25 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                                                                         }
                                                                     })}
                                                                     disabled={loading}
-                                                                    className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-bold text-sm shadow-md flex items-center justify-center gap-2"
+                                                                    className="flex-1 px-8 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-500/20 transition-all font-bold text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                                                 >
-                                                                    <i className="las la-check-double"></i>
+                                                                    <i className="las la-check-double text-lg"></i>
                                                                     MARK AS SATISFIED (DONE)
                                                                 </button>
                                                             ) : (
-                                                                <div className="flex-1 text-sm text-neutral-500 italic p-3 border border-dashed border-neutral-300 rounded-lg text-center flex items-center justify-center gap-2">
-                                                                    <i className="las la-clock"></i>
-                                                                    Waiting for {otherRoleLabel.toLowerCase()} to finish...
+                                                                <div className="flex-1 bg-neutral-100 dark:bg-neutral-800/40 p-4 rounded-xl flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 font-bold text-[10px] uppercase tracking-widest border border-neutral-200 dark:border-neutral-700/50">
+                                                                    <i className="las la-hourglass-half text-lg animate-pulse text-primary-500"></i>
+                                                                    Waiting for {otherRoleLabel} to finish
                                                                 </div>
                                                             )}
 
-                                                            <button
-                                                                onClick={() => setShowReportIssueModal(true)}
-                                                                disabled={loading}
-                                                                className="px-4 py-3 border-2 border-red-500 text-red-500 rounded-lg hover:bg-red-50 font-bold text-sm flex items-center justify-center gap-2"
-                                                            >
-                                                                <i className="las la-exclamation-triangle"></i>
-                                                                REPORT ISSUE
-                                                            </button>
-
-                                                            {userRole === "HUNTER" && (
+                                                            {!booking.issueCreated && userRole === "TENANT" && (
                                                                 <button
-                                                                    onClick={() => setShowCancelModal(true)}
+                                                                    onClick={() => setShowReportIssueModal(true)}
                                                                     disabled={loading}
-                                                                    className="px-4 py-3 border-2 border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 font-bold text-sm flex items-center justify-center gap-2"
+                                                                    className="px-8 py-4 border-2 border-rose-100 text-rose-600 hover:bg-rose-50 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/20 rounded-2xl transition-all font-bold text-sm active:scale-95 disabled:opacity-50"
                                                                 >
-                                                                    <i className="las la-times-circle"></i>
-                                                                    CANCEL VIEWING
+                                                                    REPORT ISSUE
                                                                 </button>
                                                             )}
                                                         </div>
@@ -735,92 +1010,85 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
 
                                         if (hasCurrentConfirmed && !hasOtherConfirmed) {
                                             return (
-                                                <div className="flex flex-col gap-2">
-                                                    <div className="text-sm text-neutral-600 dark:text-neutral-400 italic">
-                                                        You have confirmed your presence. Waiting for the {otherRoleLabel.toLowerCase()} to confirm...
+                                                <div className="flex flex-col gap-3 p-4 bg-emerald-100/30 dark:bg-emerald-990/5 rounded-xl border border-emerald-100/50 dark:border-emerald-800/30 shadow-inner">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-tight">
+                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                                            I AM READY
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-emerald-600/60 uppercase animate-pulse">
+                                                            WAITING FOR {otherRoleLabel}...
+                                                        </span>
                                                     </div>
-                                                    <div className="w-full bg-neutral-200 dark:bg-neutral-700 h-2 rounded-full overflow-hidden">
-                                                        <div className="bg-green-500 h-full w-1/2 rounded-full"></div>
+                                                    <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+                                                        <div className="bg-emerald-500 h-full w-1/2 rounded-full animate-pulse shadow-sm shadow-emerald-500/50"></div>
                                                     </div>
                                                 </div>
                                             );
                                         }
 
                                         return (
-                                            <button
-                                                onClick={async () => {
-                                                    setLoading(true);
-                                                    try {
-                                                        const bId = booking.id;
-                                                        await api.post(`/bookings/${bId}/confirm-meeting`);
-                                                        showToast("success", "Presence confirmed!");
-                                                        onUpdate();
-                                                    } catch (error: any) {
-                                                        showToast("error", error.response?.data?.message || "Failed to confirm meeting");
-                                                    } finally {
-                                                        setLoading(false);
-                                                    }
-                                                }}
-                                                disabled={loading}
-                                                className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-bold shadow-lg flex items-center justify-center gap-2"
-                                            >
-                                                <i className="las la-check-circle text-xl"></i>
-                                                {hasOtherConfirmed
-                                                    ? `CONFIRM I MET ${otherRoleLabel} (THEY ARE HERE)`
-                                                    : `CONFIRM I MET ${otherRoleLabel}`}
-                                            </button>
+                                            <div className="space-y-4">
+                                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-1.5">
+                                                    <i className="las la-info-circle text-base"></i>
+                                                    {userRole === "HUNTER"
+                                                        ? "Arrived? Let the tenant know you're ready."
+                                                        : `Confirm you've met the ${otherRoleLabel.toLowerCase()}.`}
+                                                </p>
+                                                <button
+                                                    onClick={confirmArrived}
+                                                    disabled={loading}
+                                                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                                >
+                                                    <i className="las la-map-marker-alt text-lg"></i>
+                                                    {userRole === "HUNTER" ? "I'M AT THE MEETING POINT" : `I'VE MET THE ${otherRoleLabel}`}
+                                                </button>
+                                            </div>
                                         );
                                     })()}
-
-                                    {booking && (
-                                        <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                                            <Link
-                                                href={`/booking-detail/${booking.id}` as Route}
-                                                className="flex-1 px-4 py-2 border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-sm font-medium text-center flex items-center justify-center gap-2"
-                                            >
-                                                <i className="las la-info-circle"></i>
-                                                VIEW DETAILS
-                                            </Link>
-                                            <Link
-                                                href={`/${userRole.toLowerCase()}-dashboard?tab=messages&partnerId=${partnerId}` as Route}
-                                                className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium text-center flex items-center justify-center gap-2"
-                                            >
-                                                <i className="las la-comment"></i>
-                                                CHAT WITH {otherRoleLabel}
-                                            </Link>
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
                     )}
 
                     {(status === "REJECTED" || status === "CANCELLED" || status === "COMPLETED") && (
-                        <div className="space-y-3">
-                            <div className={`${status === "COMPLETED" ? "bg-green-50 dark:bg-green-900/20" : "bg-red-50 dark:bg-red-900/20"} p-4 rounded-lg`}>
-                                <p className={`text-sm ${status === "COMPLETED" ? "text-green-900 dark:text-green-100" : "text-red-900 dark:text-red-100"}`}>
-                                    {status === "COMPLETED" ? "✅ Viewing Completed Successfully." : (
-                                        <>
-                                            ❌ This request was {status === "CANCELLED" ? "canceled" : "rejected"}.
-                                            {userRole === "TENANT" && status !== "CANCELLED" && " You will be refunded shortly."}
-                                            {status === "CANCELLED" && " Refund process initiated."}
-                                        </>
-                                    )}
-                                </p>
+                        <div className="space-y-4">
+                            <div className={`${status === "COMPLETED" ? "bg-blue-50 dark:bg-blue-900/20" : "bg-neutral-50 dark:bg-neutral-900/40"} p-6 rounded-[1.5rem] border border-neutral-100 dark:border-neutral-800/50 flex items-center gap-4`}>
+                                <div className={`w-12 h-12 rounded-full ${status === "COMPLETED" ? "bg-blue-100 dark:bg-blue-800/40 text-blue-600" : "bg-neutral-200 dark:bg-neutral-800 text-neutral-500"} flex items-center justify-center`}>
+                                    <i className={`las ${status === "COMPLETED" ? "la-flag-checkered" : "la-times-circle"} text-2xl`}></i>
+                                </div>
+                                <div className="flex-1">
+                                    <p className={`text-sm font-bold ${status === "COMPLETED" ? "text-blue-900 dark:text-blue-100" : "text-neutral-700 dark:text-neutral-300"} uppercase tracking-tight`}>
+                                        {status === "COMPLETED" ? "Successful Completion" : `Request ${status === "CANCELLED" ? "Canceled" : "Rejected"}`}
+                                    </p>
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                                        {status === "COMPLETED" ? "The viewing was finalized successfully." : (
+                                            <>
+                                                This transaction will not proceed.
+                                                {userRole === "TENANT" ? " Any held funds will be released back to your wallet." : " Use the search tool to find more tenants."}
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
                             </div>
 
                             {status === "COMPLETED" && userRole === "TENANT" && (
                                 (() => {
                                     const hasReviewed = booking?.reviews?.some((r: any) => r.type === 'TENANT_TO_HUNTER');
-                                    if (hasReviewed) return null;
+                                    if (hasReviewed) return (
+                                        <div className="flex items-center gap-2 justify-center py-2 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                                            <i className="las la-check-circle text-emerald-500"></i>
+                                            Feedback Submitted
+                                        </div>
+                                    );
 
                                     return (
                                         <button
                                             onClick={() => setShowReviewModal(true)}
-                                            className="w-full px-4 py-2.6 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+                                            className="w-full px-8 py-3.5 bg-gradient-to-r from-primary-600 to-indigo-600 text-white rounded-2xl hover:shadow-xl hover:shadow-primary-500/20 transition-all font-bold text-sm flex items-center justify-center gap-2 active:scale-95"
                                         >
-                                            <i className="las la-star"></i>
-                                            LEAVE A REVIEW
+                                            <i className="las la-star text-lg"></i>
+                                            RATE YOUR EXPERIENCE
                                         </button>
                                     );
                                 })()
@@ -828,78 +1096,89 @@ export default function ViewingRequestCard({ request, userRole, onUpdate }: View
                         </div>
                     )}
                 </div>
-
-                <ReviewModal
-                    isOpen={showReviewModal}
-                    onClose={() => setShowReviewModal(false)}
-                    hunterName={request.property.hunter?.name}
-                    onConfirm={async (rating, comment) => {
-                        setLoading(true);
-                        try {
-                            await api.post("/reviews", {
-                                bookingId: booking.id,
-                                rating,
-                                comment
-                            });
-                            showToast("success", "Thank you for your review!");
-                            setShowReviewModal(false);
-                            onUpdate();
-                        } catch (error: any) {
-                            showToast("error", error.response?.data?.message || "Failed to submit review");
-                        } finally {
-                            setLoading(false);
-                        }
-                    }}
-                    loading={loading}
-                />
-                <ConfirmationModal
-                    isOpen={showCancelModal}
-                    onClose={() => setShowCancelModal(false)}
-                    onConfirm={() => {
-                        setShowCancelModal(false);
-                        userRole === "TENANT" ? handleRejectCounter() : handleReject();
-                    }}
-                    title="Cancel Viewing Request"
-                    description={`Are you sure you want to cancel this viewing request? ${userRole === "TENANT" ? "You will be refunded shortly." : "The tenant will be refunded."}`}
-                    confirmText="Yes, Cancel Request"
-                    loading={loading}
-                />
-
-                {/* Unified Confirmation Modal */}
-                <ConfirmationModal
-                    isOpen={confirmModal.isOpen}
-                    onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                    onConfirm={confirmModal.onConfirm}
-                    title={confirmModal.title}
-                    description={confirmModal.description}
-                    confirmText={confirmModal.confirmText}
-                    confirmButtonClass={confirmModal.confirmButtonClass}
-                    loading={loading}
-                />
-
-                {/* Issue Reporting Modal */}
-                <IssueReportModal
-                    isOpen={showReportIssueModal}
-                    onClose={() => setShowReportIssueModal(false)}
-                    onConfirm={async (feedback) => {
-                        setShowReportIssueModal(false);
-                        setLoading(true);
-                        try {
-                            await api.post(`/bookings/${booking.id}/outcome`, {
-                                outcome: "ISSUE_REPORTED",
-                                feedback
-                            });
-                            showToast("warning", "Issue reported. Waiting for hunter response.");
-                            onUpdate();
-                        } catch (error: any) {
-                            showToast("error", error.response?.data?.message || "Failed to report issue");
-                        } finally {
-                            setLoading(false);
-                        }
-                    }}
-                    loading={loading}
-                />
             </div>
+
+            {/* Modals with premium styling */}
+            <ReviewModal
+                isOpen={showReviewModal}
+                onClose={() => {
+                    setShowReviewModal(false);
+                    if (status === "COMPLETED" || booking?.status === "COMPLETED") {
+                        onUpdate();
+                    }
+                }}
+                hunterName={request.property?.hunter?.name}
+                onConfirm={async (rating, comment) => {
+                    setLoading(true);
+                    try {
+                        await api.post("/reviews", {
+                            bookingId: booking.id,
+                            rating,
+                            comment
+                        });
+                        showToast("success", "Feedback sent! We appreciate you.");
+                        setShowReviewModal(false);
+                        router.push("/tenant-dashboard/bookings" as Route);
+                        onUpdate();
+                    } catch (error: any) {
+                        showToast("error", error.response?.data?.message || "Failed to submit review");
+                    } finally {
+                        setLoading(false);
+                    }
+                }}
+                loading={loading}
+            />
+
+            <ConfirmationModal
+                isOpen={showCancelModal}
+                onClose={() => setShowCancelModal(false)}
+                onConfirm={() => {
+                    setShowCancelModal(false);
+                    userRole === "TENANT" ? handleRejectCounter() : handleReject();
+                }}
+                title={isMeetingInProgress ? "Cancel Session?" : "Cancel Request?"}
+                description={isMeetingInProgress
+                    ? "Canceling an active session will trigger a full refund for the tenant. Proceed only if the meeting failed to happen."
+                    : `Are you sure? ${userRole === "TENANT" ? "Your funds will be unlocked." : "The tenant's deposit will be returned."}`}
+                confirmText={isMeetingInProgress ? "Yes, Cancel Session" : "Yes, Cancel Request"}
+                confirmButtonClass="!bg-rose-600 hover:!bg-rose-700 text-white"
+                loading={loading}
+            />
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                description={confirmModal.description}
+                children={confirmModal.children}
+                confirmText={confirmModal.confirmText}
+                confirmButtonClass={confirmModal.confirmButtonClass}
+                loading={loading}
+            />
+
+            <IssueReportModal
+                isOpen={showReportIssueModal}
+                onClose={() => setShowReportIssueModal(false)}
+                onConfirm={async (feedback) => {
+                    setShowReportIssueModal(false);
+                    setLoading(true);
+                    try {
+                        await api.post(`/bookings/${booking.id}/outcome`, {
+                            outcome: "ISSUE_REPORTED",
+                            feedback
+                        });
+                        showToast("warning", "Dispute filed. Waiting for hunter response.");
+                        router.push("/tenant-dashboard/bookings" as Route);
+                        onUpdate();
+                    } catch (error: any) {
+                        showToast("error", error.response?.data?.message || "Failed to report issue");
+                    } finally {
+                        setLoading(false);
+                    }
+                }}
+                loading={loading}
+            />
         </div>
     );
-}
+};

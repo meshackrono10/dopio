@@ -1,75 +1,54 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
 import { useToast } from "@/components/Toast";
-import Image from "next/image";
-import Link from "next/link";
-import { Route } from "@/routers/types";
-
-interface ViewingRequest {
-    id: string;
-    tenantId: string;
-    tenantName: string;
-    tenantPhone: string;
-    propertyId: string;
-    propertyTitle: string;
-    propertyImage: string;
-    requestedDate: string;
-    status: "pending" | "approved" | "rejected" | "completed";
-    message?: string;
-    createdAt: string;
-}
+import ViewingRequestCard from "@/components/ViewingRequestCard";
+import Skeleton from "@/shared/Skeleton";
 
 export default function ViewingRequestsPage() {
     const { user } = useAuth();
     const { showToast } = useToast();
-    const [requests, setRequests] = useState<ViewingRequest[]>([]);
+    const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
 
-    useEffect(() => {
-        fetchViewingRequests();
-    }, []);
-
-    const fetchViewingRequests = async () => {
+    const fetchViewingRequests = useCallback(async () => {
+        setLoading(true);
         try {
-            const response = await api.get("/viewing-requests/haunter");
+            const response = await api.get("/viewing-requests");
             setRequests(response.data);
         } catch (error) {
             console.error("Failed to fetch viewing requests", error);
+            showToast("error", "Failed to load viewing requests");
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
 
-    const handleApprove = async (requestId: string) => {
-        try {
-            await api.put(`/viewing-requests/${requestId}/approve`);
-            showToast("success", "Viewing request approved");
-            fetchViewingRequests();
-        } catch (error) {
-            showToast("error", "Failed to approve request");
+    useEffect(() => {
+        fetchViewingRequests();
+    }, [fetchViewingRequests]);
+
+    // Hunter filter: Only show requests for properties owned by the current hunter
+    // Also filter out ACCEPTED requests as they are now handled in the Bookings tab
+    const hunterRequests = requests.filter(req => req.property?.hunterId === user?.id && req.status !== 'ACCEPTED');
+
+    // Filter by status
+    const filteredRequests = hunterRequests.filter((r) => {
+        if (filter === "pending") {
+            return r.status === "PENDING" || r.status === "COUNTERED";
         }
-    };
-
-    const handleReject = async (requestId: string) => {
-        try {
-            await api.put(`/viewing-requests/${requestId}/reject`);
-            showToast("success", "Viewing request rejected");
-            fetchViewingRequests();
-        } catch (error) {
-            showToast("error", "Failed to reject request");
+        if (filter === "completed") {
+            return r.status === "ACCEPTED" || r.status === "REJECTED" || r.status === "CANCELLED";
         }
-    };
+        return true;
+    });
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
+    const pendingCount = hunterRequests.filter(
+        (r) => r.status === "PENDING" || r.status === "COUNTERED"
+    ).length;
 
     return (
         <div className="space-y-6">
@@ -81,107 +60,108 @@ export default function ViewingRequestsPage() {
                     </p>
                 </div>
                 <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                    {requests.length} total requests
+                    {hunterRequests.length} total requests
                 </div>
             </div>
 
-            {requests.length === 0 ? (
+            {/* Action Alert */}
+            {pendingCount > 0 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                        <span className="text-2xl">⚠️</span>
+                        <div>
+                            <h3 className="font-semibold text-yellow-900 dark:text-yellow-100">
+                                {pendingCount} Pending {pendingCount === 1 ? "Request" : "Requests"}
+                            </h3>
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+                                You have viewing requests waiting for your response. Funds are held in escrow.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Filter Tabs */}
+            <div className="flex gap-2 border-b border-neutral-200 dark:border-neutral-700">
+                {[
+                    { key: "all" as const, label: "All", count: hunterRequests.length },
+                    { key: "pending" as const, label: "Pending", count: pendingCount },
+                    {
+                        key: "completed" as const,
+                        label: "Completed",
+                        count: hunterRequests.filter(r => ["ACCEPTED", "REJECTED", "CANCELLED"].includes(r.status)).length
+                    },
+                ].map((tab) => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setFilter(tab.key)}
+                        className={`px-4 py-2 font-medium transition-colors relative ${filter === tab.key
+                            ? "text-primary-600 dark:text-primary-400 border-b-2 border-primary-600"
+                            : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+                            }`}
+                    >
+                        {tab.label}
+                        {tab.count > 0 && (
+                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-neutral-100 dark:bg-neutral-800 font-bold">
+                                {tab.count}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {loading ? (
+                <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-48 w-full rounded-2xl" />
+                    ))}
+                </div>
+            ) : filteredRequests.length === 0 ? (
                 <div className="bg-white dark:bg-neutral-800 rounded-xl p-12 border border-neutral-200 dark:border-neutral-700 text-center">
                     <i className="las la-eye text-6xl text-neutral-300 dark:text-neutral-600"></i>
                     <h3 className="text-xl font-semibold mt-4">No viewing requests</h3>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-2">
-                        Viewing requests from tenants will appear here
+                        {filter === "all"
+                            ? "Viewing requests from tenants will appear here"
+                            : `You have no ${filter} requests at the moment`}
                     </p>
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {requests.map((request) => (
-                        <div
+                    {filteredRequests.map((request) => (
+                        <ViewingRequestCard
                             key={request.id}
-                            className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700"
-                        >
-                            <div className="flex flex-col md:flex-row gap-6">
-                                {/* Property Image */}
-                                <div className="relative w-full md:w-48 h-48 rounded-lg overflow-hidden flex-shrink-0">
-                                    <Image
-                                        src={request.propertyImage || "/placeholder.jpg"}
-                                        alt={request.propertyTitle}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-
-                                {/* Request Details */}
-                                <div className="flex-1">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h3 className="text-lg font-semibold">{request.propertyTitle}</h3>
-                                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                                                Requested by: {request.tenantName}
-                                            </p>
-                                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                                                Phone: {request.tenantPhone}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${request.status === "approved"
-                                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                                    : request.status === "pending"
-                                                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                                        : request.status === "rejected"
-                                                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                                            : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                                }`}
-                                        >
-                                            {request.status}
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 mt-4">
-                                        <div>
-                                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Requested Date</p>
-                                            <p className="font-medium">{new Date(request.requestedDate).toLocaleDateString()}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Submitted</p>
-                                            <p className="font-medium">{new Date(request.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-
-                                    {request.message && (
-                                        <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-900 rounded-lg">
-                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Message:</p>
-                                            <p className="text-sm">{request.message}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Actions */}
-                                    {request.status === "pending" && (
-                                        <div className="flex gap-2 mt-4">
-                                            <button
-                                                onClick={() => handleApprove(request.id)}
-                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => handleReject(request.id)}
-                                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                                            >
-                                                Reject
-                                            </button>
-                                            <Link
-                                                href={`/haunter-dashboard/messages?partnerId=${request.tenantId}`}
-                                                className="px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg hover:border-primary-500 transition-colors text-sm font-medium"
-                                            >
-                                                Message
-                                            </Link>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                            request={request}
+                            userRole="HUNTER"
+                            onUpdate={fetchViewingRequests}
+                        />
                     ))}
+                </div>
+            )}
+
+            {/* Stats Footer */}
+            {!loading && hunterRequests.length > 0 && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-8 border-t border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900 rounded-2xl">
+                        <p className="text-xs text-neutral-500 uppercase tracking-wider font-bold">Total</p>
+                        <p className="text-2xl font-bold mt-1">{hunterRequests.length}</p>
+                    </div>
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-2xl">
+                        <p className="text-xs text-yellow-600 uppercase tracking-wider font-bold">Pending</p>
+                        <p className="text-2xl font-bold mt-1 text-yellow-700">{pendingCount}</p>
+                    </div>
+                    <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl">
+                        <p className="text-xs text-green-600 uppercase tracking-wider font-bold">Accepted</p>
+                        <p className="text-2xl font-bold mt-1 text-green-700">
+                            {hunterRequests.filter(r => r.status === "ACCEPTED").length}
+                        </p>
+                    </div>
+                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl">
+                        <p className="text-xs text-red-600 uppercase tracking-wider font-bold">Rejected</p>
+                        <p className="text-2xl font-bold mt-1 text-red-700">
+                            {hunterRequests.filter(r => r.status === "REJECTED").length}
+                        </p>
+                    </div>
                 </div>
             )}
         </div>

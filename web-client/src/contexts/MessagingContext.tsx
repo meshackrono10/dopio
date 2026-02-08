@@ -77,6 +77,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         const conversationsRef = ref(database, `user-conversations/${user.id}`);
         const unsubscribe = onValue(conversationsRef, (snapshot) => {
             const data = snapshot.val();
+            console.log(`[Messaging] Fetched conversations for ${user.id}:`, data ? Object.keys(data) : 'none');
             if (data) {
                 const loadedConversations: Conversation[] = Object.entries(data).map(([partnerId, val]: [string, any]) => ({
                     partnerId,
@@ -118,6 +119,8 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
             const data = snapshot.val();
             if (data) {
                 const loadedMessages: Message[] = Object.values(data);
+                // Sort messages chronologically
+                loadedMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
                 setMessages(loadedMessages);
 
                 // Mark as read logic would go here (update unreadCount in Firebase)
@@ -142,9 +145,8 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         setSelectedPartnerId(partnerId);
         // Mark as read in Firebase
         if (user?.id) {
-            // We need to update the unreadCount to 0 for this conversation
-            // This requires knowing the current state or just updating the field
-            // For MVP we might skip strict unread sync or implement it simply
+            const userConvRef = ref(database, `user-conversations/${user.id}/${partnerId}`);
+            update(userConvRef, { unreadCount: 0 });
         }
     }, [user]);
 
@@ -279,12 +281,13 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         // Fetch partner details
         try {
             setLoading(true);
-            console.log("Fetching partner details for:", partnerId);
+            console.log(`[Messaging] Starting conversation with ${partnerId}...`);
             let partnerData;
             try {
-                const response = await api.get(`/users/hunter/${partnerId}`);
-                partnerData = response.data.hunter || response.data.user || response.data;
-                console.log("Partner data fetched:", partnerData);
+                // Use the new generic public profile endpoint
+                const response = await api.get(`/users/${partnerId}/public-profile`);
+                partnerData = response.data;
+                console.log(`[Messaging] Partner data fetched:`, partnerData.name, partnerData.role);
             } catch (e) {
                 console.error("Failed to fetch partner details", e);
                 return;
@@ -293,7 +296,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
             const partner = {
                 id: partnerData.id,
                 name: partnerData.name,
-                avatarUrl: partnerData.avatarUrl,
+                avatarUrl: partnerData.avatarUrl || partnerData.profilePhoto || '/default-avatar.png',
                 role: partnerData.role,
             };
 

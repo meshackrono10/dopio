@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBookings } from "@/contexts/BookingContext";
 import { useToast } from "@/components/Toast";
@@ -12,6 +13,7 @@ export default function ReviewsPage() {
     const { user } = useAuth();
     const { bookings: allBookings } = useBookings();
     const { showToast } = useToast();
+    const router = useRouter();
 
     const [myReviews, setMyReviews] = useState<HaunterReview[]>([]);
     const [showReviewForm, setShowReviewForm] = useState(false);
@@ -78,6 +80,7 @@ export default function ReviewsPage() {
                             showToast("success", "Thank you for your review!");
                             setShowReviewForm(false);
                             setSelectedBookingForReview(null);
+                            router.push("/tenant-dashboard/bookings" as any);
                             fetchReviews();
                         } catch (error: any) {
                             showToast("error", error.response?.data?.message || "Failed to submit review");

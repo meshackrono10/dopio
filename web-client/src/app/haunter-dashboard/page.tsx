@@ -10,8 +10,12 @@ import api from "@/services/api";
 
 export default function HaunterDashboardOverview() {
     const { user } = useAuth();
-    const { bookings: allBookings } = useBookings();
+    const { bookings: allBookings, fetchBookings } = useBookings();
     const { properties: allProperties } = useProperties();
+
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
     const [walletBalance, setWalletBalance] = useState({ available: 0, escrow: 0, withdrawn: 0 });
 
     const haunterBookings = allBookings.filter(b => b.haunterId === user?.id);
@@ -96,51 +100,93 @@ export default function HaunterDashboardOverview() {
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold">Recent Bookings</h2>
-                    <Link
-                        href="/haunter-dashboard/bookings"
-                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                    >
-                        View all →
-                    </Link>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Active Bookings (Upcoming/In Progress) */}
+                <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-semibold">Upcoming Viewings</h2>
+                        <Link
+                            href="/haunter-dashboard/bookings"
+                            className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                        >
+                            View all →
+                        </Link>
+                    </div>
+
+                    {haunterBookings.filter(b => b.status === "confirmed" || b.status === "in_progress").length > 0 ? (
+                        <div className="space-y-4">
+                            {haunterBookings
+                                .filter(b => b.status === "confirmed" || b.status === "in_progress")
+                                .slice(0, 3)
+                                .map((booking) => (
+                                    <div
+                                        key={booking.id}
+                                        className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg border border-neutral-100 dark:border-neutral-800"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-semibold truncate">{booking.propertyTitle}</h3>
+                                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                                {booking.tenantName} • {new Date(booking.scheduledDate).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        <div className="ml-4 flex-shrink-0">
+                                            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
+                                                {booking.status === "in_progress" ? "Ongoing" : "Confirmed"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <i className="las la-calendar text-4xl text-neutral-300 dark:text-neutral-600"></i>
+                            <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-sm">No upcoming viewings</p>
+                        </div>
+                    )}
                 </div>
 
-                {recentBookings.length > 0 ? (
-                    <div className="space-y-4">
-                        {recentBookings.map((booking) => (
-                            <div
-                                key={booking.id}
-                                className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg"
-                            >
-                                <div>
-                                    <h3 className="font-medium">{booking.propertyTitle}</h3>
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                                        {booking.tenantName}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-semibold">Booking #{booking.id}</p>
-                                    <span
-                                        className={`text-xs px-2 py-1 rounded-full ${booking.status === "confirmed"
-                                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                            : booking.status === "pending"
-                                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                                : "bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300"
-                                            }`}
-                                    >
-                                        {booking.status}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                {/* Recently Completed */}
+                <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-semibold">Recently Completed</h2>
+                        <Link
+                            href="/haunter-dashboard/bookings"
+                            className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                        >
+                            View history →
+                        </Link>
                     </div>
-                ) : (
-                    <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
-                        No bookings yet. Your bookings will appear here.
-                    </p>
-                )}
+
+                    {haunterBookings.filter(b => b.status === "completed").length > 0 ? (
+                        <div className="space-y-4">
+                            {haunterBookings
+                                .filter(b => b.status === "completed")
+                                .sort((a, b) => new Date(b.completedAt || b.updatedAt).getTime() - new Date(a.completedAt || a.updatedAt).getTime())
+                                .slice(0, 3)
+                                .map((booking) => (
+                                    <div
+                                        key={booking.id}
+                                        className="flex items-center justify-between p-4 bg-green-50/50 dark:bg-green-900/10 rounded-lg border border-green-100 dark:border-green-900/30"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-semibold truncate">{booking.propertyTitle}</h3>
+                                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                                {booking.tenantName} • Completed
+                                            </p>
+                                        </div>
+                                        <div className="ml-4 flex-shrink-0">
+                                            <i className="las la-check-circle text-green-600 text-2xl"></i>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <i className="las la-history text-4xl text-neutral-300 dark:text-neutral-600"></i>
+                            <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-sm">No completed viewings yet</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Quick Actions */}
